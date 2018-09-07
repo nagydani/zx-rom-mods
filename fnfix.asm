@@ -64,7 +64,7 @@ SF_VALUE:	POP	DE
 		LD	(DEFADD),HL
 		RST	NEXT_CHAR
 		JP	S_CONT_2
-; 5 spare bytes left
+; 4 spare bytes left
 
 
 ; External routines, need to find extra space for them elsewhere
