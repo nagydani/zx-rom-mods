@@ -109,8 +109,14 @@ L0008:  LD      HL,(CH_ADD)      ; Fetch the character address from CH_ADD.
 L0010:	JP      PRINT_A_2	; Jump forward to continue at PRINT-A-2.
 ; ---
 
-	DEFB    $FF, $FF, $FF   ; Five unused locations.
-	DEFB    $FF, $FF        ;
+; default service routine for K, S and P channel output
+PRINT_OUT:
+	JP	C,L09F4
+	JR	CH_RESET
+
+;;; ---
+;;;	DEFB    $FF, $FF, $FF   ; Five unused locations.
+;;;	DEFB    $FF, $FF        ;
 
 ; -------------------------------
 ; THE 'COLLECT CHARACTER' RESTART
@@ -165,13 +171,8 @@ L0028:  JP      L335B           ; jump forward to the CALCULATE routine.
 
 ; ---
 
-; default service routine for K, S and P channel output
-PRINT_OUT:
-	JP	C,L09F4
-	JR	CH_RESET
-
-;;;	DEFB    $FF, $FF, $FF   ; spare - note that on the ZX81, space being a
-;;;	DEFB    $FF, $FF        ; little cramped, these same locations were
+	DEFB    $FF, $FF, $FF   ; spare - note that on the ZX81, space being a
+	DEFB    $FF, $FF        ; little cramped, these same locations were
                                 ; used for the five-byte end-calc literal.
 
 ; ------------------------------
