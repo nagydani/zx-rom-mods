@@ -12,7 +12,6 @@
 ; PO_BACK fixed [CHR$ 8]
 ; PF_SMALL fixed ["2"+STR$ 0.5]
 ; GO TO range fixed [GO TO 20000 vs. GO TO 60000]
-; CLOSE fixed [CLOSE #4]
 ; DIVISION fixed [(1/61)*61<>1]
 ; TRUNCATE fixed [INT -65536]
 ; SCREEN$ fixed (but no UDG support)
@@ -4727,13 +4726,14 @@ L0F30:  LD      HL,L107F        ; address: ED-ERROR
 ;; ED-LOOP
 L0F38:  CALL    L15D4           ; routine WAIT-KEY gets key possibly
                                 ; changing the mode.
-        PUSH    AF              ; save key.
-        LD      D,$00           ; and give a short click based
-        LD      E,(IY-$01)      ; on PIP value for duration.
-        LD      HL,$00C8        ; and pitch.
-        CALL    L03B5           ; routine BEEPER gives click - effective
-                                ; with rubber keyboard.
-        POP     AF              ; get saved key value.
+;;; BUGFIX: PIP does not belong here
+;;;	PUSH    AF              ; save key.
+;;;	LD      D,$00           ; and give a short click based
+;;;	LD      E,(IY-$01)      ; on PIP value for duration.
+;;;	LD      HL,$00C8        ; and pitch.
+;;;	CALL    L03B5           ; routine BEEPER gives click - effective
+;;;				; with rubber keyboard.
+;;;	POP     AF              ; get saved key value.
         LD      HL,L0F38        ; address: ED-LOOP is loaded to HL.
         PUSH    HL              ; and pushed onto stack.
 
@@ -4742,10 +4742,10 @@ L0F38:  CALL    L15D4           ; routine WAIT-KEY gets key possibly
 ; The character that has been received can now be processed.
 
         CP      $18             ; range 24 to 255 ?
-        JR      NC,L0F81        ; forward to ADD-CHAR if so.
+        JR      NC,L0F81	; forward to ADD-CHAR if so.
 
         CP      $07             ; lower than 7 ?
-        JR      C,L0F81         ; forward to ADD-CHAR also.
+        JR      C,L0F81		; forward to ADD-CHAR also.
                                 ; Note. This is a 'bug' and chr$ 6, the comma
                                 ; control character, should have had an
                                 ; entry in the ED-KEYS table.
@@ -4758,7 +4758,7 @@ L0F38:  CALL    L15D4           ; routine WAIT-KEY gets key possibly
         LD      BC,$0002        ; prepare for ink/paper etc.
         LD      D,A             ; save character in D
         CP      $16             ; is it ink/paper/bright etc. ?
-        JR      C,L0F6C         ; forward to ED-CONTR if so
+        JR      C,ED_CONTR	; forward to ED-CONTR if so
 
                                 ; leaves 22d AT and 23d TAB
                                 ; which can't be entered via KEY-INPUT.
@@ -4774,7 +4774,9 @@ L0F38:  CALL    L15D4           ; routine WAIT-KEY gets key possibly
         LD      E,A             ; save first in E
 
 ;; ED-CONTR
-L0F6C:  CALL    L15D4           ; routine WAIT-KEY for control.
+;;;L0F6C:
+ED_CONTR:
+	CALL    L15D4           ; routine WAIT-KEY for control.
                                 ; input address will be key-next.
 
         PUSH    DE              ; saved code/parameters
@@ -4790,6 +4792,15 @@ L0F6C:  CALL    L15D4           ; routine WAIT-KEY for control.
         LD      (HL),C          ; place possible parameter. If only one
                                 ; then DE points to this location also.
         JR      L0F8B           ; forward to ADD-CH-1
+
+;;; Flag Z is reset, when click is needed, returns with CF set, if not.
+CLICK:	SCF			; set CF and
+        RET     Z               ; return if not.
+	LD      HL,$00C8        ; set pitch.
+	LD	DE,(PIP)	; give a short click based on
+	LD      D,H		; on PIP value for duration.
+	JP	L03B5           ; routine BEEPER gives click
+	NOP
 
 ; ------------------------
 ; Add code to current line
@@ -5194,13 +5205,16 @@ L10A8:  BIT     3,(IY+$02)      ; test TV_FLAG  - has a key been pressed in
 
         CALL    NZ,L111D        ; routine ED-COPY, if so, to reprint the lower
                                 ; screen at every keystroke/mode change.
-SILENT_KEY_IN:
-        AND     A               ; clear carry flag - required exit condition.
 
-        BIT     5,(IY+$01)      ; test FLAGS  - has a new key been pressed ?
-        RET     Z               ; return if not.                        >>
+;;; BUGFIX: clicking if a key has been pressed, should happen here
+	CALL	KEYCLICK
+	CCF
+	RET	NC
+;;;        AND     A               ; clear carry flag - required exit condition.
+;;;        BIT     5,(IY+$01)      ; test FLAGS  - has a new key been pressed ?
+;;;        RET     Z               ; return if not.
 
-L10B5:	LD      A,(LAST_K)       ; system variable LASTK will hold last key -
+	LD      A,(LAST_K)       ; system variable LASTK will hold last key -
                                 ; from the interrupt routine.
 
         RES     5,(IY+$01)      ; update FLAGS  - reset the new key flag.
@@ -6381,9 +6395,13 @@ L162D:  DEFB    'K', L1634-$-1  ; offset $06 to CHAN-K
 
 ;; CHAN-K
 L1634:  SET     0,(IY+$02)      ; update TV_FLAG  - signal lower screen in use
-        RES     5,(IY+$01)      ; update FLAGS    - signal no new key
+;;; BUGFIX: do not discard the byte in the keyboard buffer upon opening
+;;;	RES     5,(IY+$01)      ; update FLAGS    - signal no new key
         SET     4,(IY+$30)      ; update FLAGS2   - signal K channel in use
         JR      L1646           ; forward to CHAN-S-1 for indirect exit
+;;; 4 empty bytes
+	DEFS 4
+;;; ---
 
 ; --------------
 ; Channel S flag
@@ -6679,7 +6697,8 @@ L16E5:  CALL    L171E           ; routine STR-DATA fetches parameter
                                 ; peculiar to that stream without disturbing
                                 ; data pointer to STRMS entry in HL.
 
-        LD      BC,$0000        ; the stream is to be blanked.
+; This entry point needs to be preserved for Interface 1 to work.
+L16EB:	LD      BC,$0000        ; the stream is to be blanked.
         LD      DE,$A3E2        ; the number of bytes from stream 4, $5C1E,
                                 ; to $10000
         EX      DE,HL           ; transfer offset to HL, STRMS data pointer
@@ -17420,7 +17439,11 @@ INDEX5:	PUSH	DE		; save STKEND
 ;;;        POP     HL              ; restore pointer to next literal.
 ;;;        EXX                     ;
 ;;;        RET                     ; return.
-	DEFS	7
+
+;;; Emit a clicking sound, if a key has been pressed, return with CF, if not
+KEYCLICK:
+	BIT	5,(IY+1)
+	JP	CLICK
 ; --------------------------------
 ; Store in a memory area ($C0 etc.)
 ; --------------------------------
