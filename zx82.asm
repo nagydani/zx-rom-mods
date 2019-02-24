@@ -3197,22 +3197,30 @@ L0A3A:  JP      L0DD9           ; to CL-SET and PO-STORE to save new
 ;   - Dr. Ian Logan, Understanding Your Spectrum, 1982.
 
 ;; PO-RIGHT
-L0A3D:  LD      A,(P_FLAG)       ; fetch P_FLAG value
-        PUSH    AF              ; and save it on stack.
-
-        LD      (IY+$57),$01    ; temporarily set P_FLAG 'OVER 1'.
-;;; BUGFIX
-	LD	A,$80		; prepare a hard blank
+L0A3D:
+;;; BUGFIX: Shorter version
+	LD	HL,P_FLAG
+	LD	A,(HL)
+	LD	(HL),$01
+	PUSH	AF
+	PUSH	HL
+	LD	A,$80		; hard blank
+	CALL	L0AD9
+	POP	HL
+	POP	AF
+	LD	(HL),A
+	RET
+;;; ---
+;;;	LD      A,(P_FLAG)      ; fetch P_FLAG value
+;;;	PUSH    AF              ; and save it on stack.
+;;;	LD      (IY+$57),$01    ; temporarily set P_FLAG 'OVER 1'.
 ;;;	LD      A," "           ; prepare a space.
 ;;;     CALL    L0B65           ; routine PO-CHAR to print it.
-                                ; Note. could be PO-ABLE which would update
-                                ; the column position.
-;;; BUGFIX
-	RST	$10		; Save 2 bytes
-        POP     AF              ; restore the permanent flag.
-        LD      (P_FLAG),A       ; and restore system variable P_FLAG
-
-        RET                     ; return without updating column position
+;;;				; Note. could be PO-ABLE which would update
+;;;				; the column position.
+;;;	POP     AF              ; restore the permanent flag.
+;;;	LD      (P_FLAG),A	; and restore system variable P_FLAG
+;;;	RET			; return without updating column position
 
 ; -----------------------
 ; Perform carriage return
@@ -3228,8 +3236,10 @@ PO_ENTER:
 
         LD      C,$21           ; the leftmost column position.
         CALL    L0C55           ; routine PO-SCR handles any scrolling required.
-        DEC     B               ; to next screen line.
-        JP      L0DD9           ; jump forward to CL-SET to store new position.
+        DEC     B		; to next screen line.
+;;; BUGFIX: save 1 byte
+	JR	PO_AT_SET
+;;;	JP      L0DD9           ; jump forward to CL-SET to store new position.
 
 ; -----------
 ; Print comma
