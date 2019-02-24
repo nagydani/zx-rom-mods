@@ -43,7 +43,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 23-FEB-2019
+; Last updated: 24-FEB-2019
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -213,33 +213,33 @@ L0038:  PUSH    AF              ; Save the registers that will be used but not
 
 	LD	HL,FRAMES
 	INC	(HL)
-	JR	NZ,L0048
+	JR	NZ,KEY_INT
 	INC	L
 	INC	(HL)
-	JR	NZ,L0048
+	JR	NZ,KEY_INT
 	INC	L
 	INC	(HL)
-
-	NOP
-	NOP
 
 ;   Now save the rest of the main registers and read and decode the keyboard.
 
 ;; KEY-INT
-L0048:  PUSH    BC              ; Save the other main registers.
+;;;L0048:
+KEY_INT:PUSH    BC              ; Save the other main registers.
         PUSH    DE              ;
 
         CALL    L02BF           ; Routine KEYBOARD executes a stage in the
                                 ; process of reading a key-press.
         POP     DE              ;
-        POP     BC              ; Restore registers.
+        POP	BC              ; Restore registers.
 
         POP     HL              ;
         POP     AF              ;
 
-        EI                      ; Enable Interrupts.
+        EI			; Enable Interrupts.
         RET                     ; Return.
 
+;;; Two pare bytes
+	DEFS	2
 ; ---------------------
 ; THE 'ERROR-2' ROUTINE
 ; ---------------------
@@ -1558,11 +1558,7 @@ L046E:  DEFB    $89, $02, $D0, $12, $86;  261.625565290         C
 
 ; Reset current system channel state
 CH_RESET1:
-	LD	HL,(CURCHL)	; Fetch current channel address
-	LD	DE,4		; Skip both service routine
-	ADD	HL,DE		; addresses.
-	LD	A,(HL)		; Fetch channel identifier
-	CP	"K"		; Is it a K channel?
+	CALL	L21D6		; IN-CHAN-K
 	JP	Z,RESET_K	; If so, reset both service routines
 	LD	BC,$1821	; If not, pre-load top left corner's location
 	CP	"S"
@@ -3140,7 +3136,7 @@ L0A11:  DEFB    PO_COMMA - $	; 06d offset $4E to Address: PO-COMMA
         DEFB    PO_QUEST - $	; 11d offset $53 to Address: PO-QUEST
         DEFB    PO_QUEST - $	; 12d offset $52 to Address: PO-QUEST
         DEFB    PO_ENTER - $    ; 13d offset $37 to Address: PO-ENTER
-        DEFB    PO_QUEST - $	; 14d offset $50 to Address: PO-QUEST
+        DEFB    PO_1_OPER - $	; 14d offset $50 to Address: PO-1-OPER
         DEFB    PO_QUEST - $	; 15d offset $4F to Address: PO-QUEST
         DEFB    PO_1_OPER - $	; 16d offset $5F to Address: PO-1-OPER
         DEFB    PO_1_OPER - $	; 17d offset $5E to Address: PO-1-OPER
@@ -3205,7 +3201,9 @@ L0A3D:  LD      A,(P_FLAG)       ; fetch P_FLAG value
         PUSH    AF              ; and save it on stack.
 
         LD      (IY+$57),$01    ; temporarily set P_FLAG 'OVER 1'.
-        LD      A," "           ; prepare a space.
+;;; BUGFIX
+	LD	A,$80		; prepare a hard blank
+;;;	LD      A," "           ; prepare a space.
 ;;;     CALL    L0B65           ; routine PO-CHAR to print it.
                                 ; Note. could be PO-ABLE which would update
                                 ; the column position.
@@ -3397,15 +3395,13 @@ PO_FILL:CALL    L0B03           ; routine PO-FETCH, HL-addr, BC=line/column.
 ;;;L0AD0:
 PO_SPACE:
 	LD      A," "           ; space character.
-
         CALL    L0C3B           ; routine PO-SAVE prints the character
                                 ; using alternate set (normal output routine)
-
-        DEC     D               ; decrement counter.
+	DEC     D               ; decrement counter.
         JR      NZ,PO_SPACE     ; to PO-SPACE until done
         RET                     ; return
 
-;;; PO_ABLE is popular with 3rd party software, keep it in place
+;;; PO-ABLE is popular with 3rd party software, keep it in place
 ; ----------------------
 ; Printable character(s)
 ; ----------------------
@@ -5350,7 +5346,7 @@ L111D:  CALL    L0D4D           ; routine TEMPS sets temporary attributes.
                                 ; carriage return including initial
                                 ; characterized line number when present.
         EX      DE,HL           ; transfer new address to DE
-        CALL    L18E1           ; routine OUT-CURS considers a
+        CALL    OUT_CURS	; routine OUT-CURS considers a
                                 ; terminating cursor.
 
         LD      HL,(S_POSNL)      ; fetch updated SPOSNL
@@ -5575,31 +5571,39 @@ L11CB:  LD      B,A             ; Save the flag to control later branching.
 ;   sometimes red stripes on black paper just visible.
 
 ;; ram-check
-L11DA:  LD      H,D             ; Transfer the top value to the HL register
+;;;L11DA:
+RAM_CHECK:
+	LD      H,D             ; Transfer the top value to the HL register
         LD      L,E             ; pair.
 
 ;; RAM-FILL
-L11DC:  LD      (HL),$02        ; Load memory with $02 - red ink on black paper.
+;;;L11DC:
+RAM_FILL:
+	LD      (HL),$02        ; Load memory with $02 - red ink on black paper.
         DEC     HL              ; Decrement memory address.
         CP      H               ; Have we reached ROM - $3F ?
-        JR      NZ,L11DC        ; Back to RAM-FILL if not.
+        JR      NZ,RAM_FILL	; Back to RAM-FILL if not.
 
 ;; RAM-READ
-L11E2:  AND     A               ; Clear carry - prepare to subtract.
+;;;L11E2:
+RAM_READ:
+	AND     A               ; Clear carry - prepare to subtract.
         SBC     HL,DE           ; subtract and add back setting
         ADD     HL,DE           ; carry when back at start.
         INC     HL              ; and increment for next iteration.
-        JR      NC,L11EF        ; forward to RAM-DONE if we've got back to
+        JR      NC,RAM_DONE	; forward to RAM-DONE if we've got back to
                                 ; starting point with no errors.
 
         DEC     (HL)            ; decrement to 1.
-        JR      Z,L11EF         ; forward to RAM-DONE if faulty.
+        JR      Z,RAM_DONE	; forward to RAM-DONE if faulty.
 
         DEC     (HL)            ; decrement to zero.
-        JR      Z,L11E2         ; back to RAM-READ if zero flag was set.
+        JR      Z,RAM_READ         ; back to RAM-READ if zero flag was set.
 
 ;; RAM-DONE
-L11EF:  DEC     HL              ; step back to last valid location.
+;;;L11EF:
+RAM_DONE:
+	DEC     HL              ; step back to last valid location.
         EXX                     ; regardless of state, set up possibly
                                 ; stored system variables in case from NEW.
         LD      (P_RAMT),BC      ; insert P-RAMT.
@@ -5607,7 +5611,7 @@ L11EF:  DEC     HL              ; step back to last valid location.
         LD      (UDG),HL      ; insert UDG.
         EXX                     ; switch in main set.
         INC     B               ; now test if we arrived here from NEW.
-        JR      Z,L1219         ; forward to RAM-SET if we did.
+        JR      Z,RAM_SET         ; forward to RAM-SET if we did.
 
 ;   This section applies to START only.
 
@@ -5629,7 +5633,8 @@ L11EF:  DEC     HL              ; step back to last valid location.
 ;   The NEW command path rejoins here.
 
 ;; RAM-SET
-L1219:  LD      (RAMTOP),HL      ; set system variable RAMTOP to HL.
+;;;L1219:
+RAM_SET:LD      (RAMTOP),HL      ; set system variable RAMTOP to HL.
 ; ---
 	LD	HL,NMIVEC	; The warm reset routine
 	LD	(NMIADD),HL	; goes into NMIADD
@@ -7263,12 +7268,11 @@ L1894:  LD      HL,(X_PTR)      ; fetch X_PTR - possibly the error pointer
         AND     A               ; clear the carry flag.
         SBC     HL,DE           ; test if an error address has been reached.
         JR      NZ,L18A1        ; forward to OUT-LINE5 if not.
-
-        LD      A,$3F           ; load A with '?' the error marker.
-        CALL    L18C1           ; routine OUT-FLASH to print flashing marker.
+        LD      A,"?"           ; load A with '?' the error marker.
+        CALL	OUT_FLASH	; routine OUT-FLASH to print flashing marker.
 
 ;; OUT-LINE5
-L18A1:  CALL    L18E1           ; routine OUT-CURS will print the cursor if
+L18A1:  CALL	OUT_CURS	; routine OUT-CURS will print the cursor if
                                 ; this is the right position.
         EX      DE,HL           ; restore address pointer to HL.
         LD      A,(HL)          ; fetch the addressed character.
@@ -7326,7 +7330,9 @@ L18B6:  CP      $0E             ; character fourteen ?
 ; In fact the alternate set is used for the whole routine.
 
 ;; OUT-FLASH
-L18C1:  EXX                     ; switch in alternate set
+;;;L18C1:
+OUT_FLASH_0:
+;;;	EXX                     ; switch in alternate set
 
         LD      HL,(ATTR_T)      ; fetch L = ATTR_T, H = MASK-T
         PUSH    HL              ; save masks.
@@ -7347,7 +7353,7 @@ L18C1:  EXX                     ; switch in alternate set
         POP     HL              ; restore temporary masks
         LD      (ATTR_T),HL      ; and restore system variables ATTR_T/MASK_T
 
-        EXX                     ; switch back to main set
+;;;     EXX                     ; switch back to main set
         RET                     ; return
 
 ; ----------------
@@ -7360,8 +7366,12 @@ L18C1:  EXX                     ; switch in alternate set
 ; latter two cases that it has any relevance and in the last case it
 ; performs another very important function also.
 
+	NOP
+	NOP
 ;; OUT-CURS
-L18E1:  LD      HL,(K_CUR)      ; fetch K_CUR the current cursor address
+L18E1:
+OUT_CURS:
+	LD      HL,(K_CUR)      ; fetch K_CUR the current cursor address
         AND     A               ; prepare for true subtraction.
         SBC     HL,DE           ; test against pointer address in DE and
         RET     NZ              ; return if not at exact position.
@@ -7370,12 +7380,13 @@ L18E1:  LD      HL,(K_CUR)      ; fetch K_CUR the current cursor address
 ; then this value 'E' or 'G' will take precedence.
 
         LD      A,(MODE)       ; fetch MODE  0='KLC', 1='E', 2='G'.
-        RLC     A               ; double the value and set flags.
-        JR      Z,L18F3         ; to OUT-C-1 if still zero ('KLC').
-
-        ADD     A,$43           ; add 'C' - will become 'E' if originally 1
+;;; BUGFIX: saves 1 byte
+	ADD	A,A
+;;;        RLC     A		; double the value and set flags.
+        JR      Z,OUT_C_1	; to OUT-C-1 if still zero ('KLC').
+        ADD     A,"C"           ; add 'C' - will become 'E' if originally 1
                                 ; or 'G' if originally 2.
-        JR      L1909           ; forward to OUT-C-2 to print.
+        JR      OUT_FLASH	; forward to OUT-C-2 to print.
 
 ; ---
 
@@ -7386,12 +7397,13 @@ L18E1:  LD      HL,(K_CUR)      ; fetch K_CUR the current cursor address
 ; to let the interrupt routine know how to decode the next key.
 
 ;; OUT-C-1
-L18F3:  LD      HL,FLAGS        ; Address FLAGS
+;;;L18F3:
+OUT_C_1:LD      HL,FLAGS        ; Address FLAGS
         RES     3,(HL)          ; signal 'K' mode initially.
-        LD      A,$4B           ; prepare letter 'K'.
+        LD      A,"K"           ; prepare letter 'K'.
         BIT     2,(HL)          ; test FLAGS - was the
                                 ; previous main character ':' or 'THEN' ?
-        JR      Z,L1909         ; forward to OUT-C-2 if so to print.
+        JR      Z,OUT_FLASH	; forward to OUT-C-2 if so to print.
 
         SET     3,(HL)          ; signal 'L' mode to interrupt routine.
                                 ; Note. transient bit has been made permanent.
@@ -7399,18 +7411,25 @@ L18F3:  LD      HL,FLAGS        ; Address FLAGS
 
         BIT     3,(IY+$30)      ; test FLAGS2 - consider caps lock ?
                                 ; which is maintained by KEY-INPUT.
-        JR      Z,L1909         ; forward to OUT-C-2 if not set to print.
+        JR      Z,OUT_FLASH	; forward to OUT-C-2 if not set to print.
 
-        LD      A,$43           ; alter 'L' to 'C'.
+        LD      A,"C"           ; alter 'L' to 'C'.
 
 ;; OUT-C-2
-L1909:  PUSH    DE              ; save address pointer but OK as OUT-FLASH
-                                ; uses alternate set without RST 10.
+;;;L1909:PUSH    DE              ; save address pointer but OK as OUT-FLASH
+;;;                        ; uses alternate set without RST 10.
+;;;	CALL    OUT_FLASH       ; routine OUT-FLASH to print.
+;;;	POP     DE              ; restore and
 
-        CALL    L18C1           ; routine OUT-FLASH to print.
+OUT_FLASH:
+	PUSH	AF
+	LD	A,$0E
+	RST	$10
+	POP	AF
+	RST	$10
+;;; ---
+	RET                     ; return.
 
-        POP     DE              ; restore and
-        RET                     ; return.
 
 ; ----------------------------
 ; Get line number of next line
@@ -10523,7 +10542,7 @@ L21D6:  LD      HL,(CURCHL)      ; fetch address of current channel CURCHL
         INC     HL              ; input and
         INC     HL              ; output streams
         LD      A,(HL)          ; fetch the channel identifier.
-        CP      $4B             ; test for 'K'
+        CP      "K"             ; test for 'K'
         RET                     ; return with zero set if keyboard is use.
 
 ; --------------------
@@ -10656,9 +10675,10 @@ L21FC:  SUB     $C9             ; reduce to control character $10 (INK)
 ; 0 or 1 for over/inverse.
 
 ;; CO-TEMP-5
-L2211:  SUB     $11             ; reduce range $FF-$04
-        ADC     A,$00           ; add in carry if INK
-        JR      Z,L2234         ; forward to CO-TEMP-7 with INK and PAPER.
+L2211:	CALL CO_TEMP_5A
+;;; L2211:  SUB     $11             ; reduce range $FF-$04
+;;;         ADC     A,$00           ; add in carry if INK
+	JR      Z,L2234         ; forward to CO-TEMP-7 with INK and PAPER.
 
         SUB     $02             ; reduce range $FF-$02
         ADC     A,$00           ; add carry if FLASH
@@ -10672,7 +10692,9 @@ L2211:  SUB     $11             ; reduce range $FF-$04
         RLCA                    ; shift bit 0
         RLCA                    ; to bit 2
         LD      B,$04           ; set bit 2 of mask for inverse.
-
+;;; FIXME: padding
+	NOP
+;;;
 ;; CO-TEMP-6
 L2228:  LD      C,A             ; save the A
         LD      A,D             ; re-fetch parameter
@@ -12454,12 +12476,7 @@ L25F5:  JP      L27BD           ; jump forward to S-FN-SBRN.
 
 ;; S-RND
 L25F8:  CALL    L2530           ; routine SYNTAX-Z
-
-S_PIEND:EQU	0x2630
-STACKBC:EQU	0x2D2F
-RESTACK:EQU	0x329A
-
-        JR      Z,S_PIEND
+        JR      Z,L2630
 	LD	HL,(SEED)
 	LD	E,L
 	LD	D,H
@@ -12479,10 +12496,10 @@ NOADD:	DJNZ	RNDL
 	CALL	S_SEED
 	LD	A,(HL)
 	OR	A
-	JR	Z,S_PIEND
+	JR	Z,L2630
 	SUB	A, 0x10
 	LD	(HL),A
-	JP	S_PIEND
+	JP	L2630
 	NOP
 
 ; ---
@@ -14952,7 +14969,7 @@ L2D28:  LD      C,A             ; transfer to C
 ;; STACK-BC
 L2D2B:  LD      IY,ERR_NR        ; re-initialize ERR_NR
 
-        XOR     A               ; clear to signal small integer
+STACKBC:XOR     A               ; clear to signal small integer
         LD      E,A             ; place in E for sign
         LD      D,C             ; LSB to D
         LD      C,B             ; MSB to C
@@ -16797,7 +16814,7 @@ L3297:  LD      A,(HL)          ; Fetch Exponent byte to A
         RET     NZ              ; return if not zero as already in full
                                 ; floating-point form.
 
-        PUSH    DE              ; preserve DE.
+RESTACK:PUSH    DE              ; preserve DE.
         CALL    L2D7F           ; routine INT-FETCH
                                 ; integer to DE, sign to C.
 
@@ -19520,6 +19537,18 @@ DOMOD:	LD	(SEED),HL
 	CALL	STACKBC
 	JP	RESTACK
 
+; Consider flashing character output (14 bytes)
+CO_TEMP_5A:
+	CP	$0E	; FLASHing character
+	JR	Z,FLASH_CHAR
+	SUB	A,$11
+	ADC	A,0
+	RET
+FLASH_CHAR:
+	POP	AF	; discard return address
+	LD	A,D	; restore character code
+	JP	OUT_FLASH_0
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
@@ -19546,8 +19575,8 @@ DOMOD:	LD	(SEED),HL
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+        DEFB    $FF, $FF;	, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
