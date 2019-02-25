@@ -23,7 +23,11 @@
 ; STO_CON_X uses uncompressed constants: faster and smaller
 ; SQR replaced by a faster and more accurate one [5<>SQR 25]
 ; RND sped up considerably
+; PIP set to zero means no keyclicks [POKE 23609,0]
 ; I/O abstraction layer significantly improved
+; - PIP moved to KEY_INPUT, no clicking during INPUT from other channels
+; - INKEY$#0 fixed [10 PRINT INKEY$#0;: GO TO 10]
+; - channel control (e.g. reset) through output service routine (CF reset)
 
 ; Mission: It is both an "alternative reality" project what ROM1 should have
 ; been in ZX Spectrum 128K, but is also usable for the stock 16k/48k machine.
@@ -42,7 +46,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 24-FEB-2019
+; Last updated: 25-FEB-2019
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -947,7 +951,7 @@ L02F1:  LD      E,A             ; store key in E
         LD      (HL),A          ; and insert that for first repeat delay.
         INC     HL              ; advance to last location of state map.
 
-        LD      C,(IY+$07)      ; pick up MODE  (3 bytes)
+	LD      C,(IY+$07)      ; pick up MODE  (3 bytes)
         LD      D,(IY+$01)      ; pick up FLAGS (3 bytes)
         PUSH    HL              ; save state map location
                                 ; Note. could now have used, to avoid IY,
@@ -1034,10 +1038,8 @@ L0333:  LD      A,E             ; pick up the stored main key
         JR      C,L0367         ; forward to K-DIGIT with digits, space, enter.
 
         DEC     C               ; decrease MODE ( 0='KLC', 1='E', 2='G')
-
-        JP      M,L034F         ; to K-KLC-LET if was zero
-
-        JR      Z,L0341         ; to K-E-LET if was 1 for extended letters.
+	JP      M,L034F         ; to K-KLC-LET if was zero
+	JR      Z,L0341         ; to K-E-LET if was 1 for extended letters.
 
 ;   proceed with graphic codes.
 ;   Note. should selectively drop return address if code > 'U' ($55).
@@ -1119,7 +1121,7 @@ L0367:  CP      $30             ; is it '0' or higher ?
         BIT     5,B             ; test - shift=$27 sym-shift=$18
         JR      Z,L034A         ; to K-LOOK-UP if sym-shift
 
-        CP      $38             ; is character '8' ?
+        CP      "8"             ; is character '8' ?
         JR      NC,L0382        ; to K-8-&-9 if greater than '7'
 
         SUB     $20             ; reduce to ink range $10-$17
@@ -1148,13 +1150,13 @@ L0382:  SUB     $36             ; reduce to 02 and 03  bright codes
 ;; K-GRA-DGT
 L0389:  LD      HL,L0260-$30    ; $0230 base address of CTL-CODES
 
-        CP      $39             ; is key '9' ?
+        CP      "9"             ; is key '9' ?
         JR      Z,L034A         ; back to K-LOOK-UP - changed to $0F, GRAPHICS.
 
-        CP      $30             ; is key '0' ?
+        CP      "0"             ; is key '0' ?
         JR      Z,L034A         ; back to K-LOOK-UP - changed to $0C, delete.
 
-;   for keys '0' - '7' we assign a mosaic character depending on shift.
+;   for keys '1' - '8' we assign a mosaic character depending on shift.
 
         AND     $07             ; convert character to number. 0 - 7.
         ADD     A,$80           ; add offset - they start at $80
@@ -1184,19 +1186,22 @@ L039D:  INC     B               ; return with digit codes if neither
                                 ; on a standard typewriter.
 
         CP      $22             ; but '@' is not - see below.
-        JR      Z,L03B2         ; forward to K-@-CHAR if so
+;;; BUGFIX: save one byte
+	JR	NZ,K_N_AT	; not AT sign
+	LD	A,"@"		; substitute ASCII '@' and fail next test
+;;;     JR      Z,L03B2         ; forward to K-@-CHAR if so
 
-        CP      $20             ; '_' is the other one that fails
+K_N_AT:	CP      $20             ; '_' is the other one that fails
         RET     NZ              ; return if not.
 
-        LD      A,$5F           ; substitute ASCII '_'
+        LD      A,"_"           ; substitute ASCII '_'
         RET                     ; return.
 
 ; ---
 
 ;; K-@-CHAR
-L03B2:  LD      A,$40           ; substitute ASCII '@'
-        RET                     ; return.
+;;; L03B2:  LD      A,$40           ; substitute ASCII '@'
+;;;        RET                     ; return.
 
 
 ; ------------------------------------------------------------------------
@@ -1249,6 +1254,11 @@ L03B2:  LD      A,$40           ; substitute ASCII '@'
 ;**********************************
 ;** Part 3. LOUDSPEAKER ROUTINES **
 ;**********************************
+
+;;; BUGFIX: use A as pitch value for PIP
+BEEP_PIP:
+	LD	E,A
+;;; ---
 
 ; Documented by Alvin Albrecht.
 
@@ -2996,17 +3006,18 @@ L0958:  INC     HL              ; address next?
 ;; SA-CONTRL
 L0970:  PUSH    HL              ; save start of data
 
-        LD      A,$FD           ; select system channel 'S'
-        CALL    L1601           ; routine CHAN-OPEN
-
-        XOR     A               ; clear to address table directly
-        LD      DE,L09A1        ; address: tape-msgs
-        CALL    L0C0A           ; routine PO-MSG -
-                                ; 'Start tape then press any key.'
-
-        SET     5,(IY+$02)      ; TV_FLAG  - Signal lower screen requires
-                                ; clearing
-        CALL    L15D4		; routine WAIT-KEY
+;;; BUGFIX: Unified, correct wait with message
+;;;	LD      A,$FD	; select system channel 'S'
+;;;	CALL    L1601		; routine CHAN-OPEN
+;;;	XOR     A		; clear to address table directly
+	LD      DE,L09A1	; address: tape-msgs
+;;;	CALL    L0C0A		; routine PO-MSG -
+;;;				; 'Start tape then press any key.'
+;;;	SET     5,(IY+$02)      ; TV_FLAG  - Signal lower screen requires
+;;;				; clearing
+;;;	CALL    L15D4		; routine WAIT-KEY
+	CALL	MSG_WAIT
+;;; ---
         PUSH    IX              ; save pointer to descriptor.
         LD      DE,$0011        ; there are seventeen bytes.
         XOR     A               ; signal a header.
@@ -3017,8 +3028,10 @@ L0970:  PUSH    HL              ; save start of data
         LD      B,$32           ; wait for a second - 50 interrupts.
 
 ;; SA-1-SEC
-L0991:  HALT                    ; wait for interrupt
-        DJNZ    L0991           ; back to SA-1-SEC until pause complete.
+;;;L0991:
+SA_1_SEC:
+	HALT                    ; wait for interrupt
+        DJNZ    SA_1_SEC	; back to SA-1-SEC until pause complete.
 
         LD      E,(IX+$0B)      ; fetch length of bytes from the
         LD      D,(IX+$0C)      ; descriptor.
@@ -3028,6 +3041,17 @@ L0991:  HALT                    ; wait for interrupt
         POP     IX              ; retrieve pointer to start
         JP      L04C2           ; jump back to SA-BYTES
 
+;;; BUGFIX: Setup message
+MSG_WAIT:
+	PUSH	DE
+	LD	A,$FD
+	CALL	$1601
+	POP	DE
+	XOR	A
+	JP	MSG_WAIT2
+	NOP
+	NOP
+;;; ---
 
 ;   Arrangement of two headers in workspace.
 ;   Originally IX addresses first location and only one header is required
@@ -3939,23 +3963,26 @@ L0C88:  DEC     (IY+$52)        ; decrease SCR_CT
         LD      A,(P_FLAG)       ; P_FLAG
         PUSH    AF              ; save on stack to prevent lower screen
                                 ; attributes (BORDCR etc.) being applied.
-        LD      A,$FD           ; select system channel 'K'
-        CALL    L1601           ; routine CHAN-OPEN opens it
-        XOR     A               ; clear to address message directly
+;;; BUGFIX: Unified, correct wait message.
+;;;	LD      A,$FD           ; select system channel 'K'
+;;;	CALL    L1601           ; routine CHAN-OPEN opens it
+;;;	XOR     A               ; clear to address message directly
         LD      DE,L0CF8        ; make DE address: scrl-mssg
-        CALL    L0C0A           ; routine PO-MSG prints to lower screen
-        SET     5,(IY+$02)      ; set TV_FLAG  - signal lower screen requires
+;;;	CALL    L0C0A           ; routine PO-MSG prints to lower screen
+;;;     SET     5,(IY+$02)      ; set TV_FLAG  - signal lower screen requires
                                 ; clearing
-        LD      HL,FLAGS        ; make HL address FLAGS
-        SET     3,(HL)          ; signal 'L' mode.
-        RES     5,(HL)          ; signal 'no new key'.
-        EXX                     ; switch to main set.
+;;;	LD      HL,FLAGS        ; make HL address FLAGS
+;;;	SET     3,(HL)          ; signal 'L' mode.
+;;;	RES     5,(HL)          ; signal 'no new key'.
+;;;	EXX                     ; switch to main set.
                                 ; as calling chr input from alternative set.
-        CALL    L15D4           ; routine WAIT-KEY waits for new key
-                                ; Note. this is the right routine but the
-                                ; stream in use is unsatisfactory. From the
-                                ; choices available, it is however the best.
-        EXX                     ; switch back to alternate set.
+;;;	CALL    L15D4           ; routine WAIT-KEY waits for new key
+;;;				; Note. this is the right routine but the
+;;;				; stream in use is unsatisfactory. From the
+;;;				; choices available, it is however the best.
+;;;	EXX                     ; switch back to alternate set.
+	CALL	MSG_WAIT
+;;; ---
         CP      $20             ; space is considered as BREAK
         JR      Z,L0D00         ; forward to REPORT-D if so
                                 ; 'BREAK - CONT repeats'
@@ -4010,6 +4037,20 @@ L0CF0:  LD      (DE),A          ; transfer
         RET                     ; return via CL-SET (was pushed on stack).
 
 ; ---
+
+;;; BUGFIX: display message and wait for keypress
+MSG_WAIT2:
+	CALL	L0C0A
+MSG_WAIT_LOOP:
+	LD	HL,TV_FLAG
+	SET	5,(HL)		; lower screen requires clearing
+	RES	3,(HL)		; no echo
+	SET     3,(IY+1)	; signal 'L' mode.
+	EXX
+	CALL	L15E6		; INPUT-AD
+	EXX
+	JR	NC,MSG_WAIT_LOOP
+	RET
 
 ; The message 'scroll?' appears here with last byte inverted.
 
@@ -4797,10 +4838,11 @@ ED_CONTR:
 CLICK:	SCF			; set CF and
         RET     Z               ; return if not.
 	LD      HL,$00C8        ; set pitch.
-	LD	DE,(PIP)	; give a short click based on
-	LD      D,H		; on PIP value for duration.
-	JP	L03B5           ; routine BEEPER gives click
-	NOP
+	LD	A,(PIP)		; give a short click based on
+	OR	A		; on PIP value for duration
+	RET	Z		; unless it is zero.
+	LD      D,H		; clear register D
+	JP	BEEP_PIP	; routine BEEPER gives click
 
 ; ------------------------
 ; Add code to current line
@@ -5651,7 +5693,9 @@ RAM_DONE:
                                 ; bitmap.
         DEC     HL              ; point at RAMTOP again.
 
-        LD      BC,$0040        ; set the values of
+;;; BUGFIX: it is possible now to completely mute PIP, but not by default
+	LD      BC,$0140        ; set the values of
+;;;     LD      BC,$0040        ; set the values of
         LD      (RASP),BC      ; the PIP and RASP system variables.
 
 ;   The NEW command path rejoins here.
@@ -6395,13 +6439,12 @@ L162D:  DEFB    'K', L1634-$-1  ; offset $06 to CHAN-K
 
 ;; CHAN-K
 L1634:  SET     0,(IY+$02)      ; update TV_FLAG  - signal lower screen in use
-;;; BUGFIX: do not discard the byte in the keyboard buffer upon opening
+;;; BUGFIX: do not discard the byte in the keyboard buffer upon opening,
+;;; rather, disable echoing into lower part of screen
+	RES	3,(IY+$02)
 ;;;	RES     5,(IY+$01)      ; update FLAGS    - signal no new key
         SET     4,(IY+$30)      ; update FLAGS2   - signal K channel in use
         JR      L1646           ; forward to CHAN-S-1 for indirect exit
-;;; 4 empty bytes
-	DEFS 4
-;;; ---
 
 ; --------------
 ; Channel S flag
