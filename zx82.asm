@@ -9829,29 +9829,41 @@ L1F36:  PUSH    DE              ; replace the end-marker.
 ; Both forms can be finished by pressing a key.
 
 ;; PAUSE
-L1F3A:  CALL    L1E99           ; routine FIND-INT2 puts value in BC
-
+;;; BUGFIX: wait for signal from stream #0 rather than keyboard
+L1F3A:	XOR	A
+	CALL	L1601		; open #0
+	CALL    L1E99           ; routine FIND-INT2 puts value in BC
+	LD	A,B
+	OR	C
+	JP	Z,L15DE		; WAIT-KEY1, indefinite PAUSE
+	LD	A,(FRAMES+2)
+	DEFB	$DD
+	LD	L,A		; LD IXL,A
+	LD	DE,(FRAMES)	; start time in IXL DE
+	JP	PAUSE_L
+	DEFS	2		; 2 spare bytes
 ;; PAUSE-1
-L1F3D:  HALT                    ; wait for interrupt.
-        DEC     BC              ; decrease counter.
-        LD      A,B             ; test if
-        OR      C               ; result is zero.
-        JR      Z,L1F4F         ; forward to PAUSE-END if so.
+;;;L1F3A:  CALL    L1E99           ; routine FIND-INT2 puts value in BC
+;;;L1F3D:  HALT                    ; wait for interrupt.
+;;;        DEC     BC              ; decrease counter.
+;;;        LD      A,B             ; test if
+;;;        OR      C               ; result is zero.
+;;;        JR      Z,L1F4F         ; forward to PAUSE-END if so.
 
-        LD      A,B             ; test if
-        AND     C               ; now $FFFF
-        INC     A               ; that is, initially zero.
-        JR      NZ,L1F49        ; skip forward to PAUSE-2 if not.
+;;;        LD      A,B             ; test if
+;;;        AND     C               ; now $FFFF
+;;;        INC     A               ; that is, initially zero.
+;;;        JR      NZ,L1F49        ; skip forward to PAUSE-2 if not.
 
-        INC     BC              ; restore counter to zero.
+;;;        INC     BC              ; restore counter to zero.
 
 ;; PAUSE-2
-L1F49:  BIT     5,(IY+$01)      ; test FLAGS - has a new key been pressed ?
-        JR      Z,L1F3D         ; back to PAUSE-1 if not.
+;;;L1F49:  BIT     5,(IY+$01)      ; test FLAGS - has a new key been pressed ?
+;;;        JR      Z,L1F3D         ; back to PAUSE-1 if not.
 
 ;; PAUSE-END
-L1F4F:  RES     5,(IY+$01)      ; update FLAGS - signal no new key
-        RET                     ; and return.
+;;;L1F4F:  RES     5,(IY+$01)      ; update FLAGS - signal no new key
+;;;        RET                     ; and return.
 
 ; -------------------
 ; Check for BREAK key
@@ -19514,7 +19526,8 @@ TOPWR:	RST     28H             ;; FP-CALC              X, Y.
 ;   begin by deleting the known zero to leave Y the power factor.
 
 ;; XIS0
-L385D:  DEFB    $02             ;;delete                Y.
+;;;L385D:
+XIS0:	DEFB    $02             ;;delete                Y.
         DEFB    $31             ;;duplicate             Y, Y.
         DEFB    $30             ;;not                   Y, (1/0).
         DEFB    $00             ;;jump-true
@@ -19538,11 +19551,13 @@ L385D:  DEFB    $02             ;;delete                Y.
 ; ---
 
 ;; ONE
-L386A:  DEFB    $02             ;;delete                .
+;;;L386A:
+ONE:	DEFB    $02             ;;delete                .
         DEFB    $A1             ;;stk-one               1.
 
 ;; LAST
-L386C:  DEFB    $38             ;;end-calc              last value is 1 or 0.
+;;;L386C:
+LAST:	DEFB    $38             ;;end-calc              last value is 1 or 0.
 
         RET                     ; return.
 
@@ -19717,6 +19732,21 @@ LIST_CURSOR:
 	RET	Z
 	LD	D,">"
 	RET
+
+; PAUSE loop (21 bytes)
+PAUSE_L:CALL	L15E6		; INPUT-AD
+	RET	C
+	LD	HL,(FRAMES)
+	SBC	HL,DE
+	LD	A,(FRAMES+2)
+	DEFB	$DD
+	SBC	A,L		; time elapsed in AHL
+	RET	NZ		; definitely over
+	AND	A
+	SBC	HL,BC
+	JR	C,PAUSE_L
+	RET
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
@@ -19756,9 +19786,9 @@ LIST_CURSOR:
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF;	, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
