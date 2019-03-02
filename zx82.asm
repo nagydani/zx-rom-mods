@@ -24,10 +24,13 @@
 ; SQR replaced by a faster and more accurate one [5<>SQR 25]
 ; RND sped up considerably
 ; PIP set to zero means no keyclicks [POKE 23609,0]
+; LIST, LLIST fixed, does not print cursor, accepts range [LIST 10 TO 20]
 ; I/O abstraction layer significantly improved
 ; - PIP moved to KEY_INPUT, no clicking during INPUT from other channels
 ; - INKEY$#0 fixed [10 PRINT INKEY$#0;: GO TO 10]
 ; - channel control (e.g. reset) through output service routine (CF reset)
+; - stream #0 is not restored to channel K in MAIN_EXEC
+; - reports signaled by channel control $0D in the end to help processing
 
 ; Mission: It is both an "alternative reality" project what ROM1 should have
 ; been in ZX Spectrum 128K, but is also usable for the stock 16k/48k machine.
@@ -109,14 +112,14 @@ L0008:  LD      HL,(CH_ADD)      ; Fetch the character address from CH_ADD.
 ;   This restart is used 21 times.
 
 ;; PRINT-A
+;;; BUGFIX: Set CF to indicate output
 L0010:	JP      PRINT_A_2	; Jump forward to continue at PRINT-A-2.
 ; ---
-
-; default service routine for K, S and P channel output
-PRINT_OUT:
-	JP	C,L09F4
-	JR	CH_RESET
-
+;;; BUGFIX: The version that sets E for line numbers
+OUT_CODE:
+	LD	E,"0"
+	ADD	A,E
+	JR	L0010
 ;;; ---
 ;;;	DEFB    $FF, $FF, $FF   ; Five unused locations.
 ;;;	DEFB    $FF, $FF        ;
@@ -155,11 +158,7 @@ L0020:  CALL    L0074           ; routine CH-ADD+1 fetches the next immediate
                                 ; character is found.
 
 ; ---
-
-; Reset K, S and P channels
-CH_RESET:
-	JP	CH_RESET1
-;;;	DEFB    $FF, $FF, $FF   ; unused
+	DEFB    $FF, $FF, $FF   ; unused
 
 ; -----------------------
 ; THE 'CALCULATE' RESTART
@@ -173,10 +172,9 @@ CH_RESET:
 L0028:  JP      L335B           ; jump forward to the CALCULATE routine.
 
 ; ---
-
 	DEFB    $FF, $FF, $FF   ; spare - note that on the ZX81, space being a
 	DEFB    $FF, $FF        ; little cramped, these same locations were
-                                ; used for the five-byte end-calc literal.
+				; used for the five-byte end-calc literal.
 
 ; ------------------------------
 ; THE 'CREATE BC SPACES' RESTART
@@ -1564,17 +1562,22 @@ L046E:  DEFB    $89, $02, $D0, $12, $86;  261.625565290         C
 ;;;                                ; and also clear carry.
 ;;;        SET     7,(HL)          ; invert it.
 ;;;        RET                     ; return.
+; default service routine for K, S and P channel output
+PRINT_OUT:
+	JP	C,L09F4
+	OR	A
+	RET	NZ
 
 ; Reset current system channel state
-CH_RESET1:
+CH_RESET:
 	CALL	L21D6		; IN-CHAN-K
 	JP	Z,RESET_K	; If so, reset both service routines
 	LD	BC,$1821	; If not, pre-load top left corner's location
 	CP	"S"
 	JP	Z,RESET_S	; Jump to actual reset
 	JP	RESET_P
-CH_RESET2:
-	DEFS	$04C2 - $04AA + CH_RESET1 - CH_RESET2
+ZX81_NAME_E:
+	DEFS	$04C2 - $04AA + PRINT_OUT - ZX81_NAME_E
 
 ; =========================================
 ;
@@ -3351,7 +3354,7 @@ POCHANGE:
 ;; PO-CONT
 ;;; BUGFIX: Check if channel is being reset
 ;;;L0A87:
-PO_CONT:JP	NC,CH_RESET1
+PO_CONT:JP	NC,CH_RESET
 	LD	DE,PRINT_OUT
 ;;;	LD      DE,L09F4        ; Address: PRINT-OUT
         CALL    POCHANGE       ; routine PO-CHANGE to restore normal channel.
@@ -5951,15 +5954,19 @@ L1313:  PUSH    AF              ; save the error number.
         LD      (IY+$26),H      ; blank X_PTR_hi to suppress error marker.
         LD      (DEFADD),HL      ; blank DEFADD to signal that no defined
                                 ; function is currently being evaluated.
-
-        LD      HL,$0001        ; explicit - inc hl would do.
-        LD      (STRM00),HL      ; ensure STRMS-00 is keyboard.
+;;; BUGFIX: no need to restore stream #0
+;;;       LD      HL,$0001        ; explicit - inc hl would do.
+;;;       LD      (STRM00),HL      ; ensure STRMS-00 is keyboard.
 
         CALL    L16B0           ; routine SET-MIN clears workspace etc.
         RES     5,(IY+$37)      ; update FLAGX - signal in EDIT not INPUT mode.
                                 ; Note. all the bits were reset earlier.
 
-        CALL    L0D6E           ; call routine CLS-LOWER.
+;;; BUGFIX: abstract error reporting
+	XOR	A		; return error to stream #0
+	CALL	RESET_STREAM_SAVE
+	DEFS	5
+;;;     CALL    L0D6E           ; call routine CLS-LOWER.
 
         SET     5,(IY+$02)      ; update TV_FLAG - signal lower screen
                                 ; requires clearing.
@@ -5967,12 +5974,13 @@ L1313:  PUSH    AF              ; save the error number.
         POP     AF              ; bring back the true error number
         LD      B,A             ; and make a copy in B.
         CP      $0A             ; is it a print-ready digit ?
-        JR      C,L133C         ; forward to MAIN-5 if so.
+        JR      C,MAIN_5	; forward to MAIN-5 if so.
 
         ADD     A,$07           ; add ASCII offset to letters.
 
 ;; MAIN-5
-L133C:  CALL    L15EF           ; call routine OUT-CODE to print the code.
+;;;L133C:
+MAIN_5:	CALL    L15EF           ; call routine OUT-CODE to print the code.
 
         LD      A,$20           ; followed by a space.
         RST     10H             ; PRINT-A
@@ -5982,7 +5990,8 @@ L133C:  CALL    L15EF           ; call routine OUT-CODE to print the code.
 
         CALL    L0C0A           ; call routine PO-MSG to print the message.
 
-X1349:  XOR     A               ; clear accumulator to directly
+;;; Interface 1 returns here after its own error reports
+X1349:	XOR     A               ; clear accumulator to directly
         LD      DE,L1537 - 1    ; address the comma and space message.
 
         CALL    L0C0A           ; routine PO-MSG prints ', ' although it would
@@ -5997,10 +6006,9 @@ X1349:  XOR     A               ; clear accumulator to directly
         LD      C,(IY+$0D)      ; then SUBPPC for statement
         LD      B,$00           ; limited to 127
         CALL    L1A1B           ; routine OUT-NUM-1 prints BC.
-
-        CALL    L1097           ; routine CLEAR-SP clears editing area which
-                                ; probably contained 'RUN'.
-
+;;; BUGFIX: message separator control
+	CALL	REP_CLEAR
+;;; ---
         LD      A,(ERR_NR)       ; fetch ERR_NR again
         INC     A               ; test for no error originally $FF.
         JR      Z,L1386         ; forward to MAIN-9 if no error.
@@ -7084,7 +7092,7 @@ L1793:  JR      L1725           ; to REPORT-Ob
 
 ;; AUTO-LIST
 L1795:  LD      (LIST_SP),SP      ; save stack pointer in LIST_SP
-        LD      (IY+$02),$10    ; update TV_FLAG set bit 3
+        LD      (IY+$02),$10    ; update TV_FLAG set bit 4
         CALL    L0DAF           ; routine CL-ALL.
         SET     0,(IY+$02)      ; update TV_FLAG  - signal lower screen in use
 
@@ -7150,7 +7158,8 @@ L17E4:  LD      HL,(S_TOP)      ; fetch S_TOP line number to HL.
         EX      DE,HL           ; else use address of next line.
 
 ;; AUTO-L-4
-L17ED:  CALL    L1833           ; routine LIST-ALL                >>>
+;;; BUGFIX: intervals
+L17ED:  CALL    LISTALL		; routine LIST-ALL                >>>
 
 ; The return will be to here if no scrolling occurred
 
@@ -7199,7 +7208,9 @@ L17FB:  LD      (IY+$02),$00    ; the TV_FLAG is initialized with bit 0 reset
 
 ;; LIST-2
 L1814:  RST     20H             ; NEXT-CHAR
-        CALL    L1C82           ; routine EXPT-1NUM
+;;; BUGFIX: allow ranges
+	CALL	LIST_RANGE
+;;;     CALL    L1C82           ; routine EXPT-1NUM
         JR      L1822           ; forward to LIST-5
 
 ; ---
@@ -7215,7 +7226,9 @@ L181A:  CALL    L1CE6           ; routine USE-ZERO
 ; the branch was here with LIST
 
 ;; LIST-4
-L181F:  CALL    L1CDE           ; routine FETCH-NUM checks if a number
+;;; BUGFIX: allow ranges
+L181F:  CALL    LIST_RANGE      ; routine FETCH-NUM checks if a number
+;;;	CALL    L1CDE           ; routine FETCH-NUM checks if a number
                                 ; follows else uses zero.
 
 ;; LIST-5
@@ -7289,17 +7302,23 @@ L1835:  CALL    L1855           ; routine OUT-LINE outputs a BASIC line
 L1855:  LD      BC,(E_PPC)      ; fetch E_PPC the current line which may be
                                 ; unchecked and not exist.
         CALL    L1980           ; routine CP-LINES finds match or line after.
-        LD      D,$3E           ; prepare cursor '>' in D.
-        JR      Z,L1865         ; to OUT-LINE1 if matched or line after.
-
-        LD      DE,$0000        ; put zero in D, to suppress line cursor.
-        RL      E               ; pick up carry in E if line before current
+;;; BUGFIX: cursor only in automatic listing
+	LD	DE,$0000
+	CALL	Z,LIST_CURSOR
+	RL	E
+	NOP
+;;;	LD      D,">"           ; prepare cursor '>' in D.
+;;;	JR      Z,L1865         ; to OUT-LINE1 if matched or line after
+;;;	LD      DE,$0000        ; put zero in D, to suppress line cursor.
+;;;	RL      E               ; pick up carry in E if line before current
                                 ; leave E zero if same or after.
 
 ;; OUT-LINE1
-L1865:  LD      (IY+$2D),E      ; save flag in BREG which is spare.
-        LD      A,(HL)          ; get high byte of line number.
-        CP      $40             ; is it too high ($2F is maximum possible) ?
+L1865:	LD      (IY+$2D),E      ; save flag in BREG which is spare.
+;;; BUGFIX: check set range end
+	CALL	LIST_TO
+;;;     LD      A,(HL)          ; get high byte of line number.
+;;;     CP      $40             ; is it too high ($2F is maximum possible) ?
         POP     BC              ; drop the return address and
         RET     NC              ; make an early return if so >>>
 
@@ -7309,13 +7328,12 @@ L1865:  LD      (IY+$2D),E      ; save flag in BREG which is spare.
         INC     HL              ; skip low number byte.
         INC     HL              ; and the two
         INC     HL              ; length bytes.
-        RES     0,(IY+$01)      ; update FLAGS - signal leading space required.
-        LD      A,D             ; fetch the cursor.
-        AND     A               ; test for zero.
-        JR      Z,L1881         ; to OUT-LINE3 if zero.
+	RES     0,(IY+$01)      ; update FLAGS - signal leading space required.
+	LD      A,D             ; fetch the cursor.
+	AND     A               ; test for zero.
+	JR      Z,L1881         ; to OUT-LINE3 if zero.
 
-
-        RST     10H             ; PRINT-A prints '>' the current line cursor.
+	RST     10H             ; PRINT-A prints '>' the current line cursor.
 
 ; this entry point is called from ED-COPY
 
@@ -7576,7 +7594,9 @@ L192B:  ADD     HL,BC           ; add negative number to HL.
         DEC     A               ; and decrement the digit.
         JR      Z,L1925         ; back to OUT-SP-2 if it is zero.
 
-        JP      L15EF           ; jump back to exit via OUT-CODE.    ->
+;;; BUGFIX: use the version that sets E to "0"
+	JP	OUT_CODE
+;;;     JP      L15EF           ; jump back to exit via OUT-CODE.    ->
 
 
 ; -------------------------------------
@@ -9498,7 +9518,9 @@ L1E5A:  LD      (SEED),BC      ; place in SEED system variable.
 ; by using the last part of GO TO and exits indirectly to STMT-RET.
 
 ;; CONTINUE
-L1E5F:  LD      HL,(OLDPPC)      ; fetch OLDPPC line number.
+;;; BUGFIX: No CONTINUE from program execution, only from command
+L1E5F:  CALL	CONTINUE
+;;; L1E5F:  LD      HL,(OLDPPC)      ; fetch OLDPPC line number.
         LD      D,(IY+$36)      ; fetch OSPPC statement.
         JR      L1E73           ; forward to GO-TO-2
 
@@ -19601,6 +19623,9 @@ RESET_STREAM_SAVE:
 	EXX
 	RET
 
+; These bytes should be $FF in case anyone crazy vectors their IM2 from here
+	DEFB	$FF, $FF, $FF, $FF
+
 ; External routine for RND
 S_SEED:	JR	Z,NOMOD
 	LD	C,A
@@ -19615,16 +19640,80 @@ DOMOD:	LD	(SEED),HL
 
 ; Consider flashing character output (14 bytes)
 CO_TEMP_5A:
-	CP	$0E	; FLASHing character
+	CP	$0E		; FLASHing character
 	JR	Z,FLASH_CHAR
 	SUB	A,$11
 	ADC	A,0
 	RET
 FLASH_CHAR:
-	POP	AF	; discard return address
-	LD	A,D	; restore character code
+	POP	AF		; discard return address
+	LD	A,D		; restore character code
 	JP	OUT_FLASH_0
 
+; LIST interval check (9 bytes)
+LIST_TO:LD	BC,(MEMBOT+28)
+	CALL	L1980		; CP-LINES
+	RET	NZ
+	SCF
+	RET
+
+; LIST-ALL substitute (8 bytes)
+LISTALL:LD	A,$40
+	LD	(MEMBOT+29),A
+	JP	L1833		; LIST-ALL
+
+
+; LIST interval parameter (41 bytes)
+LIST_RANGE:
+	CP	$CC		; TO token
+	JR	NZ,LIST_RANGE_1
+	CALL	L1CE6		; USE-ZERO
+	XOR	A
+LIST_RANGE_1:
+	CALL	NZ,L1CDE	; FETCH-NUM (number or use zero)
+LIST_RANGE_2:
+	LD	A,$40
+	LD	(MEMBOT+29),A	; set interval end
+	RST	$18
+	CP	$CC		; TO token
+	RET	NZ
+	RST	$20
+	CP	$0D		; EOL ?
+	RET	Z
+	CP	":"		; EOS ?
+	RET	Z
+	CALL	L1C82		; CLASS-6, mandatory numeric
+	CALL	L2530		; SYNTAX-Z
+	RET	Z		; return, if checking syntax
+	CALL	L2DA2
+	LD	(MEMBOT+28),BC	; set interval end
+	RET
+
+; CONTINUE only from command (13 bytes)
+CONTINUE:
+	LD	HL,(PPC)
+	INC	HL
+	INC	HL
+	LD	A,H
+	OR	L
+	LD	HL,(OLDPPC)
+	RET	Z
+	RST	$08
+	DEFB	$0B		; Nonsense in BASIC
+
+; Clean up after report in MAIN-EXEC (8 bytes)
+REP_CLEAR:
+	LD	A,$0D
+	CALL	L15F2
+        JP	L1097           ; routine CLEAR-SP clears editing area which
+                                ; probably contained 'RUN'.
+
+; Add cursor, if in automatic listing mode (8 bytes)
+LIST_CURSOR:
+	BIT	4,(IY+$02)
+	RET	Z
+	LD	D,">"
+	RET
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
@@ -19652,19 +19741,19 @@ FLASH_CHAR:
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF;	, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+        DEFB    $FF, $FF, $FF, $FF, $FF;	, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
