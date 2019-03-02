@@ -3019,6 +3019,7 @@ L0970:  PUSH    HL              ; save start of data
 ;;;	SET     5,(IY+$02)      ; TV_FLAG  - Signal lower screen requires
 ;;;				; clearing
 ;;;	CALL    L15D4		; routine WAIT-KEY
+;;;
 	CALL	MSG_WAIT
 ;;; ---
         PUSH    IX              ; save pointer to descriptor.
@@ -3046,14 +3047,13 @@ SA_1_SEC:
 
 ;;; BUGFIX: Setup message
 MSG_WAIT:
+	PUSH	IX
 	PUSH	DE
 	LD	A,$FD
 	CALL	$1601
 	POP	DE
 	XOR	A
 	JP	MSG_WAIT2
-	NOP
-	NOP
 ;;; ---
 
 ;   Arrangement of two headers in workspace.
@@ -4048,17 +4048,20 @@ MSG_WAIT_LOOP:
 	LD	HL,TV_FLAG
 	SET	5,(HL)		; lower screen requires clearing
 	RES	3,(HL)		; no echo
-	SET     3,(IY+1)	; signal 'L' mode.
+	DEC	HL
+	SET     3,(HL)		; signal 'L' mode.
 	EXX
 	CALL	L15E6		; INPUT-AD
 	EXX
 	JR	NC,MSG_WAIT_LOOP
-	RET
+	POP	IX
 
 ; The message 'scroll?' appears here with last byte inverted.
 
 ;; scrl-mssg
-L0CF8:  DEFB    $80             ; initial step-over byte.
+;;;	BUGFIX: the $C9 of RET would do, saves one byte
+L0CF8:  RET
+;;;	DEFB    $80             ; initial step-over byte.
         DEFM    "scroll"
         DEFB    ('?')+$80
 
