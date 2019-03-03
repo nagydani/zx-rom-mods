@@ -1570,6 +1570,7 @@ PRINT_OUT:
 
 ; Reset current system channel state
 CH_RESET:
+	EX	AF,AF'		; Save control code
 	CALL	L21D6		; IN-CHAN-K
 	JP	Z,RESET_K	; If so, reset both service routines
 	LD	BC,$1821	; If not, pre-load top left corner's location
@@ -4323,10 +4324,13 @@ RESET_S:
 	LD      (IY+$52),$01    ; set SCR_CT - scroll count - to default.
 
 ;   Note. BC already contains $1821.
-RESET_P:SCF
+RESET_P:EX	AF,AF'
+	DEC	A
+	JP	Z,L0EAC
+	SCF
 	JP	RESET_PS_1
 
-	DEFS	6
+	DEFS	$0DD9 - $
 ;;;	LD      BC,$1821        ; reset column and line to 0,0
                                 ; and continue into CL-SET, below, exiting
                                 ; via PO-STORE (for the upper screen).
@@ -5768,7 +5772,7 @@ L121C:
         LD      BC,$0015        ; There are 21 bytes of initial data in ROM.
         EX      DE,HL           ; swap the pointers.
         LDIR                    ; Copy the bytes to RAM.
-
+NEW_CONT:
         EX      DE,HL           ; Swap pointers. HL points to program area.
         DEC     HL              ; Decrement address.
         LD      (DATADD),HL      ; Set DATADD to location before program area.
@@ -6510,7 +6514,7 @@ L1655:  PUSH    HL              ; save the address pointer.
 
         EX      DE,HL           ; HL now addresses the top of the area to
                                 ; be moved up - old STKEND.
-        LDDR                    ; the program, variables, etc are moved up.
+LDDRR:	LDDR                    ; the program, variables, etc are moved up.
         RET                     ; return with new area ready to be populated.
                                 ; HL points to location before new area,
                                 ; and DE to last of new locations.
@@ -8257,7 +8261,7 @@ L1AD2:  DEFB    $09             ; Class-09 - Two comma-separated numeric
 
 ;; P-COPY
 L1AD6:  DEFB    $00             ; Class-00 - No further operands.
-        DEFW    L0EAC           ; Address: $0EAC; Address: COPY
+        DEFW    S_COPY          ; Address: $0EAC; Address: COPY
 
 ;; P-LPRINT
 L1AD9:  DEFB    $05             ; Class-05 - Variable syntax checked entirely
@@ -17323,7 +17327,7 @@ L33BB:	LD      (STKEND),DE      ; Set STKEND to next free location.
 ;; MOVE-FP
 L33C0:  CALL    L33A9           ; routine TEST-5-SP test free memory
                                 ; and sets BC to 5.
-        LDIR                    ; copy the five bytes.
+LDIRR:	LDIR                    ; copy the five bytes.
         RET                     ; return with DE addressing new STKEND
                                 ; and HL addressing new last value.
 
@@ -19747,6 +19751,13 @@ PAUSE_L:CALL	L15E6		; INPUT-AD
 	JR	C,PAUSE_L
 	RET
 
+; Abstract COPY (10 bytes)
+S_COPY:	LD	A,3
+	CALL	L1601		; Open #3
+	XOR	A
+	INC	A		; A=1, CF=0
+	JP	L15F2		; output service routine
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
@@ -19789,8 +19800,8 @@ PAUSE_L:CALL	L15E6		; INPUT-AD
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+        DEFB    $FF, $FF, $FF, $FF, $FF, $FF;	, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
