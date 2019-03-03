@@ -1,0 +1,343 @@
+	INCLUDE	"../sysvars.asm"
+	INCLUDE	"sysvars128.asm"
+
+NO_PROXY:	EQU	$0C78
+ADD_CHAR:	EQU	$0F81
+MAIN1:		EQU	$12A9
+MAIN4:		EQU	$1303
+REPORT_J:	EQU	$15C4
+INPUT_AD_1:	EQU	$15EB
+OUTPUT_AD:	EQU	$15F2
+MAKE_ROOM:	EQU	$1655
+REPORT_L:	EQU	$1B7B
+STMT_NEXT:	EQU	$1BF4
+BREAK_KEY:	EQU	$1F54
+
+	ORG	$8000
+	LD	HL,(ERR_SP)
+	LD	(HL),ERRCONT - $100 * (ERRCONT / $100)
+	INC	HL
+	LD	(HL),ERRCONT / $100
+
+	LD	HL,(PROG)
+	DEC	HL
+	LD      BC,X_CHAN_E - X_CHAN
+        PUSH    BC
+        CALL    MAKE_ROOM
+        LD      HL,X_CHAN_E - 1
+        POP     BC
+        LDDR
+        EX      DE,HL
+	LD	A,$14		; TODO: allocate coroutine
+	PUSH	HL
+	POP	IX
+	LD	(IX+7),A
+        LD      DE,(CHANS)
+        AND     A
+        SBC     HL,DE
+        INC     HL
+        INC     HL
+	LD	(STRM00 + 2 * 4),HL
+
+NEWCO:	LD	(OLDSP),SP
+	LD	SP,TSTACK
+	LD	BC,$7FFD
+	LD	(BANK_M),A
+	OUT	(C),A
+
+	LD	DE,$C000
+	LD	HL,EMPTY_STRMS
+	LD	BC,EMPTY - EMPTY_STRMS
+	LDIR			; streams $FD, $FE, $FF, $00, $01, $02, $03
+	LD	L,E
+	LD	H,D
+	INC	E
+	LD	(HL),B
+	LD	C,NEWVARS - NEWSTRMS + EMPTY_STRMS - EMPTY - 1
+	LDIR			; all other streams are closed
+	LD	HL,EMPTY
+	LD	C,EMPTY2 - EMPTY
+	LDIR			; system variables
+	LD	HL,EMPTY2
+	LD	C,EMPTY_E - EMPTY2
+	LDIR			; channels K, S, R, P, X and empty program
+	LD	HL,EMPTY_STK
+	LD	DE,$FFFA
+	LD	(NEWERR_SP),DE
+	LD	C,6
+	LDIR
+	LD	A,(BANK_M)
+	PUSH	AF
+	LD	A,$10		; TODO: will be XOR A in ROM0
+	LD	BC,$7FFD
+	LD	(BANK_M),A
+	OUT	(C),A
+	POP	AF
+	LD	SP,(OLDSP)
+	JR	SWAPIN_SAVE
+
+X_OUT:	EX	AF,AF'
+	LD	HL,(CURCHL)
+	LD	DE,6
+	ADD	HL,DE
+	LD	A,(HL)
+SWAPIN_SAVE:
+	EXX
+	PUSH	BC
+	PUSH	DE
+	PUSH	HL
+	CALL	SWAPIN
+	POP	HL
+	POP	DE
+	POP	BC
+	EXX
+	RET
+
+PROXY_IN:
+	LD	HL,(CURCHL)
+	LD	DE,(CHANS)
+	AND	A
+	SBC	HL,DE
+	LD	DE,(NEWCHANS)
+	ADD	HL,DE
+	JP	INPUT_AD_1
+
+PROXY_OUT:
+	EX	AF,AF'
+	BIT	4,(IY+2)
+	JP	NZ,NO_PROXY	; Not proxying automatic listing
+	LD	(NEWSP),SP
+	LD	A,(BANK_M)
+	CALL	SWAP_SYSVARS
+	LD	HL,(NEWCURCHL)
+	LD	DE,(NEWCHANS)
+	AND	A
+	SBC	HL,DE
+	LD	A,(BANK_M)
+	PUSH	AF
+	LD	A,$10		; TODO: will be XOR A in ROM0
+	LD	BC,$7FFD
+	LD	(BANK_M),A
+	OUT	(C),A
+	POP	AF
+	LD	SP,(OLDSP)
+	PUSH	AF
+	LD	DE,(CHANS)
+	ADD	HL,DE
+	LD	DE,(CURCHL)
+	PUSH	DE
+	LD	(CURCHL),HL
+	EX	AF,AF'
+	EXX
+	CALL	OUTPUT_AD
+	EXX
+	POP	HL
+	LD	(CURCHL),HL
+	POP	AF
+SWAPIN:	LD	(OLDSP),SP
+	CALL	SWAP_SYSVARS
+	LD	SP,(NEWSP)
+	RET
+
+SWAPOUT:LD	(NEWSP),SP
+	LD	A,(BANK_M)
+	CALL	SWAP_SYSVARS
+	LD	A,$10		; TODO: will be XOR A in ROM0
+	LD	BC,$7FFD
+	LD	(BANK_M),A
+	OUT	(C),A
+	LD	SP,(OLDSP)
+	RET
+
+NEW_X_OUT:
+	JR	C,NEW_X_OUT_1
+	LD	IX,(CURCHL)
+	BIT	0,(IX+5)
+	RET	NZ		; No controls with full buffer
+NEW_X_OUT_1:
+	EX	AF,AF'
+	EXX
+	PUSH	BC
+	PUSH	DE
+	PUSH	HL
+	LD	(IY+$00),$FF	; Do not pass error condition
+	CALL	SWAPOUT
+	POP	HL
+	POP	DE
+	POP	BC
+	EXX
+	EX	AF,AF'
+	RET	NC		; No output clash
+	LD	IX,(CURCHL)
+	LD	(IX+6),A
+	SET	0,(IX+5)
+	RET
+
+NEW_X_IN:
+	LD	HL,(CURCHL)
+	LD	DE,5
+	ADD	HL,DE
+	BIT	0,(HL)		; First check the buffer
+	JR	Z,NEW_X_IN_1
+	RES	0,(HL)
+	INC	HL
+	LD	A,(HL)
+	SCF
+	RET
+NEW_X_IN_1:
+	XOR	A
+	EX	AF,AF'		; Reads on the other side return empty.
+	CALL	SWAPOUT
+	EX	AF,AF'
+	RET
+
+NEW_X_CLOSE:	EQU	$33A1	; RET in ROM1
+
+X_IN:	XOR	A
+	EX	AF,AF'		; Reads on the other side return empty.
+	LD	HL,(CURCHL)
+	LD	DE,6
+	ADD	HL,DE
+	LD	A,(HL)
+	CALL	SWAPIN
+	EX	AF,AF'
+	RET	C		; Not channel state control
+	PUSH	AF
+	CALL	BREAK_KEY
+	JP	NC,REPORT_L	; Allow for BREAKing out of read-read deadlock
+	POP	AF
+	OR	A
+	RET	Z		; RESET passed on as empty string
+	CP	$20		; control codes passed on, $20 as empty string, else EOF
+	RET
+
+X_CLOSE:			; TODO: reclaim coroutine memory bank
+	RET
+
+ERRCONT:LD	HL,(CH_ADD)
+	DEC	HL
+	LD	A,(HL)
+	CP	$E8		; CONTINUE already passed?
+	JP	NZ,MAIN4
+	LD	A,(BANK_M)
+	AND	$07
+	JR	Z,CONTM
+	XOR	A		; no byte passed
+	EX	AF,AF'
+	CALL	SWAPOUT
+CONTM:	LD	HL,ERRCONT
+	PUSH	HL
+	JP	STMT_NEXT
+
+SWAP_SYSVARS:
+	LD	DE,TSTACK
+	LD	HL,RAMTOP+1
+	LDD
+	LDD
+	LD	L,FLAGX - KSTATE
+	LD	BC,4
+	LDDR
+	LD	L,STKEND+1 - KSTATE
+	LD	BC,30
+	LDDR
+	DEC	L	; SUBPPC
+	LD	C,6
+	LDDR
+	LD	L,ERR_SP+1 - KSTATE
+	LDD
+	LDD
+	LD	L,STRMS+37 - KSTATE
+	LD	BC,38
+	LDDR
+	EX	DE,HL
+	POP	BC	; RET address
+	DEC	L
+	LD	(HL),B
+	DEC	L
+	LD	(HL),C	; moved to temporary stack
+	LD	SP,HL
+	LD	BC,$7FFD
+	LD	(BANK_M),A
+	OUT	(C),A
+	INC	E
+	LD	HL,NEWSTRMS
+	LD	BC,38
+	LDIR
+	LD	E,ERR_SP - KSTATE
+	LDI
+	LDI
+	LD	E,NEWPPC - KSTATE
+	LD	BC,6
+	LDIR
+	INC	E
+	LD	C,30
+	LDIR
+	LD	E,OLDPPC - KSTATE
+	LD	C,4
+	LDIR
+	LD	E,RAMTOP - KSTATE
+	LDI
+	LDI
+	EX	DE,HL
+	DEC	E
+	LD	HL,TSTACK
+	LD	BC,NEWCHINFO-NEWSTRMS
+	LDDR
+	RET
+
+PROGVAL:EQU	NEWCHINFO + $0B + 1 + $14
+
+EMPTY_STRMS:
+	DEFW	$0001,$0006,$000B,$0015,$0001,$0006,$0010	; K,S,R,X,K,S,P
+EMPTY:	DEFW	PROGVAL		; VARS
+	DEFW	0		; DEST
+	DEFW	NEWCHINFO	; CHANS
+	DEFW	0		; CURCHL
+	DEFW	PROGVAL		; PROG
+	DEFW	0		; NXTLIN
+	DEFW	PROGVAL-1	; DATADD
+	DEFW	PROGVAL+1	; E_LINE
+	DEFW	0		; K_CUR
+	DEFW	0		; CH_ADD
+	DEFW	0		; X_PTR
+	DEFW	PROGVAL+3	; WORKSP
+	DEFW	PROGVAL+3	; STKBOT
+	DEFW	PROGVAL+3	; STKEND
+	DEFW	0		; OLDPPC
+	DEFB	0		; OSPCC
+	DEFB	0		; FLAGX
+	DEFW	$FFFD		; RAMTOP
+EMPTY2: DEFW	PROXY_OUT
+	DEFW	PROXY_IN
+	DEFB	"K"
+	DEFW	PROXY_OUT
+	DEFW	PROXY_IN
+	DEFB	"S"
+	DEFW	ADD_CHAR
+	DEFW	REPORT_J
+	DEFB	"R"
+	DEFW	PROXY_OUT
+	DEFW	PROXY_IN
+	DEFB	"P"
+NEW_X_CHAN:
+	DEFW	NEW_X_OUT
+	DEFW	NEW_X_IN
+	DEFB	"X"
+	DEFB	0		; flags 0 - buffer empty/full
+	DEFB	0		; buffer
+	DEFW	NEW_X_CLOSE
+	DEFW	EMPTY3-NEW_X_CHAN
+EMPTY3:	DEFB	$80,$80,$0D,$80	; channels terminator, empty BASIC program, empty editor line
+EMPTY_E:	EQU	$
+
+EMPTY_STK:
+	DEFW	MAIN1,$3E00,$FFFA
+
+X_CHAN:	DEFW	X_OUT
+	DEFW	X_IN
+	DEFB	"X"
+	DEFB	0		; flags
+	DEFB	0		; memory bank
+	DEFW	X_CLOSE
+	DEFW	X_CHAN_E - X_CHAN
+X_CHAN_E:	EQU	$
