@@ -4290,7 +4290,9 @@ CL_CHAN_A:
 ; PO-TV-2 or PO-CONT.
 
 ;; CL-ALL
-L0DAF:  LD	A,$FE
+L0DAF:  LD	A,$FD
+	CALL	RESET_STREAM
+	LD	A,$FE
 	JP	RESET_STREAM
 RESET_S:
 	LD      HL,$0000        ; Initialize plot coordinates.
@@ -4301,8 +4303,8 @@ RESET_S:
 ;;; BUGFIX: Reset K channel through service routine elsewhere
 ;;;     CALL    L0D94           ; routine CL-CHAN makes channel 'K' 'normal'.
 
-        LD      A,$FE           ; select system channel 'S'
-        CALL    L1601           ; routine CHAN-OPEN opens it.
+;;;     LD      A,$FE           ; select system channel 'S'
+;;;     CALL    L1601           ; routine CHAN-OPEN opens it.
 
         CALL    L0D4D           ; routine TEMPS applies permanent attributes,
                                 ; in this case ATTR_P, to ATTR_T.
@@ -4844,9 +4846,8 @@ ED_CONTR:
                                 ; then DE points to this location also.
         JR      L0F8B           ; forward to ADD-CH-1
 
-;;; Flag Z is reset, when click is needed, returns with CF set, if not.
-CLICK:	SCF			; set CF and
-        RET     Z               ; return if not.
+;;; Flag Z is reset, when click is needed, returns if not.
+CLICK:	RET     Z               ; return if not.
 	LD      HL,$00C8        ; set pitch.
 	LD	A,(PIP)		; give a short click based on
 	OR	A		; on PIP value for duration
@@ -5286,7 +5287,7 @@ L10A8:  BIT     3,(IY+$02)      ; test TV_FLAG  - has a key been pressed in
         JR      NC,L10FA        ; forward to KEY-CONTR.
 
         CP      $06             ; for 6 - 15d
-        JR      NC,L10DB        ; skip forward to KEY-M-CL to handle Modes
+        JR      NC,KEY_M_CL	; skip forward to KEY-M-CL to handle Modes
                                 ; and CapsLock.
 
 ; that only leaves 0-5, the flash bright inverse switches.
@@ -5303,31 +5304,35 @@ L10A8:  BIT     3,(IY+$02)      ; test TV_FLAG  - has a key been pressed in
 
 ; ---
 
+	NOP
+
 ; Now separate capslock 06 from modes 7-15.
 
 ;; KEY-M-CL
-L10DB:  JR      NZ,L10E6        ; forward to KEY-MODE if not 06 (capslock)
+KEY_M_CL:
+	JR      NZ,KEY_MODE	; forward to KEY-MODE if not 06 (capslock)
 
-        LD      HL,FLAGS2        ; point to FLAGS2
+        LD      HL,FLAGS2	; point to FLAGS2
         LD      A,$08           ; value 00001000
         XOR     (HL)            ; toggle BIT 3 of FLAGS2 the capslock bit
         LD      (HL),A          ; and store result in FLAGS2 again.
-        JR      L10F4           ; forward to KEY-FLAG to signal no-key.
+        JR      KEY_FLAG	; forward to KEY-FLAG to signal no-key.
 
 ; ---
 
 ;; KEY-MODE
-L10E6:  CP      $0E             ; compare with chr 14d
+KEY_MODE:
+	CP      $0E             ; compare with chr 14d
         RET     C               ; return with carry set "key found" for
                                 ; codes 7 - 13d leaving 14d and 15d
                                 ; which are converted to mode codes.
 
         SUB     $0D             ; subtract 13d leaving 1 and 2
                                 ; 1 is 'E' mode, 2 is 'G' mode.
-        LD      HL,MODE        ; address the MODE system variable.
+        LD      HL,MODE		; address the MODE system variable.
         CP      (HL)            ; compare with existing value before
         LD      (HL),A          ; inserting the new value.
-        JR      NZ,L10F4        ; forward to KEY-FLAG if it has changed.
+        JR      NZ,KEY_FLAG	; forward to KEY-FLAG if it has changed.
 
         LD      (HL),$00        ; else make MODE zero - KLC mode
                                 ; Note. while in Extended/Graphics mode,
@@ -5335,7 +5340,8 @@ L10E6:  CP      $0E             ; compare with chr 14d
                                 ; again to get out.
 
 ;; KEY-FLAG
-L10F4:  SET     3,(IY+$02)      ; update TV_FLAG  - show key state has changed
+KEY_FLAG:
+	SET     3,(IY+$02)      ; update TV_FLAG  - show key state has changed
         CP      A               ; clear carry and reset zero flags -
                                 ; no actual key returned.
         RET                     ; make the return.
@@ -5435,7 +5441,7 @@ L111D:  CALL    L0D4D           ; routine TEMPS sets temporary attributes.
 ; text from a previous print may follow this line and requires blanking.
 
 ;; ED-BLANK
-L1150:  LD      A,($5C8B)       ; fetch SPOSNL_hi is current line
+L1150:  LD      A,(S_POSNL + 1)	; fetch SPOSNL_hi is current line
         SUB     D               ; compare with old
         JR      C,L117C         ; forward to ED-C-DONE if no blanking
 
@@ -5446,7 +5452,9 @@ L1150:  LD      A,($5C8B)       ; fetch SPOSNL_hi is current line
         JR      NC,L117C        ; forward to ED-C-DONE if no backfilling.
 
 ;; ED-SPACES
-L115E:  LD      A," "           ; prepare a space.
+;;; BUGFIX: use hard blank, in case of alternate character set
+L115E:  LD      A,$80		; prepare a hard blank.
+;;; L115E:  LD      A," "           ; prepare a space.
         PUSH    DE              ; save old line/column.
         CALL    L09F4           ; routine PRINT-OUT prints a space over
                                 ; any text from previous print.
@@ -5489,7 +5497,7 @@ L117C:  POP     DE              ; fetch new line/column.
 
 ;; ED-C-END
 L117E:  POP     HL              ; restore the old value of ERR_SP.
-        LD      (ERR_SP),HL      ; update the system variable ERR_SP
+        LD      (ERR_SP),HL	; update the system variable ERR_SP
 
         POP     BC              ; old value of SPOSN_L
         PUSH    DE              ; save new value
@@ -5498,7 +5506,7 @@ L117E:  POP     HL              ; restore the old value of ERR_SP.
                                 ; update ECHO_E and SPOSN_L from BC
 
         POP     HL              ; restore new value
-        LD      (ECHO_E),HL      ; and overwrite ECHO_E
+        LD      (ECHO_E),HL	; and overwrite ECHO_E
 
         LD      (IY+$26),$00    ; make error pointer X_PTR_hi out of bounds
 
@@ -8188,7 +8196,9 @@ L1AA5:  DEFB    $05             ; Class-05 - Variable syntax checked entirely
 
 ;; P-NEW
 L1AA8:  DEFB    $00             ; Class-00 - No further operands.
-        DEFW    L11B7           ; Address: $11B7; Address: NEW
+;;; ABSTRACT NEW
+	DEFW	NEW
+;;;     DEFW    L11B7           ; Address: $11B7; Address: NEW
 
 ;; P-RUN
 L1AAB:  DEFB    $03             ; Class-03 - A numeric expression may follow
@@ -17244,7 +17254,7 @@ L338E:  LD      DE,L32D7        ; Address: tbl-addrs
         PUSH    DE              ; now address of routine
         EXX                     ; main set
                                 ; avoid using IY register.
-        LD      BC,($5C66)      ; STKEND_hi
+        LD      BC,(STKEND+1)	; STKEND_hi
                                 ; nothing much goes to C but BREG to B
                                 ; and continue into next ret instruction
                                 ; which has a dual identity
@@ -17490,7 +17500,7 @@ STK_CONST:
 ; The calculator stack increases by 5 bytes.
 
 ;; get-mem-xx
-GET_MEM:LD      HL,(MEM)      ; MEM is base address of the memory cells.
+GET_MEM:LD      HL,(MEM)	; MEM is base address of the memory cells.
 INDEX5:	PUSH	DE		; save STKEND
 	CALL    L3406           ; routine LOC-MEM so that HL = first byte
         CALL    L33C0           ; routine MOVE-FP moves 5 bytes with memory
@@ -17527,6 +17537,7 @@ INDEX5:	PUSH	DE		; save STKEND
 ;;; Emit a clicking sound, if a key has been pressed, return with CF, if not
 KEYCLICK:
 	BIT	5,(IY+1)
+	SCF
 	JP	CLICK
 ; --------------------------------
 ; Store in a memory area ($C0 etc.)
@@ -17548,13 +17559,10 @@ L342D:  PUSH    HL              ; save the result pointer.
         LD      HL,(MEM)      ; fetch MEM the base of memory area.
         CALL    L3406           ; routine LOC-MEM sets HL to the destination.
         EX      DE,HL           ; swap - HL is start, DE is destination.
-;;;        CALL    L33C0           ; routine MOVE-FP.
+        CALL    L33C0           ; routine MOVE-FP.
                                 ; note. a short ld bc,5; ldir
                                 ; the embedded memory check is not required
                                 ; so these instructions would be faster.
-	LD	C,5
-	LDIR
-;---
         EX      DE,HL           ; DE = STKEND
         POP     HL              ; restore original result pointer
         RET                     ; return.
@@ -19908,8 +19916,14 @@ S_COPY:	LD	A,3
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+        DEFB    $FF, $FF, $FF, $FF, $FF, $FF;	, $FF, $FF;
+;       DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+
+NEW:	DI
+	LD	BC,$7FFD	; 128k pager port
+	XOR	A		; ROM 0
+	OUT	(C),A		; page in ROM0, if possible
+	JP	L11B7		; jump to 48k NEW, if not
 
 ORG $3D00
 
