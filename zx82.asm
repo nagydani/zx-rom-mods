@@ -6929,7 +6929,7 @@ L1736:  RST     28H             ;; FP-CALC    ;s,c.
         OR      C               ; indicates the stream is closed.
         JR      Z,L1756         ; skip forward to OPEN-1 if so.
 
-; if it is a system channel then it can re-attached.
+; if it is a system channel then it can be re-attached.
 
         EX      DE,HL           ; save STRMS address in DE.
         LD      HL,(CHANS)      ; fetch CHANS.
@@ -6993,8 +6993,10 @@ L1767:  PUSH    BC              ; save the length of the string.
         AND     $DF             ; make it upper-case.
         LD      C,A             ; place it in C.
         LD      HL,L177A        ; address: op-str-lu is loaded.
-        CALL    L16DC           ; routine INDEXER will search for letter.
-        JR      NC,L1765        ; back to REPORT-F if not found
+;;; BUGFIX: check 128k
+	CALL	INDEXER_2
+;;;	CALL    L16DC           ; routine INDEXER will search for letter.
+OPENER:	JR      NC,L1765        ; back to REPORT-F if not found
                                 ; 'Invalid filename'
 
         LD      C,(HL)          ; fetch the displacement to opening routine.
@@ -19754,7 +19756,6 @@ PAUSE_L:CALL	L15E6		; INPUT-AD
 	DEFB	$DD
 	SBC	A,L		; time elapsed in AHL
 	RET	NZ		; definitely over
-	AND	A
 	SBC	HL,BC
 	JR	C,PAUSE_L
 	RET
@@ -19809,7 +19810,7 @@ S_COPY:	LD	A,3
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF;	, $FF, $FF;
+        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF;	, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
@@ -19915,15 +19916,29 @@ S_COPY:	LD	A,3
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF;	, $FF, $FF;
+        DEFB    $FF;	, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;       DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;       DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 
-NEW:	DI
+; 23 bytes used before the character set
+; Abstacted NEW routine
+NEW:	LD	HL,L11B7	; 48k NEW routine
+	PUSH	HL		; stacked
+	JR	NOPAGE
+INDEXER_2:
+	CALL	L16DC		; INDEXER
+	RET	C		; if code is found, return immediately
+; This routine does nothing, if paging is disabled, otherwise switches to ROM0
+NOPAGE:	PUSH	AF
+	PUSH	BC
 	LD	BC,$7FFD	; 128k pager port
-	XOR	A		; ROM 0
+	XOR	A		; ROM0, RAM0
+	DI
 	OUT	(C),A		; page in ROM0, if possible
-	JP	L11B7		; jump to 48k NEW, if not
+	EI
+	POP	BC
+	POP	AF
+	RET
 
 ORG $3D00
 
