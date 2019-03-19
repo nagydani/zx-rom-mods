@@ -143,7 +143,7 @@ L0018:  LD      HL,(CH_ADD)      ; fetch the address from CH_ADD.
 ;; TEST-CHAR
 L001C:  CALL    L007D           ; routine SKIP-OVER tests if the character is
                                 ; relevant.
-        RET     NC              ; Return if it is significant.
+SKIPPER:RET     NC              ; Return if it is significant.
 
 ; ------------------------------------
 ; THE 'COLLECT NEXT CHARACTER' RESTART
@@ -172,8 +172,12 @@ L0020:  CALL    L0074           ; routine CH-ADD+1 fetches the next immediate
 L0028:  JP      L335B           ; jump forward to the CALCULATE routine.
 
 ; ---
-	DEFB    $FF, $FF, $FF   ; spare - note that on the ZX81, space being a
-	DEFB    $FF, $FF        ; little cramped, these same locations were
+;;; BUGFIX: extensible SKIP-OVER
+SKIPS:	SCF
+	LD	(CH_ADD),HL
+	RET
+;;;	DEFB    $FF, $FF, $FF   ; spare - note that on the ZX81, space being a
+;;;	DEFB    $FF, $FF        ; little cramped, these same locations were
 				; used for the five-byte end-calc literal.
 
 ; ------------------------------
@@ -380,7 +384,9 @@ L007D:  CP      $21             ; test if higher than space.
                                 ; carry set.
 
         CP      $10             ; test if 0-15d
-        RET     C               ; return, if so, with carry set.
+;;; BUGFIX: extensibility
+	JP	C,NOPAGE
+;;;     RET     C               ; return, if so, with carry set.
 
         CP      $18             ; test if 24-32d
         CCF                     ; complement carry flag.
@@ -392,7 +398,9 @@ L007D:  CP      $21             ; test if higher than space.
                                 ; to be stepped over.
 
         CP      $16             ; controls 22d ('at') and 23d ('tab') have two.
-        JR      C,L0090         ; forward to SKIPS with ink, paper, flash,
+;;; BUGFIX: extensibility
+	JR	C,SKIPS
+;;;	JR      C,L0090         ; forward to SKIPS with ink, paper, flash,
                                 ; bright, inverse or over controls.
                                 ; Note. the high byte of tab is for RS232 only.
                                 ; it has no relevance on this machine.
@@ -400,9 +408,12 @@ L007D:  CP      $21             ; test if higher than space.
         INC     HL              ; step over the second character of 'at'/'tab'.
 
 ;; SKIPS
-L0090:  SCF                     ; set the carry flag
-        LD      (CH_ADD),HL      ; update the CH_ADD system variable.
-        RET                     ; return with carry set.
+;;; BUGFIX: extensibility
+	JR	SKIPS
+	DEFS	$0095 - $
+;;;L0090:  SCF                     ; set the carry flag
+;;;        LD      (CH_ADD),HL      ; update the CH_ADD system variable.
+;;;        RET                     ; return with carry set.
 
 
 ; ------------------
@@ -12192,10 +12203,12 @@ L24FB:  RST     18H             ; GET-CHAR
 ;; S-LOOP-1
 L24FF:  LD      C,A             ; store the character while a look up is done.
         LD      HL,L2596        ; Address: scan-func
-        CALL    L16DC           ; routine INDEXER is called to see if it is
+;;; BUGFIX: extended functions
+	CALL	INDEXER_2
+;;;	CALL    L16DC           ; routine INDEXER is called to see if it is
                                 ; part of a limited range '+', '(', 'ATTR' etc.
 
-        LD      A,C             ; fetch the character back
+SCANNER:LD      A,C             ; fetch the character back
         JP      NC,L2684        ; jump forward to S-ALPHNUM if not in primary
                                 ; operators and functions to consider in the
                                 ; first instance a digit or a variable and
