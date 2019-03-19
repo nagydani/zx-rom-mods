@@ -5427,7 +5427,7 @@ L111D:  CALL    L0D4D           ; routine TEMPS sets temporary attributes.
         CALL    L187D           ; routine OUT-LINE2 outputs entire line up to
                                 ; carriage return including initial
                                 ; characterized line number when present.
-        EX      DE,HL           ; transfer new address to DE
+	EX	DE,HL		; transfer new address to DE
         CALL    OUT_CURS	; routine OUT-CURS considers a
                                 ; terminating cursor.
 

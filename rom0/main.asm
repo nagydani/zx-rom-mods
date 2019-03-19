@@ -132,6 +132,7 @@ RAMNMI:	DI
 
 POUT:	CALL	IOSWAP
 PIN:	CALL	IOSWAP
+SOUT:	CALL	IOSWAP
 KOUT:	CALL	IOSWAP
 KIN:	CALL	IOSWAP
 YOUT:	CALL	IOSWAP
@@ -158,9 +159,11 @@ IODISP:	EX	AF,AF'
 	POP	DE
 	LD	HL,IOJP-PIN
 	ADD	HL,DE
+	EX	AF,AF'
 	JP	(HL)
 IOJP:	JP	PR_OUT
 	JP	PR_IN
+	JP	S_OUT
 	JP	K_OUT
 	JP	K_IN
 	JP	Y_OUT
@@ -170,10 +173,75 @@ IOJP:	JP	PR_OUT
 	JP	NX_OUT
 	JP	NX_IN
 
+; TODO: ugly hack, write proper, fast drivers
+K_IN:	BIT	3,(IY+$02)
+	CALL	NZ,ED_COPY
+	LD	HL,(CHANS)
+	LD	DE,(CURCHL)
+	PUSH	DE
+	LD	(CURCHL),HL
+	RST	$28
+	DEFW	L15E6		; INPUT-AD
+K_INB:	JR	NC,KS_RET
+	BIT	1,(IY+$07)
+	JR	Z,KS_RET
+	CP	$A5
+	JR	C,KS_RET
+	SUB	$A4
+	SCF
+	JR	KS_RET
+
+K_OUT:	LD	HL,(CHANS)
+	JR	KS_OUT
+S_OUT:	LD	HL,(CHANS)
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL
+KS_OUT:
+	LD	DE,(CURCHL)
+	PUSH	DE
+	LD	(CURCHL),HL
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	LD	HL,KS_RET
+	PUSH	HL
+	LD	HL,SWAP
+	PUSH	HL
+	PUSH	DE
+	JP	NC,SWAP
+	LD	HL,PRINT_OUT
+	AND	A
+	SBC	HL,DE
+	SCF
+	JP	NZ,SWAP
+	OR	A
+	JR	Z,OUT_NIL
+	CP	6
+	CCF
+	JP	C,SWAP
+	EXX
+	PUSH	BC
+	PUSH	DE
+	PUSH	HL
+	LD	DE,TOKENS0
+	LD	B,A
+	CALL	TOKEN
+	POP	HL
+	POP	DE
+	POP	BC
+	EXX
+OUT_NIL:INC	SP	; discard service routine address
+	INC	SP
+	INC	SP	; discard SWAP address
+	INC	SP
+	RET		; return to KS_RET
+KS_RET:	POP	HL
+	LD	(CURCHL),HL
 PR_OUT:
 PR_IN:
-K_OUT:
-K_IN:
 Y_OUT:
 Y_IN:
 X_OUT:
@@ -182,7 +250,12 @@ NX_OUT:
 NX_IN:
 	JP	SWAP		; Empty plug
 
+ED_COPY:RST	$28
+	DEFW	L111D		; ED_COPY
+	RET
+
 R_LINK:	DEFB	$00, $03, $00, $07, $01, $00, $04, $FF
+
 RESET:	LD	A,8		; check and clear all banks
 	LD	HL,$FFFF
 	LD	BC,$7FFD
@@ -285,11 +358,10 @@ STARTN:	LD	A,$10
 	LD	(REPDEL),HL
 	DEC	(IY-$3A)
 	DEC	(IY-$36)
-	LD	HL,L15C6
+	LD	HL,INIT_STRM
 	LD	DE,STRMS
-	LD	BC,$E
-	RST	$28
-	DEFW	LDIRR
+	LD	BC,$0E
+	LDIR
 	LD	(IY+$31),$02
 	RST	$28
 	DEFW	L0D6B
@@ -356,7 +428,7 @@ DISPAT:	BIT	4,(IY+1)
 	JP	NEW128
 
 OPEN_CONT:
-	LD	OPENSTRM128
+	LD	HL,OPENSTRM2
 	CALL	INDEXER
 	JP	NC,SWAP
 	POP	BC		; discard return address
@@ -383,6 +455,12 @@ STDERR_MSG:
 	RST	$28
 	DEFW	L1601
 	POP	DE
+	JR	MESSAGE
+TOKEN:	LD	A,(DE)
+	ADD	A,A
+	INC	DE
+	JR	NC,TOKEN
+	DJNZ	TOKEN
 MESSAGE:LD	A,(DE)
 	AND	$7F
 	RST	$10		; No need for recursion here
@@ -392,28 +470,66 @@ MESSAGE:LD	A,(DE)
 	JR	NC,MESSAGE
 	RET
 
+
 OPENSTRM2:
 	DEFB	0		; TODO: empty plug
 
-CHINFO0:DEFW	PRINT_OUT
+CHINFO0:
+K_CH:	DEFW	PRINT_OUT
 	DEFW	L10A8
 	DEFB	"K"
-	DEFW	PRINT_OUT
+S_CH:	DEFW	PRINT_OUT
 	DEFW	L15C4
 	DEFB	"S"
-	DEFW	L0F81
+R_CH:	DEFW	L0F81
 	DEFW	L15C4
 	DEFB	"R"
-	DEFW	POUT
+P_CH:	DEFW	POUT
 	DEFW	PIN
 	DEFB	"P"
+
+KCHAN:	DEFW	KOUT
+	DEFW	KIN
+	DEFB	"K"
+	DEFW	0
+	DEFW	0		; TODO: proper close
+	DEFW	KCHAN_E - KCHAN
+KCHAN_E:
+SCHAN:	DEFW	SOUT
+	DEFW	L15C4
+	DEFB	"S"
+	DEFW	0
+	DEFW	0		; TODO: proper close
+	DEFW	SCHAN_E - SCHAN
+SCHAN_E:
 	DEFB	$80
 CHINFO0_E:	EQU	$
+
+INIT_STRM:
+	DEFW	KCHAN - CHINFO0 + 1	; stream $FD offset to channel 'K'
+        DEFW    SCHAN - CHINFO0 + 1	; stream $FE offset to channel 'S'
+        DEFW    R_CH - CHINFO0 + 1	; stream $FF offset to channel 'R'
+
+        DEFW    KCHAN - CHINFO0 + 1	; stream $00 offset to channel 'K'
+        DEFW    KCHAN - CHINFO0 + 1	; stream $01 offset to channel 'K'
+        DEFW    SCHAN - CHINFO0 + 1	; stream $02 offset to channel 'S'
+        DEFW    P_CH - CHINFO0 + 1	; stream $03 offset to channel 'P'
+
 
 COPYRIGHT:
 	DEFB	$7F
 	DEFM	" 2019 ePoint Systems Ltd"
-	DEFB	$8D
+TOKENS0:DEFB	$8D
+	DEFM	"UDG"
+	DEFB	$80+"$"
+	DEFM	"MEM"
+	DEFB	$80+"$"
+	DEFM	"TIM"
+	DEFB	$80+"E"
+	DEFM	"STICK"
+	DEFB	$80+" "
+	DEFM	"DPEEK"
+	DEFB	$80+" "
 
 	DEFS	$3CF8 - $
 GO48:	LD	A,$10	; ROM1, RAM0
