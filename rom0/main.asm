@@ -1053,12 +1053,12 @@ S_STR_NEW:
 	JR	NZ,ERROR_C
 	BIT	7,(IY+$01)
 	JR	Z,S_STR_S
+	LD	HL,(CURCHL)
+	PUSH	HL		; save channel
 	LD	BC,$0001
 	RST	$30
 	LD	(K_CUR),HL
 	PUSH	HL		; save cursor
-	LD	HL,(CURCHL)
-	PUSH	HL		; save cursor, channel
 	LD	A,$FF
 	RST	$28
 	DEFW	L1601		; CHAN-OPEN, open R channel
@@ -1135,30 +1135,39 @@ STR_NUM:RST	$10		; print digit
 	CALL	STK_BASE
 	JR	NROUND
 D_STR_E:CALL	STEPBACK	; remove zero quotient from stack
-	POP	AF
-	JR	Z,STR_I
-	
-STR_I:	POP	HL		; restore channel
-	LD	(CURCHL),HL
-	RST	$28
-	DEFW	L1615		; channel flags
+	POP	AF		; fractional digits, Z set if zero
 	POP	DE		; start pointer
+	PUSH	DE
+	PUSH	AF
 	LD	HL,(K_CUR)	; end pointer
 	AND	A
 	SBC	HL,DE		; length
 	LD	B,H
 	LD	C,L
 	EX	DE,HL
-	PUSH	HL
-	PUSH	BC
 	LD	A,(HL)
 	CP	"-"
 	JR	NZ,STR_P
 	INC	HL
 	DEC	BC
 STR_P:	CALL	MIRROR
-	POP	BC
+	POP	AF		; fractional digits, Z set if zero
+	JR	Z,STR_I
+	LD	A,"."
+	RST	$10
+STR_I:	POP	DE		; start pointer
+	LD	HL,(K_CUR)
+	AND	A
+	SBC	HL,DE
+	LD	B,H
+	LD	C,L
+	POP	HL		; restore channel
+	PUSH	BC
+	PUSH	DE
+	RST	$28
+	DEFW	L1615		; channel flags
 	POP	DE
+	POP	BC
 S_STR_END:
 	LD	HL,X266E
 	PUSH	HL
