@@ -12539,7 +12539,7 @@ L25E8:  RST     20H             ; NEXT-CHAR
         JP      NZ,L1C8A        ; jump back to REPORT-C if not
                                 ; 'Nonsense in BASIC'
 
-        RST     20H             ; NEXT-CHAR
+X25F1:	RST     20H             ; NEXT-CHAR
         JP      L2712           ; jump forward to S-CONT-2          ===>
 
 ; ---
@@ -12717,7 +12717,7 @@ L2665:  JP      L2712           ; to S-CONT-2            ===>
 L2668:  CALL    L2522           ; routine S-2-COORD
         CALL    NZ,L2535        ; routine S-SCRN$-S
 
-        RST     20H             ; NEXT-CHAR
+X266E:	RST     20H             ; NEXT-CHAR
         JP      L25DB           ; forward to S-STRING to stack result
 
 ; ---

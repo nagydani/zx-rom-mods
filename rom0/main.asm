@@ -602,6 +602,7 @@ TIME_T:	EQU	$03
 STICK_T:EQU	$04
 DPEEK_T:EQU	$05
 CODE_T:	EQU	$AF
+STR_T:	EQU	$C1
 CHR_T:	EQU	$C2
 
 SCANFUNC2:
@@ -617,6 +618,8 @@ SCANFUNC2:
 	DEFB	S_CODE - $
 	DEFB	CHR_T
 	DEFB	S_CHR - $
+	DEFB	STR_T
+	DEFB	S_STR - $
 	DEFB	0
 
 S_MEM:	RST	$20
@@ -657,10 +660,41 @@ F_STR:	LD	BC,L270D	; S-PUSH-PO
 	LD	BC,$109C	; like CODE
 	JP	SWAP
 
-F_SNUM:	LD	BC,L270D
+F_SNUM:	LD	BC,L270D	; S-PUSH-PO
 	PUSH	BC
-	LD	BC,$106F	; like CHR$
+	LD	BC,$106E	; like STR$
 	JP	SWAP
+
+
+F_STRS:	LD	BC,L24FF	; S-LOOP-1
+F_STR0:	PUSH	BC
+	JP	SWAP
+
+S_STR_OLD:
+	LD	BC,X25F1	; S-BRACKET end
+	JR	F_STR0
+
+S_STR:	LD	BC,$106E	; actually STR$
+	PUSH	BC
+	RST	$20
+	CP	"("
+	JR	NZ,F_STRS	; actually STR$
+	RST	$20
+	RST	$28
+	DEFW	L1C82		; CLASS_06, numeric expression followed by whatever
+	CP	")"
+	JR	Z,S_STR_OLD
+	JP	S_STR_NEW
+
+STK_BASE:
+	LD	A,(MEMBOT+27)
+STK_A:	CALL	STACK_ZERO
+	INC	HL
+	INC	HL
+	LD	(HL),A
+	DEC	HL
+	DEC	HL		; stack base
+	RET
 
 S_CODE:	BIT	7,(IY+1)
 	JR	Z,F_STR
@@ -684,14 +718,14 @@ S_STICK:RST	$28
 	RST	$28
 	DEFW	L2307		; STK-TO-BC
 	DEC	D
-	JR	NZ,ERROR_A
+	JR	NZ,ERROR_B
 	DEC	E
-	JR	NZ,ERROR_A
+	JR	NZ,ERROR_B
 	RRA
 	LD	A,B
 	ADC	A,A
 	CP	8
-	JR	NC,ERROR_A
+	JR	NC,ERROR_B
 	LD	HL,STICK_TAB
 	LD	C,A
 	LD	B,0
@@ -734,12 +768,12 @@ TIME_S:	RST	$28
 	DEFW	L2AB6		; STK-STORE
 S_TIME_END:
 	LD	BC,L2630
-	PUSH	BC
-	LD	BC,TIME_T
+S_FNC_E:PUSH	BC
+	LD	B,0
 	JP	SWAP
 
 D_DPEEK:RST	$28
-	DEFW	L1E99		; FP-TO-BC
+	DEFW	L1E99		; FIND_INT2
 	LD	L,C
 	LD	H,B
 	LD	C,(HL)
@@ -757,8 +791,8 @@ STICK_TAB:
 	DEFB	CURSOR_FIRE - $
 	DEFB	CURSOR_STICK - $
 
-ERROR_A:CALL	ERROR
-	DEFB	$09		; A Invalid argument
+ERROR_B:CALL	ERROR
+	DEFB	$0A		; B Integer out of range
 
 CURSOR_STICK:
 	LD	A,$F7
@@ -806,7 +840,7 @@ STICK_FIRE:
 	RRCA
 STICK_END:
 	RST	$28
-	DEFW	L2D28		; STACK_A
+	DEFW	L2D28		; STACK-A
 	JR	S_TIME_END
 
 SINCLAIR1_STICK:
@@ -858,7 +892,7 @@ CODEL1:	DEC	HL
 CSWAPR:	JP	SWAP
 CODE_D:	LD	A,B
 	OR	A
-	JR	NZ,ERROR_A	; Maybe "Number too big" more adequate?
+	JR	NZ,ERROR_6	; 6 Number too big
 	DEC	C
 	JR	Z,D_CODE1
 	DEC	C
@@ -882,18 +916,14 @@ CODEL2:	DEC	HL
 	PUSH	BC
 	LD	A,(DE)
 	ADD	8		; * 256
-	JP	C,ERROR_A
+	JR	C,ERROR_6
 	LD	(DE),A
 	PUSH	DE
 	PUSH	HL
 	LD	A,(HL)
 	RST	$28
-	DEFW	L2D28		; STACK-A
-	LD	BC,-5
-	ADD	HL,BC
-	EX	DE,HL
-	ADD	HL,BC
-	EX	DE,HL		; TODO: Is this necessary?
+	DEFW	L2D28		; STACK-A with space check
+	CALL	STEPBACK
 	RST	$28
 	DEFW	L3014		; ADDITION
 	LD	(STKEND),DE
@@ -904,9 +934,6 @@ CODEL2:	DEC	HL
 	LD	HL,(STKEND)
 	EX	DE,HL
 	JP	SWAP
-
-ERROR_B:CALL	ERROR
-	DEFB	$0A		; B Integer out of range
 
 D_CHR:	POP	HL		; discard return address
 	POP	HL		; RE-ENTRY
@@ -925,7 +952,7 @@ D_CHR:	POP	HL		; discard return address
 	JR	NZ,D_CHRL
 	RST	$28
 	DEFW	L1E99
-	JR	NZ,ERROR_B
+	JR	NZ,ERROR_B_2
 	LD	A,B
 	OR	A
 	JR	NZ,D_CHR2
@@ -933,6 +960,10 @@ D_CHR:	POP	HL		; discard return address
 	LD	BC,L35C9 + 7
 	PUSH	BC
 	JP	SWAP
+
+ERROR_6:CALL	ERROR
+	DEFB	$05		; Number too big
+
 D_CHR2:	PUSH	BC
 	LD	BC,$0002
 	RST	$30
@@ -949,7 +980,7 @@ CHR2_E:	RST	$28
 	JP	SWAP
 D_CHRL:	INC	HL
 	BIT	7,(HL)
-	JR	NZ,ERROR_B
+	JR	NZ,ERROR_B_2
 	DEC	HL
 	LD	A,(HL)
 	SUB	$78
@@ -966,21 +997,14 @@ D_CHRL:	INC	HL
 	RST	$28
 	DEFW	L35BF		; STK-PNTRS
 CHRL_L:	PUSH	DE
+	RST	$28
+	DEFW	L33A9		; TEST-5-SP
 	LD	HL,C256
 	LD	BC,$0005
 	LDIR			; STK-256
 	POP	HL
 	LD	(STKEND),DE
-	RST	$28
-	DEFW	L36A0		; MOD
-	LD	BC,-5
-	PUSH	HL
-	ADD	HL,BC
-	POP	DE
-	RST	$28
-	DEFW	L343C		; EXCHANGE
-	RST	$28
-	DEFW	L2DA2		; FP-TO-BC (and A)
+	CALL	MOD2A
 	LD	HL,(K_CUR)
 	LD	(HL),A
 	INC	HL
@@ -1001,6 +1025,176 @@ CHRL_L:	PUSH	DE
 	LD	C,L
 	LD	B,H
 	JR	CHR2_E
+
+ERROR_B_2:
+	JP	ERROR_B
+
+MIRROR:	LD	D,(HL)
+	DEC	BC
+	LD	A,B
+	OR	C
+	RET	Z
+	ADD	HL,BC
+	LD	E,(HL)
+	LD	(HL),D
+	SBC	HL,BC
+	LD	(HL),E
+	INC	HL
+	DEC	BC
+	LD	A,B
+	OR	C
+	JR	NZ,MIRROR
+	RET
+
+; STR$() with multiple arguments
+S_STR_NEW:
+	POP	BC		; discard STR$ and priority
+	CP	","
+	JR	NZ,ERROR_C
+	BIT	7,(IY+$01)
+	JR	Z,S_STR_S
+	LD	BC,$0001
+	RST	$30
+	LD	(K_CUR),HL
+	PUSH	HL		; save cursor
+	LD	HL,(CURCHL)
+	PUSH	HL		; save cursor, channel
+	LD	A,$FF
+	RST	$28
+	DEFW	L1601		; CHAN-OPEN, open R channel
+	RST	$28
+	DEFW	L35BF		; STK-PNTRS
+	INC	HL
+	BIT	7,(HL)		; check sign
+	JR	Z,S_STR_S	; if positive, do nothing
+	LD	A,"-"
+	RST	$10		; print "-"
+	RST	$28
+	DEFW	L346E		; NEGATE
+S_STR_S:RST	$20
+	RST	$28
+	DEFW	L1C82		; CLASS_06, numeric expression followed by whatever
+	BIT	7,(IY+$01)
+	JR	Z,S_ST0_S
+	PUSH	AF
+	RST	$28
+	DEFW	L35BF		; STK-PNTRS
+	RST	$28
+	DEFW	L33C0		; DUP
+	LD	(STKEND),DE
+	RST	$28
+	DEFW	L1E94		; FIND-INT1
+	CP	2
+	JR	C,ERROR_B_2	; base zero and one prohibited
+	CP	37		; maximum base 36, digits [0-9A-Z]
+	JR	NC,ERROR_B_2
+	LD	(MEMBOT+27),A	; save base
+	POP	AF
+S_ST0_S:CP	")"
+	JR	NZ,S_STR3
+	BIT	7,(IY+$01)
+	JR	Z,S_STR_D
+	PUSH	AF
+	RST	$28
+	DEFW	L35BF		; STK-PNTRS
+	RST	$28
+	DEFW	L33A9		; TEST-5-SP
+	CALL	STACK_ZERO
+	POP	AF
+	JR	S_STR_D
+
+ERROR_C:CALL	ERROR
+	DEFB	$0B		; C Nonsense in BASIC
+
+S_STR3:	CP	","
+	JR	NZ,ERROR_C
+	RST	$20
+	RST	$28
+	DEFW	L1C82		; CLASS_06, numeric expression followed by whatever
+	CP	")"
+	JR	NZ,ERROR_C	; must be followed by ")"
+	BIT	7,(IY+$01)
+S_STR_D:JR	Z,S_STR_END
+	RST	$28
+	DEFW	L1E94		; FIND-INT1
+	OR	A
+	PUSH	AF		; Number of digits on CPU stack, Z set, if 0
+	JR	NZ,NROUND
+	
+NROUND:	CALL	MOD2A
+	ADD	"0"
+	CP	"9"+1
+	JR	C,STR_NUM
+	ADD	A,7
+STR_NUM:RST	$10		; print digit
+	INC	HL
+	INC	DE		; adjust pointers
+	RST	$28
+	DEFW	L34E9		; TEST-ZERO
+	JR	C,D_STR_E
+	CALL	STK_BASE
+	JR	NROUND
+D_STR_E:CALL	STEPBACK	; remove zero quotient from stack
+	POP	AF
+	JR	Z,STR_I
+	
+STR_I:	POP	HL		; restore channel
+	LD	(CURCHL),HL
+	RST	$28
+	DEFW	L1615		; channel flags
+	POP	DE		; start pointer
+	LD	HL,(K_CUR)	; end pointer
+	AND	A
+	SBC	HL,DE		; length
+	LD	B,H
+	LD	C,L
+	EX	DE,HL
+	PUSH	HL
+	PUSH	BC
+	LD	A,(HL)
+	CP	"-"
+	JR	NZ,STR_P
+	INC	HL
+	DEC	BC
+STR_P:	CALL	MIRROR
+	POP	BC
+	POP	DE
+S_STR_END:
+	LD	HL,X266E
+	PUSH	HL
+	JP	SWAP
+
+; Replace a,b on top of stack by INT(a/b) and return a MOD b in register A.
+MOD2A:	CALL	MODDIV
+	RST	$28
+	DEFW	L343C		; EXCHANGE
+	RST	$28
+	DEFW	L2DA2		; FP-TO-BC (and A)
+	RET
+
+; Replace a,b on top of stack by a MOD b, INT(a/b)
+MODDIV:	RST	$28
+	DEFW	L36A0		; MOD
+; Move both pointers back by one entry
+STEPBACK:
+	LD	BC,-5
+	ADD	HL,BC
+	EX	DE,HL
+	ADD	HL,BC
+	EX	DE,HL
+	RET
+
+; Put 0 on the calculator stack, without testing available space
+STACK_ZERO:
+	LD	L,E
+	LD	H,D
+	LD	BC,$500
+STK0_L:	LD	(HL),C
+	INC	HL
+	DJNZ	STK0_L
+	LD	(STKEND),HL
+	EX	DE,HL
+	RET
 
 C256:	DEFB	$00, $00, $00, $01, $00
 
