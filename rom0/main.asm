@@ -1053,12 +1053,12 @@ S_STR_NEW:
 	JR	NZ,ERROR_C
 	BIT	7,(IY+$01)
 	JR	Z,S_STR_S
-	LD	HL,(CURCHL)
-	PUSH	HL		; save channel
 	LD	BC,$0001
 	RST	$30
 	LD	(K_CUR),HL
 	PUSH	HL		; save cursor
+	LD	HL,(CURCHL)
+	PUSH	HL		; save channel
 	LD	A,$FF
 	RST	$28
 	DEFW	L1601		; CHAN-OPEN, open R channel
@@ -1118,9 +1118,17 @@ S_STR_D:JR	Z,S_STR_END
 	RST	$28
 	DEFW	L1E94		; FIND-INT1
 	OR	A
+	JP	M,ERROR_B	; No more than 127 places after dot
 	PUSH	AF		; Number of digits on CPU stack, Z set, if 0
-	JR	NZ,NROUND
-	
+	JR	Z,NROUND
+	LD	HL,MEMBOT
+	RST	$28
+	DEFW	L350B		; ZERO to M0
+	POP	AF
+	PUSH	AF
+	RST	$28
+	DEFW	L2D60		; E-LOOP
+	CALL	STK_BASE
 NROUND:	CALL	MOD2A
 	ADD	"0"
 	CP	"9"+1
@@ -1129,21 +1137,35 @@ NROUND:	CALL	MOD2A
 STR_NUM:RST	$10		; print digit
 	INC	HL
 	INC	DE		; adjust pointers
+	POP	AF
+	DEC	A
+	PUSH	AF
+	ADD	A,A
+	JR	NZ,STR_DG
+	LD	A,"."
+	RST	$10
+	INC	HL
+	INC	DE		; adjust pointers
+STR_DG:	JR	NC,STR_FR	; still fractional
 	RST	$28
 	DEFW	L34E9		; TEST-ZERO
 	JR	C,D_STR_E
-	CALL	STK_BASE
+STR_FR:	CALL	STK_BASE
 	JR	NROUND
-D_STR_E:CALL	STEPBACK	; remove zero quotient from stack
-	POP	AF		; fractional digits, Z set if zero
+
+D_STR_E:POP	AF		; fractional digits, Z set if zero
+	CALL	STEPBACK	; remove zero quotient from stack
+	POP	HL		; restore channel
+	RST	$28
+	DEFW	L1615		; channel flags
 	POP	DE		; start pointer
-	PUSH	DE
-	PUSH	AF
-	LD	HL,(K_CUR)	; end pointer
+	LD	HL,(K_CUR)
 	AND	A
-	SBC	HL,DE		; length
+	SBC	HL,DE
 	LD	B,H
 	LD	C,L
+	PUSH	BC
+	PUSH	DE
 	EX	DE,HL
 	LD	A,(HL)
 	CP	"-"
@@ -1151,21 +1173,6 @@ D_STR_E:CALL	STEPBACK	; remove zero quotient from stack
 	INC	HL
 	DEC	BC
 STR_P:	CALL	MIRROR
-	POP	AF		; fractional digits, Z set if zero
-	JR	Z,STR_I
-	LD	A,"."
-	RST	$10
-STR_I:	POP	DE		; start pointer
-	LD	HL,(K_CUR)
-	AND	A
-	SBC	HL,DE
-	LD	B,H
-	LD	C,L
-	POP	HL		; restore channel
-	PUSH	BC
-	PUSH	DE
-	RST	$28
-	DEFW	L1615		; channel flags
 	POP	DE
 	POP	BC
 S_STR_END:
