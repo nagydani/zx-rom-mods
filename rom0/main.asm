@@ -220,7 +220,8 @@ NOCLSL:	CP	$A5		; USR "V" +
 	JR	C,K_INB
 	BIT	1,(IY+$07)	; mode G?
 	JR	Z,K_INB
-	ADD	A,$100 - $A4
+	ADD	A,$100 - $A4	; transpose to 1..5
+	RES	1,(IY+$07)	; go back to mode C/L
 K_INR:	POP	IX
 	JP	SWAP
 K_INB:	CP	$20
