@@ -186,25 +186,98 @@ F_SCAN:	LD	HL,10
 	LD	L,A
 	JP	(HL)
 
-; TODO: ugly hack, write proper, fast drivers
-K_IN:	BIT	3,(IY+$02)
-	CALL	NZ,ED_COPY
-	LD	HL,(CHANS)
-	LD	DE,(CURCHL)
-	PUSH	DE
-	LD	(CURCHL),HL
-	RST	$28
-	DEFW	L15E6		; INPUT-AD
-K_INB:	JR	NC,KS_RET
-	BIT	1,(IY+$07)
-	JR	Z,KS_RET
-	CP	$A5
-	JR	C,KS_RET
-	RES	1,(IY+$07)
-	SUB	$A4
-	SCF
-	JR	KS_RET
+K_IN:	PUSH	IX
+	LD	IX,(CURCHL)
+	BIT	0,(IX+5)
+	JR	Z,K_IN0
 
+	LD	A,(K_DATA)
+	RES	0,(IX+5)
+	SCF
+	JR	K_INR
+
+K_IN0:	BIT	3,(IY+$02)
+	CALL	NZ,ED_COPY
+	AND	A
+	BIT	5,(IY+$01)
+	JR	Z,K_INR		; no key pressed
+	LD	HL,$00C8	; key click pitch
+	LD	D,H
+	LD	A,(PIP)		; duration
+	OR	A
+	JR	Z,NOPIP
+	RST	$28
+	DEFW	BEEP_PIP
+NOPIP:	LD	A,(LAST_K)	; pressed keycode
+	RES	5,(IY+$01)	; fetched from buffer
+	BIT	5,(IY+$02)
+	JR	Z,NOCLSL
+	PUSH	AF
+	RST	$28
+	DEFW	L0D6E		; CLS-LOWER
+	POP	AF
+NOCLSL:	CP	$A5		; USR "V" +
+	JR	C,K_INB
+	BIT	1,(IY+$07)	; mode G?
+	JR	Z,K_INB
+	ADD	A,$100 - $A4
+K_INR:	POP	IX
+	JP	SWAP
+K_INB:	CP	$20
+	CCF
+	JR	C,K_INR		; regular key pressed
+	CP	$10
+	JR	NC,KEY_CONTR0
+	CP	$06
+	JR	NC,KEY_M_CL0
+
+	LD	B,A
+	AND	$01
+	LD	C,A
+	LD	A,B
+	RRA
+	ADD	A,$12
+	JR	KEY_DATA0
+
+KEY_M_CL0:
+	JR	NZ,KEY_MODE0
+	LD	HL,FLAGS2
+	LD	A,$08
+	XOR	(HL)
+	LD	(HL),A		; toggle CAPS LOCK
+	JR	KEY_FLAG0
+
+KEY_MODE0:
+	CP	$0E
+	JR	C,K_INR
+	SUB	$0D
+	LD	HL,MODE
+	CP	(HL)
+	LD	(HL),A
+	JR	NZ,KEY_FLAG0
+	LD	(HL),$00
+
+KEY_FLAG0:
+	SET	3,(IY+2)
+	CP	A
+	JR	K_INR
+
+KEY_CONTR0:
+	LD	B,A
+	AND	$07
+	LD	C,A
+	LD	A,$10
+	BIT	3,B
+	JR	NZ,KEY_DATA0
+	INC	A
+KEY_DATA0:
+	LD	IX,(CURCHL)
+	LD	(IY-$2D),C
+	SET	0,(IX+5)
+	SCF
+	JR	K_INR
+
+; TODO: ugly hack, write proper, fast drivers
 K_OUT:	LD	HL,(CHANS)
 	JR	KS_OUT
 S_OUT:	LD	HL,(CHANS)
