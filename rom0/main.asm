@@ -34,8 +34,6 @@ RST20:	CALL	CH_ADD_1
 RST28:	EX	(SP),HL
 	PUSH	AF
 	LD	A,(HL)
-	INC	HL
-	INC	HL
 	JP	CALL_ROM1
 	DEFS	$30 - $
 
@@ -59,17 +57,19 @@ RST38:	PUSH	AF
 	JR	PAGEIRQ
 
 CALL_ROM1:
-	LD	(RETADDR),HL
-	DEC	HL
-	LD	H,(HL)
-	LD	L,A
+	LD	(TARGET),A
+	INC	HL
+	LD	A,(HL)
+	LD	(TARGET+1),A	; target address in TARGET
 	POP	AF
-	LD	(TARGET),HL
-	LD	HL,YOUNGER
-	EX	(SP),HL
+	INC	HL
+	EX	(SP),HL		; return address on stack
+	PUSH	HL
+	LD	HL,SWAP
+	EX	(SP),HL		; return address, SWAP on stack
 	PUSH	HL
 	LD	HL,(TARGET)
-	EX	(SP),HL
+	EX	(SP),HL		; return address, SWAP, target address on stack
 	JP	SWAP
 
 	DEFS	$66 - $
@@ -113,12 +113,6 @@ IRQSWAP:LD	BC,$7FFD
 ;;;	EI
 	POP	BC
 	POP	AF
-	RET
-
-YOUNGER:CALL	SWAP
-	PUSH	HL
-	LD	HL,(RETADDR)
-	EX	(SP),HL
 	RET
 
 RAMNMI:	DI
@@ -216,11 +210,22 @@ NOPIP:	LD	A,(LAST_K)	; pressed keycode
 	RST	$28
 	DEFW	L0D6E		; CLS-LOWER
 	POP	AF
-NOCLSL:	CP	$A5		; USR "V" +
+NOCLSL:	; TODO: EDITOR goes haywire about codes between $18 and $1F
+;	CP	$88
+;	JR	C,K_INB
+;	CP	$90
+;	JR	NC,K_INW
+;	LD	BC,$7FFE
+;	IN	B,(C)
+;	BIT	1,B		; check Symbol Shift
+;	JR	NZ,K_INR
+;	ADD	A,$100 - $70	; transpose to $18..$1F, set CF
+;	JR	K_INR
+K_INW:	CP	$A5		; USR "V" +
 	JR	C,K_INB
 	BIT	1,(IY+$07)	; mode G?
 	JR	Z,K_INB
-	ADD	A,$100 - $A4	; transpose to 1..5
+	ADD	A,$100 - $A4	; transpose to 1..5, set CF
 	RES	1,(IY+$07)	; go back to mode C/L
 K_INR:	POP	IX
 	JP	SWAP
@@ -307,6 +312,13 @@ KS_OUT:
 	JP	NZ,SWAP
 	OR	A
 	JR	Z,OUT_NIL
+	CP	$0E		; ASCII SO
+	JR	Z,R_ATTR	; restore attributes
+	CP	$20
+	CCF
+	JP	C,SWAP
+	CP	$18
+	JR	NC,PR_GR_0
 	CP	6
 	CCF
 	JP	C,SWAP
@@ -321,11 +333,14 @@ KS_OUT:
 	POP	DE
 	POP	BC
 	EXX
-OUT_NIL:INC	SP	; discard service routine address
+OUT_NIL:INC	SP		; discard service routine address
 	INC	SP
-	INC	SP	; discard SWAP address
+	INC	SP		; discard SWAP address
 	INC	SP
-	RET		; return to KS_RET
+	RET			; return to KS_RET
+R_ATTR:	RST	$28
+	DEFW	L0D4D		; TEMPS
+	JR	OUT_NIL
 KS_RET:	POP	HL
 	LD	(CURCHL),HL
 PR_OUT:
@@ -336,9 +351,61 @@ NX_OUT:
 NX_IN:
 	JP	SWAP		; Empty plug
 
-ED_COPY:RST	$28
+PR_GR_0:LD	C,A
+	AND	$06
+	LD	E,A
+	LD	D,0
+	LD	HL,GR_TAB
+	ADD	HL,DE
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	LD	HL,MEMBOT
+	LD	B,8
+	RR	C
+	JR	C,PR_GR_R
+PR_GR_L:LD	(HL),E
+	INC	L
+	RL	D
+	RL	E
+	DJNZ	PR_GR_L
+	JR	PR_GR_E
+PR_GR_R:RR	E
+	RR	D
+	LD	(HL),D
+	INC	L
+	DJNZ	PR_GR_R
+PR_GR_E:RST	$28
+	DEFW	X0B30		; generated graphics in PO_ANY
+	RST	$28
+	DEFW	L0ADC		; PO-STORE
+	JR	OUT_NIL
+
+GR_TAB:	DEFB	$00, $FF
+	DEFB	$FF, $00
+	DEFB	$F0, $00
+	DEFB	$00, $0F
+
+ED_COPY:BIT	5,(IY+$37)	; FLAGX
+	JR	NZ,EDC_INP
+	LD	HL,(ECHO_E)
+	PUSH	HL
+	LD	DE,EDITOR_HEADER
+	CALL	MESSAGE
+	POP	HL
+	LD	(ECHO_E),HL
+EDC_INP:RST	$28
 	DEFW	L111D		; ED_COPY
 	RET
+
+EDITOR_HEADER:
+	DEFB	$16,$00,$00,$13,$01,$10,$07,$11,$00
+	DEFM	"128 BASIC"
+; TODO: this should work
+;;	DEFB	$17,$FA,$FF,$10,$02,$18,$11,$06,$1A
+	DEFB	$17,$1A,$00,$10,$02,$18,$11,$06,$1A
+	DEFB	$10,$04,$18,$11,$05,$1A,$10,$00,$18
+	DEFB	$14,$01,$A0
 
 R_LINK:	DEFB	$00, $03, $00, $07, $01, $00, $04, $FF
 
