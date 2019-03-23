@@ -210,17 +210,16 @@ NOPIP:	LD	A,(LAST_K)	; pressed keycode
 	RST	$28
 	DEFW	L0D6E		; CLS-LOWER
 	POP	AF
-NOCLSL:	; TODO: EDITOR goes haywire about codes between $18 and $1F
-;	CP	$88
-;	JR	C,K_INB
-;	CP	$90
-;	JR	NC,K_INW
-;	LD	BC,$7FFE
-;	IN	B,(C)
-;	BIT	1,B		; check Symbol Shift
-;	JR	NZ,K_INR
-;	ADD	A,$100 - $70	; transpose to $18..$1F, set CF
-;	JR	K_INR
+NOCLSL:	CP	$88
+	JR	C,K_INB
+	CP	$90
+	JR	NC,K_INW
+	LD	BC,$7FFE
+	IN	B,(C)
+	BIT	1,B		; check Symbol Shift
+	JR	NZ,K_INR
+	ADD	A,$100 - $70	; transpose to $18..$1F, set CF
+	JR	K_INR
 K_INW:	CP	$A5		; USR "V" +
 	JR	C,K_INB
 	BIT	1,(IY+$07)	; mode G?
