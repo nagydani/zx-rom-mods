@@ -514,7 +514,7 @@ L0095:  DEFB    ('?')+$80
         DEFM    "OPEN "
         DEFB    ('#')+$80
         DEFM    "CLOSE "
-        DEFB    ('#')+$80
+XTOKEN: DEFB    ('#')+$80
         DEFM    "MERG"
         DEFB    ('E')+$80
         DEFM    "VERIF"
@@ -3174,8 +3174,8 @@ L0A11:  DEFB    PO_COMMA - $	; 06d offset $4E to Address: PO-COMMA
         DEFB    PO_QUEST - $	; 11d offset $53 to Address: PO-QUEST
         DEFB    PO_QUEST - $	; 12d offset $52 to Address: PO-QUEST
         DEFB    PO_ENTER - $    ; 13d offset $37 to Address: PO-ENTER
-        DEFB    PO_QUEST - $	; 14d offset $4F to Address: PO-QUEST
-        DEFB    PO_1_OPER - $	; 15d offset $50 to Address: PO-1-OPER
+        DEFB    PO_1_OPER - $	; 14d offset $50 to Address: PO-1-OPER
+        DEFB    PO_QUEST - $	; 15d offset $4F to Address: PO-QUEST
         DEFB    PO_1_OPER - $	; 16d offset $5F to Address: PO-1-OPER
         DEFB    PO_1_OPER - $	; 17d offset $5E to Address: PO-1-OPER
         DEFB    PO_1_OPER - $	; 18d offset $5D to Address: PO-1-OPER
@@ -7541,7 +7541,7 @@ OUT_C_1:LD      HL,FLAGS        ; Address FLAGS
 
 OUT_FLASH:
 	PUSH	AF
-	LD	A,$0F		; ASCII SI
+	LD	A,$0E		; ASCII SO
 	RST	$10
 	POP	AF
 	RST	$10
@@ -19685,7 +19685,7 @@ DOMOD:	LD	(SEED),HL
 
 ; Consider flashing character output (14 bytes)
 CO_TEMP_5A:
-	CP	$0F		; ASCII SI, FLASHing character
+	CP	$0E		; ASCII SO, FLASHing character
 	JR	Z,FLASH_CHAR
 	SUB	A,$11
 	ADC	A,0
