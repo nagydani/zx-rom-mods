@@ -172,10 +172,11 @@ L0020:  CALL    L0074           ; routine CH-ADD+1 fetches the next immediate
 L0028:  JP      L335B           ; jump forward to the CALCULATE routine.
 
 ; ---
-;;; BUGFIX: extensible SKIP-OVER
-SKIPS:	SCF
-	LD	(CH_ADD),HL
-	RET
+;;; BUGFIX: extensible instruction set
+REPORT_C_EXTRA:
+	CALL	NOPAGE
+RUNNER:	RST	$08
+	DEFB	$0B
 ;;;	DEFB    $FF, $FF, $FF   ; spare - note that on the ZX81, space being a
 ;;;	DEFB    $FF, $FF        ; little cramped, these same locations were
 				; used for the five-byte end-calc literal.
@@ -384,9 +385,7 @@ L007D:  CP      $21             ; test if higher than space.
                                 ; carry set.
 
         CP      $10             ; test if 0-15d
-;;; BUGFIX: extensibility
-	JP	C,NOPAGE
-;;;     RET     C               ; return, if so, with carry set.
+	RET     C               ; return, if so, with carry set.
 
         CP      $18             ; test if 24-32d
         CCF                     ; complement carry flag.
@@ -398,9 +397,7 @@ L007D:  CP      $21             ; test if higher than space.
                                 ; to be stepped over.
 
         CP      $16             ; controls 22d ('at') and 23d ('tab') have two.
-;;; BUGFIX: extensibility
-	JR	C,SKIPS
-;;;	JR      C,L0090         ; forward to SKIPS with ink, paper, flash,
+	JR      C,L0090         ; forward to SKIPS with ink, paper, flash,
                                 ; bright, inverse or over controls.
                                 ; Note. the high byte of tab is for RS232 only.
                                 ; it has no relevance on this machine.
@@ -408,12 +405,9 @@ L007D:  CP      $21             ; test if higher than space.
         INC     HL              ; step over the second character of 'at'/'tab'.
 
 ;; SKIPS
-;;; BUGFIX: extensibility
-	JR	SKIPS
-	DEFS	$0095 - $
-;;;L0090:  SCF                     ; set the carry flag
-;;;        LD      (CH_ADD),HL      ; update the CH_ADD system variable.
-;;;        RET                     ; return with carry set.
+L0090:  SCF                     ; set the carry flag
+        LD      (CH_ADD),HL	; update the CH_ADD system variable.
+        RET                     ; return with carry set.
 
 
 ; ------------------
@@ -5981,6 +5975,7 @@ L1313:  PUSH    AF              ; save the error number.
         LD      (DEFADD),HL      ; blank DEFADD to signal that no defined
                                 ; function is currently being evaluated.
 ;;; BUGFIX: no need to restore stream #0
+;; TODO: perhaps copy from stream #FD?
 ;;;       LD      HL,$0001        ; explicit - inc hl would do.
 ;;;       LD      (STRM00),HL      ; ensure STRMS-00 is keyboard.
 
@@ -8462,9 +8457,11 @@ L1B29:  CALL    L16BF           ; routine SET-WORK clears workspace etc.
         RST     20H             ; NEXT-CHAR to advance pointer
         LD      A,C             ; restore current character
         SUB     $CE             ; subtract 'DEF FN' - first command
-        JP      C,L1C8A         ; jump to REPORT-C if less than a command
-                                ; raising
-                                ; 'Nonsense in BASIC'
+;;; BUGFIX: make command set extensible
+	JP	C,REPORT_C_EXTRA
+;;;     JP      C,L1C8A         ; jump to REPORT-C if less than a command
+;;;                             ; raising
+;;;                             ; 'Nonsense in BASIC'
 
         LD      C,A             ; put the valid command code back in C.
                                 ; register B is zero.

@@ -229,11 +229,12 @@ K_INW:
 	BIT	1,(IY+$07)	; mode G?
 	JR	Z,K_INB
 	ADD	A,$100 - $A4	; transpose to 1..5, set CF
+K_ING0:	RES	1,(IY+$07)
 K_INR:	POP	IX
 	JP	SWAP
 K_INB:	CP	$20
 	CCF
-	JR	C,K_INR		; regular key pressed
+	JR	C,K_ING0	; regular key pressed
 	CP	$0D
 	JR	Z,K_ENT
 	CP	$10
@@ -430,14 +431,28 @@ K_OUT3:
 K_TOKEN:SCF
 	POP	IX
 
-K_OUT0:	JR	NC,K_IOCT
+K_OUT0:	LD	HL,(CHANS)
+	JR	KS_OUT0
+
+S_OUT:	JR	C,S_OUT0
+	OR	A
+	JR	NZ,S_OUT0
+	SET	7,(IY+$30)	; first token is an instruction
+S_OUT0:	LD	HL,(CHANS)
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL
+KS_OUT0:JR	NC,KS_OUT
 	CP	$20		; controls and space
-	JR	C,K_IOCT
+	JR	C,KS_OUT
+	PUSH	HL
 	SCF
-	JR	Z,K_OUTO
+	JR	Z,KS_OUTO
 	RST	$28
 	DEFW	L2D1B		; NUMERIC ?
-	JR	NC,K_NUM
+	JR	NC,KS_NUM
 	LD	E,A
 	LD	HL,FLAGS2
 	LD	A,(HL)
@@ -452,21 +467,22 @@ K_OUT0:	JR	NC,K_IOCT
 	JR	NZ,NTHEN
 	
 NTHEN:	CP	$80
-	JR	C,K_OUTO
+	JR	C,KS_OUTO
 	LD	HL,(CURCHL)
 	LD	DE,5
 	ADD	HL,DE
 	CP	FREE_T		; DEF FN / FREE
 	BIT	7,(HL)
-	JR	NZ,K_OUTQ
+	JR	NZ,KS_OUTQ
 	BIT	2,(IY+$30)	; printing in quotes?
-	JR	NZ,K_OUTQ
+	JR	NZ,KS_OUTQ
 	BIT	5,(IY+$30)	; is the next token an instruction?
-	JR	NZ,K_OUTK
-K_OUTQ:	CCF
-K_OUTK:	JR	NC,K_OUTO	; old tokens
+	JR	NZ,KS_OUTK
+KS_OUTQ:CCF
+KS_OUTK:JR	NC,KS_OUTO	; old tokens
+	POP	HL		; discard legacy service routine address
 	SUB	A,FREE_T	; instruction?
-	JR	C,K_INSTR	; if so, jump
+	JR	C,INSTR		; if so, jump
 ; print function token
 	EXX
 	PUSH	BC
@@ -476,87 +492,21 @@ K_OUTK:	JR	NC,K_OUTO	; old tokens
 	INC	B
 	LD	DE,TOKENS0
 	CALL	TOKEN
-	JR	NZ,K_TOKR	; found it
+	JR	NZ,KS_TOKR	; found it
 	LD	DE,XTOKEN
 	LD	A,B
 	RST	$28
 	DEFW	L0C10 + 3	; PO-TOKENS + 3
-K_TOKR:	POP	HL
+KS_TOKR:POP	HL
 	POP	DE
 	POP	BC
 	EXX
 	JP	SWAP
 
-K_NUM:	RES	0,(IY+$01)	; do not suppress leading space
-K_OUTO:	SCF
-
-K_IOCT:	LD	HL,(CHANS)
-	JR	KS_OUT
-
-; print instruction token
-K_INSTR:SUB	$B3
-	EXX
-	PUSH	BC
-	PUSH	DE
-	PUSH	HL
-	LD	B,A
-	LD	HL,(FLAGS)
-	LD	H,(IY+$30)
-	PUSH	HL
-	LD	A," "
-	RR	L		; leading space?
-	CALL	NC,$0010
-	LD	DE,TOKENS1
-	CALL	TOKEN
-	LD	A," "
-	RST	$10
+KS_NUM:	RES	0,(IY+$01)	; do not suppress leading space
+KS_OUTO:SCF
 	POP	HL
-	LD	(IY+$30),H
-	LD	A,L
-	OR	$01		; supress next
-	LD	(FLAGS),A
-	JR	K_TOKR
-
-PR_GR_0:LD	C,A
-	AND	$06
-	LD	E,A
-	LD	D,0
-	LD	HL,GR_TAB
-	ADD	HL,DE
-	LD	E,(HL)
-	INC	HL
-	LD	D,(HL)
-	LD	HL,MEMBOT
-	LD	B,8
-	RR	C
-	JR	C,PR_GR_R
-PR_GR_L:LD	(HL),E
-	INC	L
-	RL	D
-	RL	E
-	DJNZ	PR_GR_L
-	JR	PR_GR_E
-PR_GR_R:RR	E
-	RR	D
-	LD	(HL),D
-	INC	L
-	DJNZ	PR_GR_R
-PR_GR_E:RST	$28
-	DEFW	X0B30		; generated graphics in PO_ANY
-	RST	$28
-	DEFW	L0ADC		; PO-STORE
-	JP	SWAP
-
-S_OUT:	JR	NC,S_OUT0
-	CP	$20
-	JR	NC,K_OUTO
-
-S_OUT0:	LD	HL,(CHANS)
-	INC	HL
-	INC	HL
-	INC	HL
-	INC	HL
-	INC	HL
+	JR	KS_OUT
 
 KS_OUT:	LD	DE,(CURCHL)
 	LD	(TARGET),DE
@@ -610,10 +560,64 @@ NX_OUT:
 NX_IN:
 	JP	SWAP
 
+; print instruction token
+INSTR:	SUB	$B3
+	EXX
+	PUSH	BC
+	PUSH	DE
+	PUSH	HL
+	LD	B,A
+	LD	HL,(FLAGS)
+	LD	H,(IY+$30)
+	PUSH	HL
+	LD	A," "
+	RR	L		; leading space?
+	CALL	NC,$0010
+	LD	DE,TOKENS1
+	CALL	TOKEN
+	LD	A," "
+	RST	$10
+	POP	HL
+	LD	(IY+$30),H
+	LD	A,L
+	OR	$01		; supress next
+	LD	(FLAGS),A
+	JP	KS_TOKR
+
 GR_TAB:	DEFB	$00, $FF
 	DEFB	$FF, $00
 	DEFB	$F0, $00
 	DEFB	$00, $0F
+
+PR_GR_0:LD	C,A
+	AND	$06
+	LD	E,A
+	LD	D,0
+	LD	HL,GR_TAB
+	ADD	HL,DE
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	LD	HL,MEMBOT
+	LD	B,8
+	RR	C
+	JR	C,PR_GR_R
+PR_GR_L:LD	(HL),E
+	INC	L
+	RL	D
+	RL	E
+	DJNZ	PR_GR_L
+	JR	PR_GR_E
+PR_GR_R:RR	E
+	RR	D
+	LD	(HL),D
+	INC	L
+	DJNZ	PR_GR_R
+PR_GR_E:RST	$28
+	DEFW	X0B30		; generated graphics in PO_ANY
+	RST	$28
+	DEFW	L0ADC		; PO-STORE
+	JP	SWAP
 
 ED_COPY:LD	HL,(CURCHL)
 	LD	DE,5
@@ -836,11 +840,11 @@ DISPAT:	BIT	4,(IY+1)
 	POP	AF
 	EX	(SP),HL
 	PUSH	BC
-	LD	BC,SKIPPER
+	LD	BC,RUNNER
 	AND	A
 	SBC	HL,BC
 	ADD	HL,BC
-	JR	Z,SKIP_CONT
+	JR	Z,RUN_CONT
 	LD	BC,SCANNER
 	AND	A
 	SBC	HL,BC
@@ -855,17 +859,44 @@ DISPAT:	BIT	4,(IY+1)
 	JR	Z,OPEN_CONT
 	JP	NEW128
 
-SKIP_CONT:
+RUN_CONT:
 	POP	BC
-	EX	(SP),HL
-;; Do not skip codes 1..5
-;;	CP	1
-;;	JP	C,SWAP
-;;	CP	6
-;;	CCF
-; Skip everything
-	SCF
-	JP	SWAP
+	POP	HL		; discard return to REPORT C
+	LD	C,A
+	DEC	B		; B becomes FF here
+	LD	HL,P_END
+	ADD	HL,BC
+	LD	C,(HL)
+	INC	B		; B becomes 0 again
+	ADD	HL,BC
+	JR	GET_PARAM
+SCAN_LOOP:
+	LD	HL,(T_ADDR)
+GET_PARAM:
+	LD	A,(HL)
+	INC	HL
+	LD	(T_ADDR),HL
+	LD	BC,SCAN_LOOP
+	PUSH	BC
+	LD	C,A
+	CP	$20
+	JR	NC,SEPARATOR
+	LD	HL,CMDCLASS2
+	LD	B,$00
+	ADD	HL,BC
+	LD	C,(HL)
+	ADD	HL,BC
+	PUSH	HL
+	RST	$18
+	DEC	B
+	RET
+SEPARATOR:
+	RST	$18
+	CP	C
+	JP	NZ,ERROR_C
+	RST	$20
+	RET
+
 OPEN_CONT:
 	LD	HL,OPENSTRM2
 	JR	INDEX_CONT
@@ -1814,6 +1845,8 @@ P_DB2L:	RL	E
 	AND	$0F
 	RST	$10
 	RET
+
+	INCLUDE	"instructions.asm"
 
 C256:	DEFB	$00, $00, $00, $01, $00
 
