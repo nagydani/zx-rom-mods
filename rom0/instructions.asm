@@ -76,11 +76,12 @@
 P_END:	EQU	$
 
 ; No parameters, no action
-P_ENDIF:
-	DEFB	$00
+P_ENDIF:DEFB	$00
 	DEFW	ENDIF
 
-P_ELSE:
+P_ELSE:	DEFB	$05
+	DEFW	ELSE
+
 P_PLAY:
 ; unimplemented instruction, accepted w/o parameters, but not executed
 P_PLUG:
@@ -190,11 +191,199 @@ CLASS2_07:
 	; something useful
 
 ; instruction routines
-ENDIF:	EQU	SWAP
+ENDIF:	RES	6,(IY+$37)
+	JP	SWAP
 
-ELSE:
+THENLESS:
+	RST	$28
+        DEFW	L35BF	; STK-PNTRS
+	CALL	STEPBACK
+	EX	DE,HL
+	LD	(STKEND),HL
+	XOR	A
+	CP	(HL)
+SWAPNZ:	JP	NZ,SWAP		; Upon true condition, simply continue
+	INC	HL
+	INC	HL
+	CP	(HL)
+	JR	NZ,SWAPNZ
+	INC	HL
+	CP	(HL)
+	JR	NZ,SWAPNZ
+
+NESTING:EQU	TSTACK - 2
+NEST2:	EQU	NESTING + 1
+
+; Upon false condition start scanning for END IF, ELSE or end of code
+	LD	BC,(NXTLIN)
+	LD	DE,T_ENDIF_ELSE
+	CALL	LOOK_PROG2
+	LD	(NXTLIN),BC
+	JR	C,ERROR_C_I	; TODO: missing END IF
+	RST	$20
+	JP	SWAP
+
+ELSE:	POP	BC		; discard STMT-RET
+	BIT	7,(IY+$01)
+	JR	Z,ELSE_1
+	BIT	6,(IY+$37)
+	RES	6,(IY+$37)
+	JR	NZ,ELSE_1
+	RST	$18
+	CP	$0D
+	JR	Z,ELSE_3
+	LD	BC,L1BB3	; LINE-END
+	JR	ELSE_2
+ELSE_1:	LD	BC,L1B29	; STMT-L-1
+ELSE_2:	PUSH	BC
+	JP	SWAP
+ELSE_3:	PUSH	BC		; put back STMT-RET
+	LD	BC,(NXTLIN)
+	LD	DE,T_ENDIF
+	CALL	LOOK_PROG2
+	LD	(NXTLIN),BC
+	JR	C,ERROR_C_I	; TODO: missing END IF
+	RST	$20
+	JP	SWAP
+
 PLAY:
 ; unimplemented instruction, reports error, if executed
 PLUG:	BIT	7,(IY+$01)
 	JP	Z,SWAP
-	JR	ERROR_C_I
+ERROR_C_J:
+	JP	ERROR_C
+
+T_ENDIF_ELSE:
+	DEFB	$CB		; ELSE
+	DEFB	F_ELSE - $
+T_ENDIF:DEFB	$C5		; ENDIF
+	DEFB	F_ENDIF - $
+	DEFB	0		; end of table
+
+F_ELSE:	SET	6,(IY+$37)	; let this else block execute
+F_ENDIF:LD	A,(NESTING)
+	OR	A
+	JR	NZ,EACH_COMEBACK
+	POP	BC
+	EX	DE,HL
+	POP	DE
+	RET
+
+; Very similar to LOOK-PROG (L1D86), but its parameter is DE
+; containing decision table address
+
+LOOK_PROG2:
+	LD	HL,(PPC)
+	LD	(NEWPPC),HL
+	LD	A,(SUBPPC)
+	LD	(NSPPC),A
+	LD	BC,$0001
+	LD	(NESTING),BC
+	RST	$18
+	CP	":"
+	JR	Z,LOOK_P2
+LOOK_P1:INC	HL
+	LD	A,(HL)
+	AND	$C0
+	SCF
+	RET	NZ
+	LD	B,(HL)
+	INC	HL
+	LD	C,(HL)
+	LD	(NEWPPC),BC
+	INC	HL
+	LD	C,(HL)
+	INC	HL
+	LD	B,(HL)
+	PUSH	HL
+	ADD	HL,BC
+	LD	B,H
+	LD	C,L
+	POP	HL
+	XOR	A
+	LD	(NSPPC),A
+LOOK_P2:PUSH	BC
+
+; Inlined EACH-STMT
+	LD	(CH_ADD),HL
+	LD	BC,$0000
+EACH_1:	INC	(IY+$0A)	; NSPPC
+	JP	M,ERROR_C	; TODO: too many statements
+	RST	$20
+	CP	$FA		; IF
+	JR	NZ,E_NIF
+	INC	(IY+NESTING-ERR_NR)
+	JR	Z,ERROR_C_J	; TODO: nesting too deep
+E_NIF:	CP	$C5		; END IF
+	JR	NZ,E_NEIF
+	EX	AF,AF'
+	LD	A,(NESTING)
+	OR	A
+	JR	Z,ERROR_C_J	; TODO: bad nesting
+	DEC	A
+	LD	(NESTING),A
+	EX	AF,AF'
+E_NEIF:	CP	$CB		; ELSE
+	JR	NZ,E_NELSE
+	PUSH	HL
+	RST	$20		; look ahead
+	POP	HL
+	LD	(CH_ADD),HL
+	CP	$0D
+	JR	Z,E_NELSE
+	INC	(IY+NEST2-ERR_NR)
+E_NELSE:PUSH	DE
+	EX	DE,HL
+	PUSH	BC
+	LD	C,A
+	CALL	INDEXER
+	JR	NC,EACH_COMEBACK
+	LD	C,(HL)
+	ADD	HL,BC
+	POP	BC
+	JP	(HL)		; jump to appropriate routine
+EACH_COMEBACK:
+	POP	BC
+	EX	DE,HL
+EACH_COMEBACK2:
+	POP	DE
+EACH_2:	INC	HL
+	LD	A,(HL)
+EACH_3:	CALL	SKIP_NUM
+	LD	(CH_ADD),HL
+	CP	"\""
+	JR	NZ,EACH_4
+	DEC	C
+EACH_4:	CP	":"
+	JR	Z,EACH_5
+	CP	$CB		; THEN
+	JR	NZ,EACH_6
+	INC	(IY+NEST2-ERR_NR)
+EACH_5:	BIT	0,C
+	JR	Z,EACH_1
+EACH_6:	CP	$0D
+	JR	NZ,EACH_2
+	LD	A,(NESTING)
+	SUB	A,(IY+NEST2-ERR_NR)
+	LD	(NESTING),A
+	XOR	A
+	LD	(NEST2),A
+EACH_7:	INC	(IY+$0A)
+	SCF
+
+EACH_E:	POP	BC
+	RET	NC
+	JP	LOOK_P1
+
+SKIP_NUM:
+	CP	$0E
+	RET	NZ
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL
+	LD	A,(HL)
+	RET
+

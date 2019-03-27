@@ -346,7 +346,7 @@ K_OUT:	JR	C,K_OUTP
 K_OUT00:JP	K_OUT0
 
 K_OUTP:	BIT	5,(IY+$37)	; FLAGX basic editor
-	JR	NZ,K_OUT00
+	JR	NZ,K_OUT00	; jump forward for input mode
 
 	PUSH	IX
 	LD	IX,(CURCHL)
@@ -444,6 +444,7 @@ S_OUT0:	LD	HL,(CHANS)
 	INC	HL
 	INC	HL
 	INC	HL
+	jr	KS_OUT		
 KS_OUT0:JR	NC,KS_OUT
 	CP	$20		; controls and space
 	JR	C,KS_OUT
@@ -506,7 +507,6 @@ KS_TOKR:POP	HL
 KS_NUM:	RES	0,(IY+$01)	; do not suppress leading space
 KS_OUTO:SCF
 	POP	HL
-	JR	KS_OUT
 
 KS_OUT:	LD	DE,(CURCHL)
 	LD	(TARGET),DE
@@ -862,8 +862,10 @@ DISPAT:	BIT	4,(IY+1)
 RUN_CONT:
 	POP	BC
 	POP	HL		; discard return to REPORT C
-	LD	C,A
+	INC	B		; B=$00 for instruction mismatch and B=$1B for separator mismatch
+	DJNZ	SEP_MISM
 	DEC	B		; B becomes FF here
+	LD	C,A
 	LD	HL,P_END
 	ADD	HL,BC
 	LD	C,(HL)
@@ -893,9 +895,21 @@ GET_PARAM:
 SEPARATOR:
 	RST	$18
 	CP	C
+ERROR_C_NZ:
 	JP	NZ,ERROR_C
 	RST	$20
 	RET
+SEP_MISM:			; only the THEN-less IF is accepted
+	CP	$0D
+	JR	Z,C_THEN
+	CP	":"
+	JR	NZ,ERROR_C_NZ
+C_THEN:	LD	A,$CB		; THEN
+	CP	C
+	JR	NZ,ERROR_C_NZ
+	BIT	7,(IY+$01)	; checking sytax?
+	JP	Z,SWAP		; if so, we're done here
+	JP	THENLESS
 
 OPEN_CONT:
 	LD	HL,OPENSTRM2

@@ -8524,8 +8524,10 @@ L1B55:  LD      A,(HL)          ; pick up the parameter.
 ;; SEPARATOR
 L1B6F:  RST     18H             ; GET-CHAR
         CP      C               ; does it match the character in C ?
-        JP      NZ,L1C8A        ; jump forward to REPORT-C if not
-                                ; 'Nonsense in BASIC'.
+;;; BUGFIX: extensibility added here for different separator syntax
+	JP	NZ,REPORT_C_EXTRA
+;;;     JP      NZ,L1C8A        ; jump forward to REPORT-C if not
+;;;                             ; 'Nonsense in BASIC'.
 
         RST     20H             ; NEXT-CHAR advance to next character
         RET                     ; return.
