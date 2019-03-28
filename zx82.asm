@@ -3368,7 +3368,7 @@ PO_CONT:JP	NC,CH_RESET
                                 ; subsequent character
         LD      D,A             ; save current character
         LD      A,L             ; the stored control code
-        CP      $16             ; was it INK to OVER (1 operand) ?
+XPOCONT:CP      $16             ; was it INK to OVER (1 operand) ?
         JP      C,L2211         ; to CO-TEMP-5
 
         JR      NZ,PO_TAB	; to PO-TAB if not 22d i.e. 23d TAB.
