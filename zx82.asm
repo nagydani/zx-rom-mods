@@ -9087,7 +9087,9 @@ L1CF0:  POP     BC              ; drop return address - STMT-RET
 
         EX      DE,HL           ; make HL point to deleted value
         CALL    L34E9           ; routine TEST-ZERO
-        JP      C,L1BB3         ; jump to LINE-END if FALSE (0)
+;;; BUGFIX: signal result in bit 6 of FLAGX
+	JP	C2FLAGX6
+;;;	JP      C,L1BB3         ; jump to LINE-END if FALSE (0)
 
 ;; IF-1
 L1D00:  JP      L1B29           ; to STMT-L-1, if true (1) to execute command
@@ -19779,6 +19781,14 @@ S_COPY:	LD	A,3
 	INC	A		; A=1, CF=0
 	JP	L15F2		; output service routine
 
+; Branching of IF statement, with result recorded (16 bytes)
+C2FLAGX6:
+	JR	C,SETFX6
+	RES	6,(IY+$37)
+	JP	L1B29		; SSTMT-L-1
+SETFX6:	SET	6,(IY+$37)
+	JP	L1BB3		; LINE-END
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
@@ -19822,9 +19832,9 @@ S_COPY:	LD	A,3
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF;	, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
