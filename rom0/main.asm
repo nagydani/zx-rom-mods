@@ -864,6 +864,7 @@ RUN_CONT:
 	POP	HL		; discard return to REPORT C
 	INC	B		; B=$00 for instruction mismatch and B=$1B for separator mismatch
 	DJNZ	SEP_MISM
+
 	DEC	B		; B becomes FF here
 	LD	C,A
 	LD	HL,P_END
@@ -871,7 +872,9 @@ RUN_CONT:
 	LD	C,(HL)
 	INC	B		; B becomes 0 again
 	ADD	HL,BC
-	JR	GET_PARAM
+	CP	$B2		; TOKEN $80
+	JR	NC,GET_PARAM	; jump for tokens
+	JR	ERROR_C_NZ	; TODO: syntax error for other characters
 SCAN_LOOP:
 	LD	HL,(T_ADDR)
 GET_PARAM:
@@ -1197,6 +1200,10 @@ DPEEK_T:EQU	$D2
 CODE_T:	EQU	$AF
 STR_T:	EQU	$C1
 CHR_T:	EQU	$C2
+ENDIF_T:EQU	$C5
+ELSE_T:	EQU	$CB
+PLAY_T:	EQU	$A4
+IF_T:	EQU	$FA
 
 SCANFUNC2:
 	DEFB	MEM_T

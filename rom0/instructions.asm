@@ -195,6 +195,7 @@ ENDIF:	RES	6,(IY+$37)
 	JP	SWAP
 
 THENLESS:
+	RES	6,(IY+$37)	; signal true outcome
 	RST	$28
         DEFW	L35BF	; STK-PNTRS
 	CALL	STEPBACK
@@ -215,11 +216,13 @@ NESTING:EQU	TSTACK - 2
 NEST2:	EQU	NESTING + 1
 
 ; Upon false condition start scanning for END IF, ELSE or end of code
+	SET	6,(IY+$37)	; signal false outcome
 	LD	BC,(NXTLIN)
 	LD	DE,T_ENDIF_ELSE
 	CALL	LOOK_PROG2
 	LD	(NXTLIN),BC
 	JR	C,ERROR_C_I	; TODO: missing END IF
+	POP	BC		; discard SCAN-LOOP
 	RST	$20
 	JP	SWAP
 
@@ -231,7 +234,7 @@ ELSE:	POP	BC		; discard STMT-RET
 	JR	NZ,ELSE_1
 	RST	$18
 	CP	$0D
-	JR	Z,ELSE_3
+	JR	Z,ELSE_3	; multi-line ELSE block
 	LD	BC,L1BB3	; LINE-END
 	JR	ELSE_2
 ELSE_1:	LD	BC,L1B29	; STMT-L-1
@@ -242,7 +245,7 @@ ELSE_3:	PUSH	BC		; put back STMT-RET
 	LD	DE,T_ENDIF
 	CALL	LOOK_PROG2
 	LD	(NXTLIN),BC
-	JR	C,ERROR_C_I	; TODO: missing END IF
+	JR	C,ERROR_C_J	; TODO: missing END IF
 	RST	$20
 	JP	SWAP
 
@@ -253,32 +256,41 @@ PLUG:	BIT	7,(IY+$01)
 ERROR_C_J:
 	JP	ERROR_C
 
+; IF structure table
 T_ENDIF_ELSE:
-	DEFB	$CB		; ELSE
+	DEFB	ELSE_T
 	DEFB	F_ELSE - $
-T_ENDIF:DEFB	$C5		; ENDIF
+T_ENDIF:DEFB	ENDIF_T
 	DEFB	F_ENDIF - $
-	DEFB	0		; end of table
+	DEFB	IF_T
+	DEFB	F_IF - $
+	DEFB	0
 
-F_ELSE:	SET	6,(IY+$37)	; let this else block execute
+F_ELSE:	LD	A,(NESTING)
+	CP	1
+	JR	F_ELSEC
+
 F_ENDIF:LD	A,(NESTING)
 	OR	A
-	JR	NZ,EACH_COMEBACK
-	POP	BC
+	JR	Z,ERROR_C_J	; TODO: nesting error
+	DEC	A
+	LD	(NESTING),A
+F_ELSEC:JR	NZ,EACH_COMEBACK
 	EX	DE,HL
 	POP	DE
+	POP	BC
 	RET
 
-; Very similar to LOOK-PROG (L1D86), but its parameter is DE
-; containing decision table address
+; Very similar to LOOK-PROG (L1D86) but structured, with keyword behavior
+; defined by index table in DE
 
 LOOK_PROG2:
+	LD	HL,$0001
+	LD	(NESTING),HL
 	LD	HL,(PPC)
 	LD	(NEWPPC),HL
 	LD	A,(SUBPPC)
 	LD	(NSPPC),A
-	LD	BC,$0001
-	LD	(NESTING),BC
 	RST	$18
 	CP	":"
 	JR	Z,LOOK_P2
@@ -307,43 +319,19 @@ LOOK_P2:PUSH	BC
 ; Inlined EACH-STMT
 	LD	(CH_ADD),HL
 	LD	BC,$0000
-EACH_1:	INC	(IY+$0A)	; NSPPC
+EACH_1:	INC	(IY+NSPPC-ERR_NR)
 	JP	M,ERROR_C	; TODO: too many statements
 	RST	$20
-	CP	$FA		; IF
-	JR	NZ,E_NIF
-	INC	(IY+NESTING-ERR_NR)
-	JR	Z,ERROR_C_J	; TODO: nesting too deep
-E_NIF:	CP	$C5		; END IF
-	JR	NZ,E_NEIF
-	EX	AF,AF'
-	LD	A,(NESTING)
-	OR	A
-	JR	Z,ERROR_C_J	; TODO: bad nesting
-	DEC	A
-	LD	(NESTING),A
-	EX	AF,AF'
-E_NEIF:	CP	$CB		; ELSE
-	JR	NZ,E_NELSE
-	PUSH	HL
-	RST	$20		; look ahead
-	POP	HL
-	LD	(CH_ADD),HL
-	CP	$0D
-	JR	Z,E_NELSE
-	INC	(IY+NEST2-ERR_NR)
-E_NELSE:PUSH	DE
-	EX	DE,HL
-	PUSH	BC
 	LD	C,A
+	PUSH	DE
+	EX	DE,HL
 	CALL	INDEXER
 	JR	NC,EACH_COMEBACK
 	LD	C,(HL)
 	ADD	HL,BC
-	POP	BC
 	JP	(HL)		; jump to appropriate routine
+F_IF:	INC	(IY+NESTING-ERR_NR)
 EACH_COMEBACK:
-	POP	BC
 	EX	DE,HL
 EACH_COMEBACK2:
 	POP	DE
@@ -369,14 +357,11 @@ EACH_6:	CP	$0D
 	XOR	A
 	LD	(NEST2),A
 EACH_7:	INC	(IY+$0A)
-	SCF
-
-EACH_E:	POP	BC
-	RET	NC
+	POP	BC
 	JP	LOOK_P1
 
 SKIP_NUM:
-	CP	$0E
+	CP	$0
 	RET	NZ
 	INC	HL
 	INC	HL
