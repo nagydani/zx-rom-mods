@@ -9,7 +9,7 @@
 | 02 | ? | TBD
 | 03 | ? | TBD
 | 04 | ? | TBD
-| 05 | ? | TBD
+| 05 | RST | temporary attributes reset
 | 06 | comma | next tabulator position, with blanking
 | 07 | ? | TBD
 | 08 | BS, left | cursor one position to the left 
@@ -19,7 +19,7 @@
 | 0C | FF | clear screen
 | 0D | CR, enter | cursor to the first position of next row
 | 0E | blink | next character flashes
-| 0F | RST | temporary attributes reset
+| 0F | ? | TBD
 | 10 | ink | next byte selects foreground color
 | 11 | paper | next byte selects background color
 | 12 | flash | next byte selects flashing (0 off, 1 on)
@@ -136,9 +136,9 @@
 
 | hex | symbol
 |:---:|:------
-| 80 | ...
-| ... | ...
-| A4 | PLAY
+| A5 | ...
+| ... |
+| AD | PLAY
 | ... |
 | C5 | END IF
 | ... |

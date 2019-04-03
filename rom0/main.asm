@@ -150,6 +150,7 @@ K_TV:	DEFW	0
 S_STATE:DEFB	$00
 S_WIDTH:DEFB	$20
 S_TV:	DEFW	0
+C_SPCC:	DEFB	1
 
 INIT_5B00_L:	EQU	$ - $5B00
 
@@ -187,378 +188,8 @@ F_SCAN:	LD	HL,10
 	LD	L,A
 	JP	(HL)
 
-K_IN:	PUSH	IX
-	LD	IX,(CURCHL)
-	BIT	0,(IX+5)
-	JR	Z,K_IN0
+	INCLUDE "channels.asm"
 
-	LD	A,(K_DATA)
-	RES	0,(IX+5)
-	SCF
-	JR	K_INR
-
-K_IN0:	BIT	3,(IY+$02)
-	CALL	NZ,ED_COPY
-	AND	A
-	BIT	5,(IY+$01)
-	JR	Z,K_INNK	; no key pressed
-	BIT	5,(IX+5)
-	RES	5,(IX+5)
-	CALL	NZ,PCURSOR	; hide cursor
-	LD	HL,$00C8	; key click pitch
-	LD	D,H
-	LD	A,(PIP)		; duration
-	OR	A
-	JR	Z,NOPIP
-	RST	$28
-	DEFW	BEEP_PIP
-NOPIP:	LD	A,(LAST_K)	; pressed keycode
-	RES	5,(IY+$01)	; fetched from buffer
-	BIT	5,(IY+$02)
-	JR	Z,NOCLSL
-	PUSH	AF
-	RST	$28
-	DEFW	L0D6E		; CLS-LOWER
-	POP	AF
-NOCLSL:	CP	$88
-	JR	C,K_INB
-	CP	$90
-	JR	NC,K_INW
-	LD	BC,$7FFE
-	IN	B,(C)
-	BIT	1,B		; check Symbol Shift
-	JR	NZ,K_INR
-	ADD	A,$100 - $70	; transpose to $18..$1F, set CF
-	JR	K_INR
-K_INW:
-	CP	$A5		; USR "V" +
-	JR	C,K_INB
-	BIT	1,(IY+$07)	; mode G?
-	JR	Z,K_INB
-	ADD	A,$100 - $A4	; transpose to 1..5, set CF
-K_ING0:	RES	1,(IY+$07)
-K_INR:	POP	IX
-	JP	SWAP
-K_INB:	CP	$20
-	CCF
-	JR	C,K_ING0	; regular key pressed
-	CP	$0D
-	JR	Z,K_ENT
-	CP	$10
-	JR	NC,KEY_CONTR0
-	CP	$06
-	JR	NC,KEY_M_CL0
-
-	LD	B,A
-	AND	$01
-	LD	C,A
-	LD	A,B
-	RRA
-	ADD	A,$12
-	JR	KEY_DATA0
-
-K_INNK:	LD	B,(IX+5)
-	BIT	3,B
-	JR	Z,K_INR
-	LD	A,(FRAMES)
-	XOR	B
-	AND	$10
-	JR	Z,K_INR
-	PUSH	BC
-	CALL	PCURSOR
-	POP	BC
-	XOR	$20
-K_INR0:	XOR	B
-	LD	(IX+5),A
-	XOR	A
-	JR	K_INR
-
-KEY_M_CL0:
-	JR	NZ,KEY_MODE0
-	LD	HL,FLAGS2
-	LD	A,$08
-	XOR	(HL)
-	LD	(HL),A		; toggle CAPS LOCK
-	JR	KEY_FLAG0
-
-KEY_MODE0:
-	CP	$0E
-	JR	C,K_INR
-	SUB	$0D
-	LD	HL,MODE
-	CP	(HL)
-	LD	(HL),A
-	JR	NZ,KEY_FLAG0
-	LD	(HL),$00
-
-KEY_FLAG0:
-	SET	3,(IY+2)
-	CP	A
-K_INR2:	JR	K_INR
-
-KEY_CONTR0:
-	LD	B,A
-	AND	$07
-	LD	C,A
-	LD	A,$10
-	BIT	3,B
-	JR	NZ,KEY_DATA0
-	INC	A
-KEY_DATA0:
-	LD	IX,(CURCHL)
-	LD	(IY-$2D),C
-	SET	0,(IX+5)
-	SCF
-	JR	K_INR2
-
-K_ENT:	RES	3,(IX+5)
-	SCF
-	JR	K_INR2
-
-PCURSOR:PUSH	AF
-	RST	$28
-	DEFW	L0B03		; PO-FETCH
-	PUSH	BC
-	PUSH	HL
-	LD	BC,(RETADDR)
-	RST	$28
-	DEFW	L0DD9		; CL-SET
-	LD	A,(P_FLAG)
-	PUSH	AF
-	OR	1
-	LD	(P_FLAG),A
-	LD	A,$8F
-	RST	$10
-	POP	AF
-	LD	(P_FLAG),A
-	POP	HL
-	POP	BC
-	LD	(S_POSNL),BC
-	LD	(DF_CCL),HL
-	POP	AF
-	RET
-
-; TODO: ugly hack, write proper, fast drivers
-K_OUT:	JR	C,K_OUTP
-	OR	A		; reset?
-	JP	NZ,K_OUT0	; other controls
-	LD	HL,(CURCHL)
-	LD	DE,5
-	ADD	HL,DE
-	LD	(HL),D
-	INC	HL
-	LD	(HL),D
-	LD	HL,$1721	; TODO depends on screen mode
-	LD	(RETADDR),HL
-K_OUT00:JP	K_OUT0
-
-K_OUTP:	BIT	5,(IY+$37)	; FLAGX basic editor
-	JR	NZ,K_OUT00	; jump forward for input mode
-
-	PUSH	IX
-	LD	IX,(CURCHL)
-	BIT	1,(IX+5)	; cursor-like character (cursor or error)
-	JR	NZ,K_OUT1
-	CP	":"		; colon
-	JR	Z,K_OUTC
-	CP	$CB		; THEN / ELSE
-	JR	Z,K_OUTC
-	JP	K_TOKEN
-
-; cursor or error being printed
-K_OUT1:	RES	1,(IX+5)
-	CP	"?"		; error
-	JR	NZ,K_HEAD
-	LD	HL,(X_PTR)
-	LD	(K_CUR),HL	; move cursor to error
-	JR	K_OUT2		; TODO: rasp
-
-K_OUTC:	BIT	2,(IY+$30)	; in quotes?
-	JR	NZ,K_OUT3
-	INC	(IX+6)		; count, if not
-	SET	7,(IY+$30)	; indicate instruction for next token
-K_OUT32:JR	K_OUT3
-
-; cursor being printed, draw header, display info
-K_HEAD:	SET	7,(IX+5)
-	LD	HL,(FLAGS2 - 1)
-	PUSH	HL
-	RES	6,(IX+5)
-	LD	HL,(ECHO_E)
-	PUSH	HL
-	LD	HL,(S_POSNL)
-	LD	(RETADDR),HL
-	PUSH	HL
-	LD	HL,(ATTR_T)
-	PUSH	HL
-	LD	HL,(P_FLAG)
-	PUSH	HL
-	EXX
-	PUSH	BC
-	PUSH	DE
-	PUSH	HL
-	BIT	0,(IY+$01)
-	PUSH	AF
-	LD	A,(IX+6)
-	PUSH	AF
-	LD	DE,EDITOR_HEADER0
-	CALL	MESSAGE
-	POP	AF
-	INC	A
-	CALL	DECBYTE
-	LD	A,$06		; TAB
-	RST	$10
-	POP	AF
-	PUSH	AF
-	RST	$10
-	LD	DE,EDITOR_HEADER1
-	CALL	MESSAGE
-	POP	AF
-	JR	NZ,K_OUTX	; suppress space
-	RES	0,(IY+$01)
-K_OUTX:	POP	HL
-	POP	DE
-	POP	BC
-	EXX
-	POP	HL
-	LD	(P_FLAG),HL
-	POP	HL
-	LD	(ATTR_T),HL
-	POP	BC
-	RST	$28
-	DEFW	L0DD9		; CL-SET
-	POP	HL
-	LD	(ECHO_E),HL
-	POP	AF
-	LD	(FLAGS2),A
-	RES	7,(IX+5)
-
-K_OUT2:	XOR	A
-K_OUT3:
-K_TOKEN:SCF
-	POP	IX
-
-K_OUT0:	LD	HL,(CHANS)
-	JR	KS_OUT0
-
-S_OUT:	JR	C,S_OUT0
-	OR	A
-	JR	NZ,S_OUT0
-	SET	7,(IY+$30)	; first token is an instruction
-S_OUT0:	LD	HL,(CHANS)
-	INC	HL
-	INC	HL
-	INC	HL
-	INC	HL
-	INC	HL
-	jr	KS_OUT		
-KS_OUT0:JR	NC,KS_OUT
-	CP	$20		; controls and space
-	JR	C,KS_OUT
-	PUSH	HL
-	SCF
-	JR	Z,KS_OUTO
-	RST	$28
-	DEFW	L2D1B		; NUMERIC ?
-	JR	NC,KS_NUM
-	LD	E,A
-	LD	HL,FLAGS2
-	LD	A,(HL)
-	AND	$C0
-	SRA	A
-	RES	6,(HL)
-	RES	5,(HL)
-	XOR	(HL)
-	LD	(HL),A
-	LD	A,E
-	CP	$CB		; THEN / ELSE
-	JR	NZ,NTHEN
-	
-NTHEN:	CP	$80
-	JR	C,KS_OUTO
-	LD	HL,(CURCHL)
-	LD	DE,5
-	ADD	HL,DE
-	CP	FREE_T		; DEF FN / FREE
-	BIT	7,(HL)
-	JR	NZ,KS_OUTQ
-	BIT	2,(IY+$30)	; printing in quotes?
-	JR	NZ,KS_OUTQ
-	BIT	5,(IY+$30)	; is the next token an instruction?
-	JR	NZ,KS_OUTK
-KS_OUTQ:CCF
-KS_OUTK:JR	NC,KS_OUTO	; old tokens
-	POP	HL		; discard legacy service routine address
-	SUB	A,FREE_T	; instruction?
-	JR	C,INSTR		; if so, jump
-; print function token
-	EXX
-	PUSH	BC
-	PUSH	DE
-	PUSH	HL
-	LD	B,A
-	INC	B
-	LD	DE,TOKENS0
-	CALL	TOKEN
-	JR	NZ,KS_TOKR	; found it
-	LD	DE,XTOKEN
-	LD	A,B
-	RST	$28
-	DEFW	L0C10 + 3	; PO-TOKENS + 3
-KS_TOKR:POP	HL
-	POP	DE
-	POP	BC
-	EXX
-	JP	SWAP
-
-KS_NUM:	RES	0,(IY+$01)	; do not suppress leading space
-KS_OUTO:SCF
-	POP	HL
-
-KS_OUT:	LD	DE,(CURCHL)
-	LD	(TARGET),DE
-	PUSH	DE
-	LD	(CURCHL),HL
-	LD	E,(HL)
-	INC	HL
-	LD	D,(HL)
-	LD	HL,KS_RET
-	PUSH	HL
-	LD	HL,SWAP
-	PUSH	HL
-	PUSH	DE
-	JP	NC,SWAP
-	LD	HL,PRINT_OUT
-	AND	A
-	SBC	HL,DE
-	SCF
-	JP	NZ,SWAP
-	OR	A
-	JR	Z,OUT_NIL
-	CP	$20		; regular printable
-	JR	NC,KS_PRN
-	CP	$0F		; ASCII SI
-	JR	Z,R_ATTR	; restore attributes
-	CP	$18		; diagonal graphics block
-	JR	NC,PR_GR_0	; draw graphics
-KS_PRN:	CP	$0E		; cursor/error signal
-	SCF
-	JP	NZ,SWAP
-	LD	HL,(TARGET)
-	LD	DE,5
-	ADD	HL,DE
-	SET	1,(HL)
-
-OUT_NIL:INC	SP		; discard service routine address
-	INC	SP
-	INC	SP		; discard SWAP address
-	INC	SP
-	RET			; return to KS_RET
-R_ATTR:	RST	$28
-	DEFW	L0D4D		; TEMPS
-	JR	OUT_NIL
-KS_RET:	POP	HL
-	LD	(CURCHL),HL
 PR_OUT:
 PR_IN:
 X_OUT:
@@ -566,94 +197,6 @@ X_IN:
 NX_OUT:
 NX_IN:
 	JP	SWAP
-
-; print instruction token
-INSTR:	SUB	$B3
-	EXX
-	PUSH	BC
-	PUSH	DE
-	PUSH	HL
-	LD	B,A
-	LD	HL,(FLAGS)
-	LD	H,(IY+$30)
-	PUSH	HL
-	LD	A," "
-	RR	L		; leading space?
-	CALL	NC,$0010
-	LD	DE,TOKENS1
-	CALL	TOKEN
-	LD	A," "
-	RST	$10
-	POP	HL
-	LD	(IY+$30),H
-	LD	A,L
-	OR	$01		; supress next
-	LD	(FLAGS),A
-	JP	KS_TOKR
-
-GR_TAB:	DEFB	$00, $FF
-	DEFB	$FF, $00
-	DEFB	$F0, $00
-	DEFB	$00, $0F
-
-PR_GR_0:LD	C,A
-	AND	$06
-	LD	E,A
-	LD	D,0
-	LD	HL,GR_TAB
-	ADD	HL,DE
-	LD	E,(HL)
-	INC	HL
-	LD	D,(HL)
-	LD	HL,MEMBOT
-	LD	B,8
-	RR	C
-	JR	C,PR_GR_R
-PR_GR_L:LD	(HL),E
-	INC	L
-	RL	D
-	RL	E
-	DJNZ	PR_GR_L
-	JR	PR_GR_E
-PR_GR_R:RR	E
-	RR	D
-	LD	(HL),D
-	INC	L
-	DJNZ	PR_GR_R
-PR_GR_E:RST	$28
-	DEFW	X0B30		; generated graphics in PO_ANY
-	RST	$28
-	DEFW	L0ADC		; PO-STORE
-	JP	SWAP
-
-ED_COPY:LD	HL,(CURCHL)
-	LD	DE,5
-	ADD	HL,DE
-	RES	1,(HL)
-	RES	2,(HL)
-	SET	3,(HL)
-	SET	6,(HL)
-	RES	7,(HL)
-	SET	6,(IY+$30)
-	PUSH	HL
-	INC	HL
-	LD	(HL),D
-	RST	$28
-	DEFW	L111D		; ED_COPY
-	POP	HL
-	SET	7,(HL)
-	RET
-
-EDITOR_HEADER0:
-	DEFB	$16,$00,$00,$13,$01,$10,$07,$11,$00
-	DEFM	"BASIC"
-	DEFB	$80 + ":"
-EDITOR_HEADER1:
-; TODO: this should work
-;;	DEFB	$17,$FA,$FF,$10,$02,$18,$11,$06,$1A
-	DEFB	$17,$1A,$00,$10,$02,$18,$11,$06,$1A
-	DEFB	$10,$04,$18,$11,$05,$1A,$10,$00,$18
-	DEFB	$14,$01,$A0
 
 R_LINK:	DEFB	$00, $03, $00, $07, $01, $00, $04, $FF
 
@@ -969,7 +512,11 @@ TOKEN:	LD	A,(DE)
 	DJNZ	TOKEN
 MESSAGE:LD	A,(DE)
 	AND	$7F
-	RST	$10		; No need for recursion here
+	PUSH	DE
+	EXX
+	RST	$10
+	EXX
+	POP	DE
 	LD	A,(DE)
 	INC	DE
 	ADD	A,A
@@ -1029,77 +576,7 @@ COPYRIGHT:
 	DEFB	$7F
 	DEFM	" 2019 ePoint Systems Ltd"
 TOKENS1:DEFB	$8D
-; instructions between $80 and $CD
-	DEFM	"_G"
-	DEFB	$80+"8"
-	DEFM	"_G"
-	DEFB	$80+"2"
-	DEFM	"_G"
-	DEFB	$80+"3"
-	DEFM	"_G"
-	DEFB	$80+"4"
-	DEFM	"_G"
-	DEFB	$80+"5"
-	DEFM	"_G"
-	DEFB	$80+"6"
-	DEFM	"_G"
-	DEFB	$80+"7"
-	DEFM	"_Gs"
-	DEFB	$80+"8"
-	DEFM	"_Gs"
-	DEFB	$80+"2"
-	DEFM	"_Gs"
-	DEFB	$80+"3"
-	DEFM	"_Gs"
-	DEFB	$80+"4"
-	DEFM	"_Gs"
-	DEFB	$80+"5"
-	DEFM	"_Gs"
-	DEFB	$80+"6"
-	DEFM	"_Gs"
-	DEFB	$80+"7"
-	DEFM	"_G"
-	DEFB	$80+"A"
-	DEFM	"_G"
-	DEFB	$80+"B"
-	DEFM	"_G"
-	DEFB	$80+"C"
-	DEFM	"_G"
-	DEFB	$80+"D"
-	DEFM	"_G"
-	DEFB	$80+"E"
-	DEFM	"_G"
-	DEFB	$80+"F"
-	DEFM	"_G"
-	DEFB	$80+"G"
-	DEFM	"_G"
-	DEFB	$80+"H"
-	DEFM	"_G"
-	DEFB	$80+"I"
-	DEFM	"_G"
-	DEFB	$80+"J"
-	DEFM	"_G"
-	DEFB	$80+"K"
-	DEFM	"_G"
-	DEFB	$80+"L"
-	DEFM	"_G"
-	DEFB	$80+"M"
-	DEFM	"_G"
-	DEFB	$80+"N"
-	DEFM	"_G"
-	DEFB	$80+"O"
-	DEFM	"_G"
-	DEFB	$80+"P"
-	DEFM	"_G"
-	DEFB	$80+"Q"
-	DEFM	"_G"
-	DEFB	$80+"R"
-	DEFM	"_G"
-	DEFB	$80+"S"
-	DEFM	"_G"
-	DEFB	$80+"T"
-	DEFM	"PLA"
-	DEFB	$80+"Y"
+; instructions between $A5 and $CD
 	DEFM	"_E"
 	DEFB	$80+"T"
 	DEFM	"_E"
@@ -1116,8 +593,8 @@ TOKENS1:DEFB	$8D
 	DEFB	$80+"L"
 	DEFM	"_S"
 	DEFB	$80+"I"
-	DEFM	"_E"
-	DEFB	$80+"P"
+	DEFM	"PLA"
+	DEFB	$80+"Y"
 	DEFM	"_Es"
 	DEFB	$80+"J"
 	DEFM	"_E"
@@ -1204,6 +681,11 @@ MEM_T:	EQU	$CF
 TIME_T:	EQU	$D0
 STICK_T:EQU	$D1
 DPEEK_T:EQU	$D2
+OPEN_T:	EQU	$D3
+EOF_T:	EQU	$D4
+EFN_T:	EQU	$D5
+
+RND_T:	EQU	$A5
 CODE_T:	EQU	$AF
 STR_T:	EQU	$C1
 CHR_T:	EQU	$C2

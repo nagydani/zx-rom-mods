@@ -41,7 +41,7 @@
 	DEFB	P_PLUG - $	; EsK
 	DEFB	P_PLUG - $	; EsL
 	DEFB	P_PLUG - $	; sI
-	DEFB	P_PLUG - $	; EP
+	DEFB	P_PLAY - $	; PLAY
 	DEFB	P_PLUG - $	; EsJ
 	DEFB	P_PLUG - $	; EI
 	DEFB	P_PLUG - $	; EJ
