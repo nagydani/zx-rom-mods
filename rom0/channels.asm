@@ -165,17 +165,17 @@ PCURSOR:PUSH	AF
 	PUSH	HL
 	LD	HL,(ECHO_E)
 	PUSH	HL
+	LD	HL,(MASK_T)
+	PUSH	HL
 	LD	BC,(RETADDR)
+	LD	(IY + MASK_T - ERR_NR),$FF	; INK, PAPER, BRIGHT, FLASH 8
 	RST	$28
 	DEFW	L0DD9		; CL-SET
-	LD	A,(P_FLAG)
-	PUSH	AF
-	OR	1
-	LD	(P_FLAG),A
+	SET	0,(IY + P_FLAG - ERR_NR)	; OVER 1
 	LD	A,$8F		; full block
 	RST	$10
-	POP	AF
-	LD	(P_FLAG),A
+	POP	HL
+	LD	(MASK_T),HL
 	POP	HL
 	LD	(ECHO_E),HL
 	POP	HL
@@ -203,17 +203,20 @@ TOKENI1:SUB	FREE_T - RND_T	; FREE / DEF FN
 	JR	C,TOKEN2I	; new tokens
 	LD	DE,I_TOKEN
 	RST	$28
-	DEFW	L0C0A		; PO-MSG
+	DEFW	L0C10 + 3	; PO-TOKENS + 3
+	LD	A,D
+	CP	3
+	RET	NC
+	JR	TSPACE
+
+TOKEN2I:INC	B
+	LD	DE,TOKENS1
+	CALL	TOKEN
 TSPACE:	LD	A," "
 	EXX
 	RST	$10
 	EXX
 	RET
-
-TOKEN2I:INC	B
-	LD	DE,TOKENS1
-	CALL	TOKEN
-	JR	TSPACE
 
 ; output operator token
 TOKEN_O:CP	FREE_T - RND_T	; FREE / DEF FN
@@ -241,6 +244,9 @@ K_RST:	LD	(HL),A
 	LD	B,(IY+$31)	; fetch lower screen display file size DF_SZ
 	RST	$28
 	DEFW	L0E44		; CL-LINE
+	DEC	B
+	DEC	B
+	JR	Z,K_RST0
 	LD      HL,$5ABF	; attribute at 21,31
 	LD      DE,$5ABE	; attribute at 21,30
 	LD	A,(ATTR_P)
@@ -255,7 +261,7 @@ K_RST:	LD	(HL),A
 	LD	C,A
 	DEC	BC
 	LDDR
-	LD	(IY+$31),$02	; now set DF_SZ lower screen to 2
+K_RST0: LD	(IY+$31),$02	; now set DF_SZ lower screen to 2
         LD      BC,$1721        ; TODO: depends on mode; line 23 for lower screen
 	LD      (RETADDR),BC
 S_IO_E:	RST	$28
@@ -406,16 +412,22 @@ PR_GR_E:RST	$28
 	DEFW	X0B30		; generated graphics in PO_ANY
 TSTORE:	RST	$28
 	DEFW	POSTORE
-	JP	SWAP
+T_SWX:	JP	SWAP
 
 GR_TAB:	DEFB	$00, $FF
 	DEFB	$FF, $00
 	DEFB	$F0, $00
 	DEFB	$00, $0F
 
+E_QUEST:LD	HL,(X_PTR)
+	LD	(K_CUR),HL
+	JR	T_SWX
+
 ; draw editor header
 E_HEAD:	EX	DE,HL
 	RES	2,(HL)
+	CP	"?"
+	JR	Z,E_QUEST
 	LD	(RETADDR),BC
 	PUSH	BC
 	PUSH	DE
@@ -565,7 +577,7 @@ TCR0:	INC	DE
 TUP:	INC	B
 	LD	A,$18	; TODO: 24 lines
 	CP	B
-	JR	NZ,TCR1
+	JR	NC,TCR1
 	DEC	B
 	JR	TCR1
 
@@ -598,6 +610,6 @@ EDITOR_HEADER0:
 	DEFB	$80 + ":"
 EDITOR_HEADER1:
 ;;	DEFB	$17,$FA,$FF,$10,$02,$18,$11,$06,$1A
-;;	DEFB	$10,$04,$18,$11,$05,$1A,$10,$00,$18
-;;	DEFB	$14,$01,$A0
-	DEFB	$A0
+	DEFB	$17,$1A,$00,$10,$02,$18,$11,$06,$1A
+	DEFB	$10,$04,$18,$11,$05,$1A,$10,$00,$18
+	DEFB	$14,$01,$A0
