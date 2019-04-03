@@ -674,7 +674,40 @@ TOKENS0:DEFB	$80+"D"
 	DEFB	$80+"#"
 	DEFM	"EOF "		; E s5, $D4
 	DEFB	$80+"#"
-	DEFB	$00		; no more function tokens
+	DEFM	"_Es"		; E sT, $D5
+	DEFB	$80+"T"
+	DEFM	"_Es"		; E sR, $D6
+	DEFB	$80+"R"
+	DEFM	"_Es"		; E sZ, $D7
+	DEFB	$80+"Z"
+	DEFM	"HEX"		; E sH, $D8
+	DEFB	$80+" "
+	DEFM	"INK"		; E sX, $D9
+	DEFB	$80+" "
+	DEFM	"PAPER"		; E sC, $DA
+	DEFB	$80+" "
+	DEFM	"FLASH"		; E sV, $DB
+	DEFB	$80+" "
+	DEFM	"BRIGHT"	; E sB, $DC
+	DEFB	$80+" "
+	DEFM	"INVERSE"	; E sM, $DD
+	DEFB	$80+" "
+	DEFM	"OVER"		; E sN, $DE
+	DEFB	$80+" "
+	DEFM	"OCT"		; E sO, $DF
+	DEFB	$80+" "
+	DEFM	"_E"		; E C, $E0
+	DEFB	$80+"C"
+	DEFM	"_E"		; E V, $E1
+	DEFB	$80+"V"
+	DEFM	"_s"		; sA, $E2
+	DEFB	$80+"A"
+	DEFM	"READ "		; E A, $E3
+	DEFB	$80+"#"
+	DEFM	"_E"		; E D, $E4
+	DEFB	$80+"D"
+	DEFM	"_E"		; E S, $E5
+	DEFB	$80+"S"
 
 FREE_T:	EQU	$CE
 MEM_T:	EQU	$CF
@@ -683,7 +716,11 @@ STICK_T:EQU	$D1
 DPEEK_T:EQU	$D2
 OPEN_T:	EQU	$D3
 EOF_T:	EQU	$D4
-EFN_T:	EQU	$D5
+HEX_T:	EQU	$D8
+OCT_T:	EQU	$DF
+READ_T:	EQU	$E3
+
+EFN_T:	EQU	$E6
 
 RND_T:	EQU	$A5
 CODE_T:	EQU	$AF

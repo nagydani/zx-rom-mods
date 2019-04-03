@@ -124,12 +124,16 @@
 | D3 | OPEN #
 | D4 | EOF #
 | ... |
+| D8 | HEX
 | D9 | INK
 | DA | PAPER
 | DB | FLASH
 | DC | BRIGHT
 | DD | INVERSE
 | DE | OVER
+| DF | OCT
+| ... |
+| E3 | READ #
 | ... |
 
 ## Instruction tokens
