@@ -12810,7 +12810,9 @@ L26B6:  INC     HL              ; advance pointer
 
 ;; S-NUMERIC
 L26C3:  SET     6,(IY+$01)      ; update FLAGS  - Signal numeric result
-        JR      L26DD           ; forward to S-CONT-1               ===>
+;;; BUGFIX: just do it faster
+	JR	L2712
+;;;     JR      L26DD           ; forward to S-CONT-1               ===>
                                 ; actually S-CONT-2 is destination but why
                                 ; waste a byte on a jump when a JR will do.
                                 ; Actually a JR L2712 can be used. Rats.
@@ -14908,7 +14910,9 @@ L2C9B:
         JR      NZ,L2CEB        ; to E-FORMAT if not to consider that format
 
         RST     20H             ; NEXT-CHAR
-        CALL    L2D1B           ; routine NUMERIC returns carry reset if 0-9
+;;; BUGFIX: numeric systems beyond 10
+	CALL	DIGIT
+;;;     CALL    L2D1B           ; routine NUMERIC returns carry reset if 0-9
 
         JR      C,L2CEB         ; to E-FORMAT if not a digit e.g. '1.'
 
@@ -14916,16 +14920,16 @@ L2C9B:
 
 ; ---
 DIGIT:	SUB	"0"
-	JR	C,NOTDGT
+	CALL	NOPAGE		; consider systems over ten, in 128k mode
+DIGITR:	JR	C,NOTDGT
 	CP	(IY+$6E)
 	CCF
 	RET	NC
 NOTDGT:	LD	A,C
 	RET
-	DEFS	2		; spare bytes
+	DEFS	1		; spare byte
 ; ---
-DIG2FP:	CP	$C4		; BIN
-	JR	NZ,DEC2FP
+DIG2FP:	JR	NZ,DEC2FP
 	LD	C,$02
 	RST	$20		; skip prefix
 	DEFB	$21		; skip next instruction
@@ -14972,7 +14976,7 @@ L2CD5:  RST     28H             ;; FP-CALC
 
 ;; NXT-DGT-1
 L2CDA:  RST     18H             ; GET-CHAR
-        CALL    L2D22           ; routine STK-DIGIT stacks single digit 'd'
+        CALL    STK_DGT         ; routine STK-DIGIT stacks single digit 'd'
         JR      C,L2CEB         ; exit to E-FORMAT when digits exhausted  >
 
 
@@ -15087,7 +15091,7 @@ L2D1B:  CP      $30             ; '0'
 ;        SUB     $30             ; convert from ASCII to digit
 
 L2D22:	NOP
-	LD	C,A
+STK_DGT:LD	C,A
 	CALL	DIGIT
 	RET	C
 ; -----------------
@@ -15130,11 +15134,10 @@ STACKBC:XOR     A               ; clear to signal small integer
 
 ;; INT-TO-FP
 INT_TO_FP:
-	LD	C,A
+	CP	$C4		; BIN
 	JP	DIG2FP
-	NOP
 ;; NXT-DGT-2
-L2D40:  CALL    L2D22           ; routine STK-DIGIT puts 0-9 on stack
+L2D40:  CALL    STK_DGT         ; routine STK-DIGIT puts 0-9 on stack
         RET     C               ; will return when character is not numeric >
 
         RST     28H             ;; FP-CALC    ; v, d.
