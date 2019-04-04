@@ -12296,11 +12296,15 @@ L2530:  BIT     7,(IY+$01)      ; test FLAGS  - checking syntax only ?
 
 ;; S-SCRN$-S
 L2535:  CALL    L2307           ; routine STK-TO-BC.
-        LD      HL,(CHARS)      ; fetch address of CHARS.
+;;; BUGFIX: extensibility for different screen modes
+	CALL	NOPAGE
+;;;
+SCRNER:	LD      HL,(CHARS)      ; fetch address of CHARS.
+;;; Bugfix: save 3 bytes
+	INC	H		; Saves 3 bytes
 ;;;        LD      DE,$0100        ; fetch offset to chr$ 32
 ;;;        ADD     HL,DE           ; and find start of bitmaps.
 ;;;                                ; Note. not inc h. ??
-	INC	H		; Saves 3 bytes
         LD      A,C             ; transfer line to A.
         RRCA                    ; multiply
         RRCA                    ; by
@@ -12376,7 +12380,7 @@ L2573:  POP     HL              ; restore the last bitmap start
 ; No character found
 	RET			; Saves 2 bytes
 				; Total savings: 6 bytes
-	DEFS	2		; Used up 2 for hex and oct prefixes
+	DEFS	3		; 3 used for diversion
 ;; S-SCR-STO
 ;;;L257D:  JP      L2AB2           ; to STK-STO-$ to store the string in
                                 ; workspace or a string with zero length.
@@ -12448,8 +12452,6 @@ L2596:  DEFB    $22, L25B3-$-1  ; $1C offset to S-QUOTE
         DEFB    '(', L25E8-$-1  ; $4F offset to S-BRACKET
         DEFB    '.', L268D-$-1  ; $F2 offset to S-DECIMAL
         DEFB    '+', L25AF-$-1  ; $12 offset to S-U-PLUS
-	DEFB	'&', L268D-$-1
-	DEFB	'\\', L268D-$-1
 
         DEFB    $A8, L25F5-$-1  ; $56 offset to S-FN
         DEFB    $A5, L25F8-$-1  ; $57 offset to S-RND
@@ -12956,8 +12958,10 @@ L2713:  CP      $28             ; is it '(' ?
 L2723:  LD      B,$00           ; prepare to add
         LD      C,A             ; possible operator to C
         LD      HL,L2795        ; Address: $2795 - tbl-of-ops
-        CALL    L16DC           ; routine INDEXER
-        JR      NC,L2734        ; forward to S-LOOP if not in table
+;;; BUGFIX: extensibility
+	CALL	INDEXER_2
+;;;	CALL    L16DC           ; routine INDEXER
+OPERTR:	JR      NC,L2734        ; forward to S-LOOP if not in table
 
 ;   but if found in table the priority has to be looked up.
 

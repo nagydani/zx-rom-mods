@@ -379,6 +379,30 @@ SKIPS2:	SCF
 	LD	(CH_ADD),HL
 	RET
 
+ERROR_5:CALL	ERROR
+	DEFB	$04
+
+SCRN_CONT:			; TODO: support various screen modes
+	POP	BC
+	EX	(SP),HL
+	LD	A,C
+	CP	$20
+	JR	NC,ERROR_5
+	LD	A,B
+	CP	$18
+	JR	NC,ERROR_5
+	JP	SWAP
+
+OPER_CONT:
+	POP	BC
+	EX	(SP),HL
+	LD	HL,OPERTB
+	CALL	INDEXER
+	JP	NC,SWAP
+	LD	C,(HL)
+	ADD	HL,BC
+	JP	(HL)
+
 DISPAT:	BIT	4,(IY+1)
 	JP	Z,GO48		; USR 0 mode
 	LD	A,(BANK_M)
@@ -400,11 +424,21 @@ DISPAT:	BIT	4,(IY+1)
 	SBC	HL,BC
 	ADD	HL,BC
 	JR	Z,SCAN_CONT
+	LD	BC,OPERTR
+	AND	A
+	SBC	HL,BC
+	ADD	HL,BC
+	JR	Z,OPER_CONT
 	LD	BC,DIGITR
 	AND	A
 	SBC	HL,BC
 	ADD	HL,BC
 	JR	Z,DIGIT_CONT
+	LD	BC,SCRNER
+	AND	A
+	SBC	HL,BC
+	ADD	HL,BC
+	JR	Z,SCRN_CONT
 	LD	BC,OPENER
 	AND	A
 	SBC	HL,BC
@@ -720,8 +754,8 @@ TOKENS0:DEFB	$80+"D"
 	DEFB	$80+" "
 	DEFM	"_E"		; E C, $E0
 	DEFB	$80+"C"
-	DEFM	"_E"		; E V, $E1
-	DEFB	$80+"V"
+	DEFM	" MOD"		; E V, $E1
+	DEFB	$80+" "
 	DEFM	"_s"		; sA, $E2
 	DEFB	$80+"A"
 	DEFM	"READ "		; E A, $E3
@@ -1405,6 +1439,7 @@ STK0_L:	LD	(HL),C
 	EX	DE,HL
 	RET
 
+; print the decimal value of a byte in register A
 DECBYTE:
 	CP	10
 	JR	NC,P_DB1
@@ -1442,6 +1477,24 @@ P_DB2L:	RL	E
 	AND	$0F
 	RST	$10
 	RET
+
+OPERTB:	DEFB	"|"
+	DEFB	S_BOR - $
+	DEFB	"&"
+	DEFB	S_BAND - $
+	DEFB	$E1
+	DEFB	S_MOD - $
+	DEFB	0
+
+S_BOR:
+S_BAND:
+S_MOD:	POP	BC
+	LD	BC,$0BC2	; delete with priority 11
+	PUSH	BC
+	LD	BC,$0BF2	; mod with priority 11
+	LD	HL,L2790	; S-NEXT
+	PUSH	HL
+	JP	SWAP
 
 	INCLUDE	"instructions.asm"
 
