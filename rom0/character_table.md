@@ -133,6 +133,8 @@
 | DE | OVER
 | DF | OCT
 | ... |
+| E1 | MOD
+| ... |
 | E3 | READ #
 | ... |
 
