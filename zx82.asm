@@ -13049,9 +13049,12 @@ L275B:  LD      A,E             ; fetch the operation code to accumulator
                                 ; matched expected result.
 
 ;; S-RPORT-C2
-L2761:  JP      NZ,L1C8A        ; to REPORT-C if mismatch
+;;; BUGFIX: extensibility of existing infix operators
+L2761:  JP      NZ,INFIX        ; to REPORT-C if mismatch
+;;; L2761:  JP      NZ,L1C8A        ; to REPORT-C if mismatch
                                 ; 'Nonsense in BASIC'
                                 ; else continue to set flags for next
+
 
 ; the branch is to here in runtime after a successful operation.
 
@@ -19796,6 +19799,11 @@ C2FLAGX6:
 SETFX6:	SET	6,(IY+$37)
 	JP	L1BB3		; LINE-END
 
+; Infix operators on non-standard types (5 bytes)
+INFIX:	CALL	NOPAGE
+INFIXR:	RST	$08
+	DEFB	$0B		; C Nonsense in BASIC
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
@@ -19841,7 +19849,7 @@ SETFX6:	SET	6,(IY+$37)
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF;	, $FF;
+        DEFB    $FF, $FF;	, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
