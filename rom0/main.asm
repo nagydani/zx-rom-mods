@@ -382,6 +382,22 @@ SKIPS2:	SCF
 ERROR_5:CALL	ERROR
 	DEFB	$04
 
+INFIX_T:CP	$0C		; multiplication?
+	JR	NZ,DSWAP2
+	CALL	SYNTAX_Z
+	JR	Z,MULS_S
+	POP	BC		; discard return address
+	LD	BC,FSCAN
+	RST	$28
+	DEFW	L2D2B		; STACK-BC
+	LD	BC,D_STRING
+	JP	S_FUNC
+
+MULS_S:	LD	BC,$104C	; tight multiplication
+	LD	HL,L2790	; S-NEXT
+MULS_R:	EX	(SP),HL		; replace return address by it
+	JR	DSWAP2
+
 DIGIT_CONT:
 	POP	BC
 	EX	(SP),HL
@@ -399,12 +415,6 @@ DSWAP2:	JP	SWAP
 DSWAP:	LD	A,C
 	JR	DSWAP2
 
-INFIX_CONT:
-	POP	BC
-	EX	(SP),HL
-	
-	JR	DSWAP2
-
 SCRN_CONT:			; TODO: support various screen modes
 	POP	BC
 	EX	(SP),HL
@@ -415,6 +425,13 @@ SCRN_CONT:			; TODO: support various screen modes
 	CP	$18
 	JR	NC,ERROR_5
 	JP	SWAP
+
+INFIX_CONT:
+	POP	BC
+	EX	(SP),HL
+	CP	$10
+	JR	C,INFIX_T
+	JR	DSWAP2
 
 OPER_CONT:
 	POP	BC
@@ -1193,7 +1210,7 @@ D_CHR:	POP	HL		; discard return address
 	OR	A
 	JR	NZ,D_CHRL
 	RST	$28
-	DEFW	L1E99
+	DEFW	L1E99		; FIND-INT2
 	JR	NZ,ERROR_B_2
 	LD	A,B
 	OR	A
@@ -1535,6 +1552,115 @@ D_BOR:	RST	$28
 	DEFW	L2307		; STK-TO-BC
 	OR	B
 	JR	D_BORE
+
+D_STRING:
+	POP	HL		; discard return address
+	POP	HL		; RE-ENTRY
+	POP	DE		; discard BREG?
+	POP	DE		; discard USR
+	LD	DE,$106F	; CHR$, a num-to-string function
+	PUSH	DE
+	LD	DE,0
+	PUSH	DE		; BREG = 0
+	PUSH	HL
+	RST	$28
+	DEFW	L35BF		; STK-PNTRS
+	INC	HL
+	BIT	7,(HL)		; check sign
+	DEC	HL
+	PUSH	AF		; Z clear, if negative
+	JR	Z,D_NFLIP
+	RST	$28
+	DEFW	L346E + 4	; NEGATE + 4
+D_NFLIP:DEC	HL
+	LD	B,(HL)
+	DEC	HL
+	LD	C,(HL)		; string length to BC
+	PUSH	BC
+	RST	$28
+	DEFW	L2D2B		; STACK-BC
+	CALL	STEPBACK
+	RST	$28
+	DEFW	L30CA		; MULTIPLY
+	LD	(STKEND),DE
+	RST	$28
+	DEFW	L1E99		; FIND-INT2
+	POP	HL
+	SBC	HL,BC
+	EX	DE,HL
+	DEC	HL
+	LD	(HL),B
+	DEC	HL
+	LD	(HL),C
+	DEC	HL
+	JR	C,D_SLONG
+	LD	D,(HL)
+	DEC	HL
+	LD	E,(HL)
+	POP	AF		; restore sign in Z
+	JR	Z,SMUL_E
+	PUSH	DE
+	RST	$30		; BC-SPACES
+	POP	HL
+	PUSH	DE
+	PUSH	BC
+	LDIR
+	POP	BC
+	POP	HL
+	PUSH	HL
+	CALL	MIRROR
+	POP	DE
+	LD	HL,(STKEND)
+	DEC	HL
+	DEC	HL
+	DEC	HL
+	LD	(HL),D
+	DEC	HL
+	LD	(HL),E
+SMUL_E:	LD	DE,(STKEND)
+	JR	SWAPOP
+
+D_SLONG:PUSH	HL		; address pointer
+	PUSH	DE		; excess length
+	RST	$30
+	POP	HL
+	LD	(MEMBOT+28),HL	; save excess length
+	ADD	HL,BC		; HL is old length
+	EX	(SP),HL		; retrieve address pointer
+	ADD	HL,BC		; stack has moved
+	LD	B,(HL)
+	LD	(HL),D
+	DEC	HL
+	LD	C,(HL)
+	LD	(HL),E
+	LD	H,B
+	LD	L,C
+	POP	BC
+	PUSH	DE
+	LDIR
+	POP	HL
+	LD	A,(MEMBOT+28)
+	CPL
+	LD	C,A
+	LD	A,(MEMBOT+29)
+	CPL
+	LD	B,A
+	INC	BC
+	LDIR
+	POP	AF
+	JR	Z,SMUL_E
+	LD	HL,(STKEND)
+	DEC	HL
+	LD	B,(HL)
+	DEC	HL
+	LD	C,(HL)
+	DEC	HL
+	LD	D,(HL)
+	DEC	HL
+	LD	E,(HL)
+	EX	DE,HL
+	CALL	MIRROR
+	JR	SMUL_E
 
 	INCLUDE	"instructions.asm"
 
