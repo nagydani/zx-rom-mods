@@ -146,6 +146,12 @@
 | ... |
 | AD | PLAY
 | ... |
+| BA | REPEAT
+| ... |
+| BE | POKE
+| ... |
+| C2 | UNTIL
+| ... |
 | C5 | END IF
 | ... |
 | CB | ELSE

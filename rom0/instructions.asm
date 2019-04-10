@@ -54,14 +54,15 @@
 	DEFB	P_PLUG - $	; EsE
 	DEFB	P_PLUG - $	; EZ
 	DEFB	P_PLUG - $	; EX
-	DEFB	P_PLUG - $	; ER
+	DEFB	P_REPEAT - $	; REPEAT
 	DEFB	P_PLUG - $	; EH
 	DEFB	P_PLUG - $	; EF
 	DEFB	P_PLUG - $	; EG
-	DEFB	P_PLUG - $	; EO
+	DEFB	P_POKE - $	; POKE
 	DEFB	P_PLUG - $	; EsI
 	DEFB	P_PLUG - $	; EL
 	DEFB	P_PLUG - $	; EY
+	DEFB	P_UNTIL - $	; UNTIL
 	DEFB	P_PLUG - $	; sS
 	DEFB	P_PLUG - $	; EB
 	DEFB	P_ENDIF - $	; END IF
@@ -81,6 +82,20 @@ P_ENDIF:DEFB	$00
 
 P_ELSE:	DEFB	$05
 	DEFW	ELSE
+
+P_POKE:	DEFB	$06	; numeric expression
+	DEFB	","
+	DEFB	$05	; list of items
+	DEFW	POKE
+
+P_REPEAT:
+	DEFB	$00
+	DEFW	REPEAT
+
+
+P_UNTIL:
+	DEFB	$06, $00
+	DEFW	UNTIL
 
 P_PLAY:
 ; unimplemented instruction, accepted w/o parameters, but not executed
@@ -191,7 +206,7 @@ CLASS2_07:
 	; something useful
 
 ; instruction routines
-ENDIF:	RES	6,(IY+$37)
+ENDIF:	RES	6,(IY+$37)	; signal true outcome
 	JP	SWAP
 
 THENLESS:
@@ -245,9 +260,137 @@ ELSE_3:	PUSH	BC		; put back STMT-RET
 	LD	DE,T_IF
 	CALL	LOOK_PROG2
 	LD	(NXTLIN),BC
-	JR	C,ERROR_C_J	; TODO: missing END IF
+	JR	C,ERROR_T	; missing END IF
 	RST	$20
 	JP	SWAP
+
+ERROR_T:CALL	ERROR
+	DEFB	$1C		; T Missing END IF
+
+POKE:	CALL	SYNTAX_Z
+	JR	Z,POKE_S
+	RST	$28
+	DEFW	L1E99		; FIND-INT2
+	DEFB	$3E		; LD A, skip next instruction
+POKE_L:	RST	$20		; advance
+	PUSH	BC
+	RST	$28
+	DEFW	L24FB		; SCANNING
+	EX	AF,AF'
+	BIT	6,(IY+$01)	; numeric?
+	JR	Z,SPOKE		; jump, if not
+	RST	$28
+	DEFW	L2DD5		; FP-TO-A
+	JP	C,ERROR_B
+	JR	Z,POKEP
+	NEG
+POKEP:	POP	BC
+	LD	(BC),A
+	INC	BC
+	JR	POKE_L2
+SPOKE:	RST	$28
+	DEFW	L2BF1		; STK-FETCH
+	LD	A,B
+	OR	C
+	EX	DE,HL
+	POP	DE
+	JR	Z,EPOKE
+	LDIR
+EPOKE:	LD	C,E
+	LD	B,D
+POKE_L2:EX	AF,AF'
+	CP	","
+	JR	Z,POKE_L
+POKE_SWAP:
+	JP	SWAP
+
+POKE_S:	LD	HL,L1E2C	; DATA-1
+	PUSH	HL
+	JR	POKE_SWAP
+
+REPEAT:	POP	DE
+	LD	HL,(SUBPPC - 1)
+	EX	(SP),HL
+	INC	SP
+	LD	BC,(PPC)
+	PUSH	BC
+	PUSH	HL
+	LD	HL,(CH_ADD)
+	AND	A
+	LD	BC,(PROG)
+	SBC	HL,BC
+	EX	(SP),HL
+	PUSH	HL
+	LD	HL,(NXTLIN)
+	SBC	HL,BC
+	EX	(SP),HL
+	LD	BC,$3E02
+	PUSH	BC
+	PUSH	HL
+	LD	(ERR_SP),SP
+	PUSH	DE
+	LD	BC,$0014	; why this much? see $1F02 in ROM1
+	LD	HL,L1F05	; TEST-ROOM
+	PUSH	HL
+	JP	SWAP
+
+UNTIL:	RST	$28
+	DEFW	L35BF		; STK-PNTRS
+	RST	$28
+	DEFW	L34E9		; TEST-ZERO
+	EX	AF,AF'
+	POP	BC		; return address
+	POP	HL		; error address
+	POP	DE		; marker
+	LD	A,D
+	CP	$3E
+	JR	NZ,ERROR_S
+				; TODO: check LOCAL
+	LD	A,E
+	CP	$02
+	JR	NZ,ERROR_S
+	EX	AF,AF'
+	JR	NC,END_REP
+	LD	E,2
+	PUSH	DE		; marker
+	PUSH	HL		; error address
+	PUSH	BC		; return address
+	LD	HL,$0006
+	ADD	HL,SP
+	LD	BC,(PROG)
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	INC	HL
+	EX	DE,HL
+	ADD	HL,BC
+	LD	(NXTLIN),HL
+	EX	DE,HL
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	INC	HL
+	EX	DE,HL
+	ADD	HL,BC
+	LD	(CH_ADD),HL
+	EX	DE,HL
+	LD	DE,PPC
+	LD	BC,$0003
+	LDIR
+REPSW:	JP	SWAP
+END_REP:EX	DE,HL
+	LD	HL,$0007
+	ADD	HL,SP
+	LD	SP,HL
+	PUSH	DE
+	LD	(ERR_SP),SP
+	PUSH	BC
+	JR	REPSW
+
+ERROR_S:PUSH	DE
+	PUSH	HL
+	CALL	ERROR
+	DEFB	$1B		; S UNTIL without REPEAT
 
 PLAY:
 ; unimplemented instruction, reports error, if executed
@@ -375,4 +518,3 @@ SKIP_NUM:
 	INC	HL
 	LD	A,(HL)
 	RET
-

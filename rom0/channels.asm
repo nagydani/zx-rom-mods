@@ -71,7 +71,10 @@ NOCLSL:	CP	$88
 	ADD	A,$100 - $70	; transpose to $18..$1F, set CF
 	JR	K_ING0
 
-K_INW:	CP	RND_T		; USR "V" +
+K_INW:	CP	POKE_T
+	JR	NZ,K_POKE
+	LD	A,PEEK_T
+K_POKE:	CP	RND_T		; USR "V" +
 	JR	C,K_INB
 	BIT	1,(IY+$07)	; mode G?
 	JR	Z,K_INB

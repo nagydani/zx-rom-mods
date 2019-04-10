@@ -49,7 +49,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 25-FEB-2019
+; Last updated: 10-APR-2019
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -5986,14 +5986,17 @@ L1313:  PUSH    AF              ; save the error number.
 ;;; BUGFIX: abstract error reporting
 	XOR	A		; return error to stream #0
 	CALL	RESET_STREAM_SAVE
-	DEFS	5
+	DEFS	2
 ;;;     CALL    L0D6E           ; call routine CLS-LOWER.
 
         SET     5,(IY+$02)      ; update TV_FLAG - signal lower screen
                                 ; requires clearing.
 
         POP     AF              ; bring back the true error number
-        LD      B,A             ; and make a copy in B.
+;;; BUGFIX: abstract error reporting
+	CALL	NOPAGE
+;;;
+ERRRR:	LD      B,A             ; and make a copy in B.
         CP      $0A             ; is it a print-ready digit ?
         JR      C,MAIN_5	; forward to MAIN-5 if so.
 
