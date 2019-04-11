@@ -39,7 +39,7 @@
 	DEFB	P_PLUG - $	; Es2
 	DEFB	P_PLUG - $	; Es8
 	DEFB	P_PLUG - $	; EsK
-	DEFB	P_PLUG - $	; EsL
+	DEFB	P_LABEL - $	; EsL
 	DEFB	P_PLUG - $	; sI
 	DEFB	P_PLAY - $	; PLAY
 	DEFB	P_PLUG - $	; EsJ
@@ -60,7 +60,7 @@
 	DEFB	P_PLUG - $	; EG
 	DEFB	P_POKE - $	; POKE
 	DEFB	P_PLUG - $	; EsI
-	DEFB	P_PLUG - $	; EL
+	DEFB	P_USR - $	; EL
 	DEFB	P_PLUG - $	; EY
 	DEFB	P_UNTIL - $	; UNTIL
 	DEFB	P_PLUG - $	; sS
@@ -92,10 +92,15 @@ P_REPEAT:
 	DEFB	$00
 	DEFW	REPEAT
 
-
 P_UNTIL:
 	DEFB	$06, $00
 	DEFW	UNTIL
+
+P_USR:	DEFB	$06, $00
+	DEFW	USR
+
+P_LABEL:DEFB	$05
+	DEFW	LABEL
 
 P_PLAY:
 ; unimplemented instruction, accepted w/o parameters, but not executed
@@ -305,7 +310,17 @@ POKE_SWAP:
 	JP	SWAP
 
 POKE_S:	LD	HL,L1E2C	; DATA-1
-	PUSH	HL
+POKE_E:	PUSH	HL
+	JR	POKE_SWAP
+
+LABEL:	LD	HL,L1BB2	; REM
+	JR	POKE_E
+
+USR:	CALL	SYNTAX_Z
+	JR	Z,POKE_SWAP
+	RST	$28
+	DEFW	L1E99		; FIND-INT2
+	PUSH	BC
 	JR	POKE_SWAP
 
 REPEAT:	POP	DE
@@ -397,71 +412,36 @@ ERROR_2:CALL	ERROR
 
 ; LET with operator update
 UPDATE:	LD	C,A
-	LD	HL,UPD_TAB
-	LD	A,(FLAGS)
-	BIT	7,A
-	JR	Z,UPDATE_S
-
-UPDATE_S:
-	CALL	INDEXER
-	JR	NC,ERROR_C_J
 	RST	$20
 	CP	"="
 	JR	NZ,ERROR_C_J
-	LD	BC,L1C4E
-	PUSH	BC
-	JR 	REPSW
+	CALL	SYNTAX_Z
+	JR	Z,UPD_S
+	BIT	1,(IY+$37)	; Does the variable exist?
+	JR	NZ,ERROR_2	; Report error, if not
+	LD	HL,(STKEND)
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL
+	LD	(STKEND),HL	; restore the variable on the VM stack
+	POP	HL		; drop SCAN-LOOP
+	LD	A,(FLAGS)
+	LD	HL,L1BEE	; CHECK-END
+	PUSH	HL
+	PUSH	AF
+	LD	HL,L1C59 + 4	; VAL-FET-2 continues
+	JR	UPD_X
 
-UPD_TAB:DEFB	"+"
-	DEFB	U_PLUS - $
-	DEFB	"-"
-	DEFB	U_MINUS - $
-	DEFB	"*"
-	DEFB	U_MUL - $
-	DEFB	"/"
-	DEFB	U_DIV - $
-	DEFB	"^"
-	DEFB	U_POW - $
-	DEFB	"="
-	DEFB	U_EQU - $
-	DEFB	">"
-	DEFB	U_GT - $
-	DEFB	"<"
-	DEFB	U_LT - $
-	DEFB	$C7		; <=
-	DEFB	U_LE - $
-	DEFB	$C8		; >=
-	DEFB	U_GE - $
-	DEFB	$C9		; <>
-	DEFB	U_NE - $
-	DEFB	$C5		; OR
-	DEFB	U_OR - $
-	DEFB	$C6		; AND
-	DEFB 	U_AND - $
-	DEFB	"%"
-	DEFB	U_MOD - $
-	DEFB	"|"
-	DEFB	U_BOR - $
-	DEFB	"&"
-	DEFB	U_BAND - $
-	DEFB	0		; end marker
-
-U_PLUS:
-U_MINUS:
-U_MUL:
-U_DIV:
-U_POW:
-U_EQU:
-U_GT:
-U_LT:
-U_LE:
-U_GE:
-U_NE:
-U_OR:
-U_AND:
-U_MOD:
-U_BOR:
-U_BAND:
+UPD_S:	LD	HL,L1BEE	; CHECK-END
+UPD_X:	PUSH	HL
+	LD	H,0		; starting priority marker 0
+	LD	B,H		; clear B for OPERTR
+	PUSH	HL		; TODO: priority 1
+	LD	HL,L2723 + 3	; S-OPERTR + 3
+	PUSH	HL
+	JR	REPSW
 
 PLAY:
 ; unimplemented instruction, reports error, if executed
