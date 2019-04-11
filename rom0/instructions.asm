@@ -419,13 +419,18 @@ UPDATE:	LD	C,A
 	JR	Z,UPD_S
 	BIT	1,(IY+$37)	; Does the variable exist?
 	JR	NZ,ERROR_2	; Report error, if not
-	LD	HL,(STKEND)
+	LD	HL,(DEST)
 	INC	HL
-	INC	HL
-	INC	HL
-	INC	HL
-	INC	HL
-	LD	(STKEND),HL	; restore the variable on the VM stack
+	LD	DE,(STKEND)
+	BIT	6,(IY+$01)	; Numeric variable?
+	JR	NZ,UPD_STK	; Jump, if so
+	LD	L,E
+	LD	H,D		; string parameters already in place
+UPD_STK:LD	A,C		; save C
+	LD	BC,5
+	LDIR
+	LD	C,A		; restore C
+	LD	(STKEND),DE	; restore the variable on the VM stack
 	POP	HL		; drop SCAN-LOOP
 	LD	A,(FLAGS)
 	LD	HL,L1BEE	; CHECK-END
@@ -438,17 +443,69 @@ UPD_S:	LD	HL,L1BEE	; CHECK-END
 UPD_X:	PUSH	HL
 	LD	H,0		; starting priority marker 0
 	LD	B,H		; clear B for OPERTR
-	PUSH	HL		; TODO: priority 1
-	LD	HL,L2723 + 3	; S-OPERTR + 3
 	PUSH	HL
-	JR	REPSW
+	LD	HL,L2795	; OPERATORS table in ROM1
+	RST	$28
+	DEFW	L16DC		; INDEXER in ROM1
+	JR	C,OLDOPR
+
+	BIT	6,(IY+$01)	; are we expecting a string
+	JR	Z,UPDSTR	; jump, if so
+
+	LD	A,"%"
+	CP	C
+	JR	NZ,UPDNUM	; not MOD
+	LD      BC,$01C2        ; delete with priority 1
+        PUSH    BC
+        LD      BC,$01F2        ; mod with priority 1
+U_NEXT:	LD      HL,L2790        ; S-NEXT
+	PUSH    HL
+REPSW1:	JR      REPSW
+
+UPDNUM:	LD	HL,UPDTABN
+	CALL	INDEXER
+	CALL	SYNTAX_Z
+	JR	NZ,UPD_DO
+	JR	NC,ERROR_C_J
+	LD	BC,$01CF	; numeric addition with priority 1
+	JR	U_NEXT
+
+ERROR_C_J:
+	JP	ERROR_C
+
+UPDSTR:	LD	HL,UPDTABS
+	CALL	INDEXER
+	CALL	SYNTAX_Z
+	JR	NZ,UPD_DO
+	JR	NC,ERROR_C_J
+	LD	BC,$0117	; string addition with priority 1
+	JR	U_NEXT
+
+OLDOPR:	RST	$28
+	DEFW	X007B		; LD A,(HL) in ROM1
+	LD	C,A		; operator code in C
+	LD	B,1		; lowest possible priority in B
+	LD	HL,L2734	; S-LOOP
+	PUSH	HL
+	JR	REPSW1
+
+UPD_DO:	POP	BC		; discard marker, B=0
+	LD	C,(HL)
+;;	LD	B,0
+	ADD	HL,BC
+	LD	BC,L2D2B + 4	; STACK-BC
+	PUSH	BC
+	PUSH	HL
+	RST	$20		; advance
+	RST	$28
+	DEFW	L24FB + 1	; SCANNING + 1
+	POP	HL
+	JP	(HL)
 
 PLAY:
 ; unimplemented instruction, reports error, if executed
 PLUG:	BIT	7,(IY+$01)
 	JP	Z,SWAP
-ERROR_C_J:
-	JP	ERROR_C
 
 ; IF structure table
 T_IF:	DEFB	ELSE_T
