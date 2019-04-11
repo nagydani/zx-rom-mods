@@ -392,6 +392,77 @@ ERROR_S:PUSH	DE
 	CALL	ERROR
 	DEFB	$1B		; S UNTIL without REPEAT
 
+ERROR_2:CALL	ERROR
+	DEFB	$01		; 2 Variable not found
+
+; LET with operator update
+UPDATE:	LD	C,A
+	LD	HL,UPD_TAB
+	LD	A,(FLAGS)
+	BIT	7,A
+	JR	Z,UPDATE_S
+
+UPDATE_S:
+	CALL	INDEXER
+	JR	NC,ERROR_C_J
+	RST	$20
+	CP	"="
+	JR	NZ,ERROR_C_J
+	LD	BC,L1C4E
+	PUSH	BC
+	JR 	REPSW
+
+UPD_TAB:DEFB	"+"
+	DEFB	U_PLUS - $
+	DEFB	"-"
+	DEFB	U_MINUS - $
+	DEFB	"*"
+	DEFB	U_MUL - $
+	DEFB	"/"
+	DEFB	U_DIV - $
+	DEFB	"^"
+	DEFB	U_POW - $
+	DEFB	"="
+	DEFB	U_EQU - $
+	DEFB	">"
+	DEFB	U_GT - $
+	DEFB	"<"
+	DEFB	U_LT - $
+	DEFB	$C7		; <=
+	DEFB	U_LE - $
+	DEFB	$C8		; >=
+	DEFB	U_GE - $
+	DEFB	$C9		; <>
+	DEFB	U_NE - $
+	DEFB	$C5		; OR
+	DEFB	U_OR - $
+	DEFB	$C6		; AND
+	DEFB 	U_AND - $
+	DEFB	"%"
+	DEFB	U_MOD - $
+	DEFB	"|"
+	DEFB	U_BOR - $
+	DEFB	"&"
+	DEFB	U_BAND - $
+	DEFB	0		; end marker
+
+U_PLUS:
+U_MINUS:
+U_MUL:
+U_DIV:
+U_POW:
+U_EQU:
+U_GT:
+U_LT:
+U_LE:
+U_GE:
+U_NE:
+U_OR:
+U_AND:
+U_MOD:
+U_BOR:
+U_BAND:
+
 PLAY:
 ; unimplemented instruction, reports error, if executed
 PLUG:	BIT	7,(IY+$01)
