@@ -4964,12 +4964,15 @@ L0FA9:  LD      HL,(E_PPC)      ; fetch E_PPC the last line number entered.
 
         POP     HL              ; drop line address
         DEC     HL              ; make it point to first byte of line num.
-        DEC     (IY+$0F)        ; decrease E_PPC_lo to suppress line cursor.
+;;; BUGFIX: we have better ways of suppressing the line cursor
+;;;     DEC     (IY+$0F)        ; decrease E_PPC_lo to suppress line cursor.
                                 ; Note. ineffective when E_PPC is one
                                 ; greater than last line of program perhaps
                                 ; as a result of a delete.
                                 ; credit. Paul Harrison 1982.
-
+;;; BUGFIX: suppress end-of-interval check
+	LD	(IY+MEMBOT+29-ERR_NR),$FF
+;;;
         CALL    L1855           ; routine OUT-LINE outputs the BASIC line
                                 ; to the editing area.
         INC     (IY+$0F)        ; restore E_PPC_lo to the previous value.
@@ -4981,9 +4984,10 @@ L0FA9:  LD      HL,(E_PPC)      ; fetch E_PPC the last line number entered.
 
         LD      (K_CUR),HL      ; update K_CUR to address start of BASIC.
         POP     HL              ; restore the address of CURCHL.
-        CALL    L1615           ; routine CHAN-FLAG sets flags for it.
-
-        RET                     ; RETURN to ED-LOOP.
+;;; BUFGIX: tail call, baby!
+	JP	L1615
+;;;     CALL    L1615           ; routine CHAN-FLAG sets flags for it.
+;;;     RET                     ; RETURN to ED-LOOP.
 
 ; -------------------
 ; Cursor down editing
