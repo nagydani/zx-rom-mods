@@ -1,3 +1,13 @@
+; FLAGS unused bits
+; 4 - 128k mode
+
+; FLAGX unused bits
+; 6 - last IF's outcome is false
+
+; FLAGS2 unused bits
+; 7 - jump locations are cached
+
+
 OLDSP:		EQU	$5B81
 TSTACK:		EQU	$5BFF
 

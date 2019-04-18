@@ -5920,7 +5920,9 @@ L12CF:  LD      HL,(E_LINE)      ; fetch the edit line address from E_LINE.
 
         LD      A,B             ; test if the number of
         OR      C               ; the line is non-zero.
-        JP      NZ,L155D        ; jump forward to MAIN-ADD if so to add the
+;;; BUGFIX: optionally perform other operations before adding a line
+	JP      NZ,MAIN_ADD
+;;;     JP      NZ,L155D        ; jump forward to MAIN-ADD if so to add the
                                 ; line to the BASIC program.
 
 ; Has the user just pressed the ENTER key ?
@@ -6165,9 +6167,13 @@ L1539:  DEFB    $7F                                     ; copyright
 ;; REPORT-G
 ; No Room for line
 L1555:  LD      A,$10           ; i.e. 'G' -$30 -$07
-        LD      BC,$0000        ; this seems unnecessary.
+;;; BUGFIX: save 3 bytes
+;;;     LD      BC,$0000        ; this seems unnecessary.
         JP      L1313           ; jump back to MAIN-G
 
+;;; BUGFIX: perform optional housekeeping before adding a line
+MAIN_ADD:
+	CALL	NOPAGE
 ; -----------------------------
 ; Handle addition of BASIC line
 ; -----------------------------
