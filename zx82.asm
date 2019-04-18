@@ -9260,7 +9260,7 @@ L1D8B:  INC     HL              ; increment pointer to address
         RET     NZ              ; return with carry set if at end
                                 ; of program.           ->
 
-        LD      B,(HL)          ; high byte of line number to B
+X1D91:	LD      B,(HL)          ; high byte of line number to B
         INC     HL              ;
         LD      C,(HL)          ; low byte to C.
         LD      (NEWPPC),BC      ; set system variable NEWPPC.

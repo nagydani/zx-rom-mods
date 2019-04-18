@@ -558,7 +558,7 @@ SEP_MISM:			; THEN-less IF and operator update in LET
 C_THEN:	LD	A,$CB		; THEN
 	CP	C
 	JR	NZ,ERROR_C_NZ
-	BIT	7,(IY+$01)	; checking sytax?
+	CALL	SYNTAX_Z	; checking sytax?
 	JP	Z,SWAP		; if so, we're done here
 	JP	THENLESS
 
@@ -811,6 +811,8 @@ REPORTS:DEFB	$80+"S"
 	DEFB	$80+"T"
 	DEFM	"Missing END I"
 	DEFB	$80+"F"
+	DEFM	"Label not foun"
+	DEFB	$80+"d"
 
 PEEK_T:	EQU	$BE
 FREE_T:	EQU	$CE
@@ -834,6 +836,7 @@ CHR_T:	EQU	$C2
 ENDIF_T:EQU	$C5
 ELSE_T:	EQU	$CB
 PLAY_T:	EQU	$A4
+LABEL_T:EQU	$AB
 POKE_T:	EQU	$F4
 IF_T:	EQU	$FA
 
@@ -856,12 +859,14 @@ SCANFUNC2:
 	DEFB	S_STR - $
 	DEFB	FREE_T
 	DEFB	S_FREE - $
-	DEFB	TIME_T
-	DEFB	S_TIME - $
 	DEFB	HEX_T
 	DEFB	S_HEX - $
 	DEFB	OCT_T
 	DEFB	S_OCT - $
+	DEFB	"@"
+	DEFB	S_LBL - $
+	DEFB	TIME_T
+	DEFB	S_TIME - $
 	DEFB	0
 
 S_MEM:	RST	$20
@@ -957,12 +962,12 @@ S_FREE:	CALL	SYNTAX_Z
 	LD	HL,L2D2B + 4	; STACK-BC
 	JR	HLSWAP
 
-S_OCT:	BIT	7,(IY+$01)
+S_OCT:	CALL 	SYNTAX_Z
 	JR	NZ,S_STK_NUM
 	LD	C,$08
 	JR	S_NUM
 
-S_HEX:	BIT	7,(IY+$01)
+S_HEX:	CALL 	SYNTAX_Z
 	JR	NZ,S_STK_NUM
 	LD	C,$10
 S_NUM:	RST	$20		; skip prefix
@@ -970,7 +975,7 @@ S_NUM:	RST	$20		; skip prefix
 	DEFW	DEC2FP + 2
 	RST	$28
 	DEFW	L2C9B + 3
-	LD	HL,L268D + 8
+	LD	HL,L268D + 8	;  S_DECIMAL
 	JR	HLSWAP
 
 S_STICK:RST	$28
@@ -1000,6 +1005,16 @@ S_STK_NUM:
 HLSWAP:	PUSH	HL
 RSWAP1:	JP	SWAP
 
+S_LBL:	CALL	SYNTAX_Z
+	JP	Z,S_LBLS
+	RST	$20
+	PUSH	HL
+L_LBL:	LD	A,(HL)
+	CP	$0E
+	INC	HL
+	JR	NZ,L_LBL
+	JP	D_LBL
+
 S_TIME:	CALL	SYNTAX_Z
 	JR	Z,S_TIME_END
 TIME_R:	LD	A,(FRAMES+2)
@@ -1024,6 +1039,7 @@ TIME_N:	BIT	7,E
 	RL	E
 	DEC	A
 	JR	TIME_N
+
 TIME_D:	RES	7,E
 	JR	TIME_S
 TIME_L:	LD	C,D
@@ -1149,6 +1165,30 @@ SINCLAIR2_STICK:
 KEMPSTON_STICK:
 	IN	A,($1F)
 	JR	STICK_2
+
+S_LBLS:	LD	B,0
+S_LBLL:	RST	$20
+	RST	$28
+	DEFW	L2C88		; ALPHANUM
+	INC	B
+	JR	Z,ERR_CL
+	JR	C,S_LBLL
+	DJNZ	S_LBLC
+ERR_CL:	JP	ERROR_C
+S_LBLC:	LD	BC,$0006
+	RST	$28
+	DEFW	L1655		; MAKE-ROOM
+	INC	HL
+	LD	(HL),$0E
+	LD	BC,$0500	; TODO: maybe B is enough
+S_LBL0:	INC	HL
+	LD	(HL),C
+	DJNZ	S_LBL0
+	RST	$28
+	DEFW	L0077		; TEMP-PTR1
+	LD	BC,L26C3	; S_NUMERIC
+	PUSH	BC
+	JR	CSWAPR
 
 D_CPL:	BIT	6,(IY+$01)
 	JR	NZ,D_CPLN
@@ -1355,7 +1395,7 @@ S_STR_NEW:
 	POP	BC		; discard STR$ and priority
 	CP	","
 	JR	NZ,ERROR_C
-	BIT	7,(IY+$01)
+	CALL	SYNTAX_Z
 	JR	Z,S_STR_S
 	LD	BC,$0001
 	RST	$30
@@ -1378,7 +1418,7 @@ S_STR_NEW:
 S_STR_S:RST	$20
 	RST	$28
 	DEFW	L1C82		; CLASS_06, numeric expression followed by whatever
-	BIT	7,(IY+$01)
+	CALL	SYNTAX_Z
 	JR	Z,S_ST0_S
 	PUSH	AF
 	RST	$28
@@ -1396,7 +1436,7 @@ S_STR_S:RST	$20
 	POP	AF
 S_ST0_S:CP	")"
 	JR	NZ,S_STR3
-	BIT	7,(IY+$01)
+	CALL	SYNTAX_Z
 	JR	Z,S_STR_D
 	PUSH	AF
 	RST	$28
@@ -1417,7 +1457,7 @@ S_STR3:	CP	","
 	DEFW	L1C82		; CLASS_06, numeric expression followed by whatever
 	CP	")"
 	JR	NZ,ERROR_C	; must be followed by ")"
-	BIT	7,(IY+$01)
+	CALL	SYNTAX_Z
 S_STR_D:JR	Z,S_STR_END
 	RST	$28
 	DEFW	L1E94		; FIND-INT1
@@ -1883,6 +1923,119 @@ D_XORL:	LD	A,B
 	INC	DE
 	DEC	BC
 	JR	D_XORL
+
+D_LBL:	LD	A,(HL)
+	INC	HL
+	OR	(HL)
+	INC	HL
+	OR	(HL)
+	INC	HL
+	OR	(HL)
+	JR	Z,F_LBL
+D_LBLR:	DEC	HL
+	DEC	HL
+	DEC	HL
+	POP	BC		; discard label start
+	LD	BC,L26B6 + 7	; S-SD-SKIP + 7
+	PUSH	BC
+	JP	SWAP
+
+F_LBL:	POP	BC		; label start
+	PUSH	BC
+	LD	HL,(PROG)
+F_LBLL:	LD	A,(HL)
+	AND	$C0
+	JR	NZ,ERROR_U
+	LD	E,LABEL_T
+	RST	$28
+	DEFW	X1D91		; inside LOOK-PROG
+	JR	C,ERROR_U
+	LD	(LIST_SP),BC
+	LD	BC,$0007
+	ADD	HL,BC		; skip pointer
+	POP	BC		; label start
+	PUSH	BC
+NXBC:	LD	A,(BC)
+	INC	BC
+	CP	$0E
+	JR	Z,E_LBL		; label end
+	CP	" " + 1
+	JR	C,NXBC
+	CP	"a"
+	JR	C,L_DIG
+	AND	$DF		; upper case
+L_DIG:	LD	E,A
+NXHL:	LD	A,(HL)
+	INC	HL
+	CP	" " + 1
+	JR	C,NXHL
+	RST	$28
+	DEFW	L2C88		; alphanum
+	JR	NC,NXLBL
+	CP	"a"
+	JR	C,L_DIG2
+	AND	$DF		; upper case
+L_DIG2:	CP	E
+	JR	Z,NXBC
+NXLBL:	LD	HL,(LIST_SP)
+	INC	HL
+	JR	F_LBLL
+
+ERROR_U:CALL	ERROR
+	DEFB	$1D		; U Label not found
+
+E_LBL:	LD	A,(HL)
+	INC	HL
+	CP	$0D
+	JR	Z,E_LBL2
+	CP	" " + 1
+	JR	C,E_LBL
+	JR	NXLBL
+
+; TODO: cache destination rather than line number
+E_LBL2:	LD	L,C
+	LD	H,B
+	INC	HL
+	INC	HL
+	LD	BC,(NEWPPC)
+	LD	(HL),C
+	INC	HL
+	LD	(HL),B
+	JR	D_LBLR
+
+RSTLBLS:LD	HL,(PROG)
+	LD	DE,$0005
+NX_LIN:	LD	A,(HL)
+	AND	$C0
+	RET	NZ
+	ADD	HL,DE
+	DEC	HL
+NX_CHR:	LD	A,(HL)
+	INC	HL
+	CP	$0D
+	JR	Z,NX_LIN
+	CP	"\""
+	JR	Z,SKQUOT
+	CP	$0E
+	JR	Z,SKNUM
+	CP	"@"
+	JR	NZ,NX_CHR
+	LD	A,$0E
+SK_LBL:	CP	(HL)
+	INC	HL
+	JR	NZ,SK_LBL
+	LD	B,E
+RST_LBL:LD	(HL),D
+	INC	HL
+	DJNZ	RST_LBL
+	JR	NX_CHR
+SKQUOT:	CP	(HL)
+	INC	HL
+	JR	NZ,SKQUOT
+	JR	NX_CHR
+SKNUM:	ADD	HL,DE
+	JR	NX_CHR
+
 
 
 	INCLUDE	"instructions.asm"
