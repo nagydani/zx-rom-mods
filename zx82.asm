@@ -8244,7 +8244,7 @@ L1AB5:  DEFB    $03             ; Class-03 - A numeric expression may follow
 
 ;; P-CONT
 L1AB8:  DEFB    $00             ; Class-00 - No further operands.
-        DEFW    L1E5F           ; Address: $1E5F; Address: CONTINUE
+	DEFW    L1E5F           ; Address: $1E5F; Address: CONTINUE
 
 ;; P-CLEAR
 L1ABB:  DEFB    $03             ; Class-03 - A numeric expression may follow
@@ -9563,10 +9563,10 @@ L1E5A:  LD      (SEED),BC      ; place in SEED system variable.
 
 ;; CONTINUE
 ;;; BUGFIX: No CONTINUE from program execution, only from command
-L1E5F:  CALL	CONTINUE
+L1E5F:  JP	CONTINUE
 ;;; L1E5F:  LD      HL,(OLDPPC)      ; fetch OLDPPC line number.
-        LD      D,(IY+$36)      ; fetch OSPPC statement.
-        JR      L1E73           ; forward to GO-TO-2
+;;; LD      D,(IY+$36)      ; fetch OSPPC statement.
+;;; JR      L1E73           ; forward to GO-TO-2
 
 ; --------------------
 ; Handle GO TO command
@@ -9582,15 +9582,22 @@ L1E5F:  CALL	CONTINUE
 ; error report 'Statement Lost' is given instead of 'OK'.
 ; - Steven Vickers, 1984.
 
+;;; BUGFIX: handle large targets in ROM0
+NOGOTO:	CALL	NOPAGE
+GOTOER:	JR	L1E9F		; REPORT-B
+;;; ---
 ;; GO-TO
 L1E67:  CALL    L1E99           ; routine FIND-INT2 puts operand in BC
         LD      H,B             ; transfer line
         LD      L,C             ; number to HL.
         LD      D,$00           ; set statement to 0 - first.
         LD      A,H             ; compare high byte only
-;;;     CP      $F0             ; to $F0 i.e. 61439 in full.
+;;; BUGFIX: disallow very large GO TO targets
 	CP	$28		; to $28 i.e. 10239 in full
-        JR      NC,L1E9F        ; forward to REPORT-B if above.
+;;;     CP      $F0             ; to $F0 i.e. 61439 in full.
+;;; BUGFIX: handle them separately
+	JR	NC,NOGOTO
+;;;     JR      NC,L1E9F        ; forward to REPORT-B if above.
 
 ; This call entry point is used to update the system variables e.g. by RETURN.
 
@@ -19758,7 +19765,7 @@ LIST_RANGE_2:
 	LD	(MEMBOT+28),BC	; set interval end
 	RET
 
-; CONTINUE only from command (13 bytes)
+; CONTINUE only from command (21 bytes)
 CONTINUE:
 	LD	HL,(PPC)
 	INC	HL
@@ -19766,8 +19773,10 @@ CONTINUE:
 	LD	A,H
 	OR	L
 	LD	HL,(OLDPPC)
-	RET	Z
-	RST	$08
+	LD	D,(IY+$36)	; fetch OSPPC statement.
+	JP	Z,L1E73		; forward to GO-TO-2
+	CALL	NOPAGE
+CONTER:	RST	$08
 	DEFB	$0B		; Nonsense in BASIC
 
 ; Clean up after report in MAIN-EXEC (8 bytes)
@@ -19862,8 +19871,8 @@ INFIXR:	RST	$08
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF;	, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;

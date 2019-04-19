@@ -355,6 +355,47 @@ SKIPS2:	SCF
 	LD	(CH_ADD),HL
 	RET
 
+MULS_S:	LD	BC,$104C	; tight multiplication
+	LD	HL,L2790	; S-NEXT
+MULS_R:	EX	(SP),HL		; replace return address by it
+	JR	DSWAP2
+
+GOTO_CONT:
+	POP	BC
+	POP	DE		; discard ERROR B
+	LD	HL,(PROG)
+	AND	A
+	SBC	HL,DE
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	ADD	HL,DE
+	LD	(CH_ADD),HL
+	SBC	HL,DE
+	INC	HL
+	LD	DE,SUBPPC
+	LDI
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	ADD	HL,DE
+	DEC	HL
+	LD	D,(HL)
+	DEC	HL
+	LD	E,(HL)
+	EX	DE,HL
+	ADD	HL,DE
+	INC	HL
+	INC	HL
+	LD	(NXTLIN),HL
+	EX	DE,HL
+	DEC	HL
+	LD	E,(HL)
+	DEC	HL
+	LD	D,(HL)
+	LD	(PPC),DE
+	JP	SWAP
+
 ERROR_5:CALL	ERROR
 	DEFB	$04		; 5 Out of screen
 
@@ -368,11 +409,6 @@ INFIX_T:CP	$0C		; multiplication?
 	DEFW	L2D2B + 4		; STACK-BC
 	LD	BC,D_STRING
 	JP	S_FUNC
-
-MULS_S:	LD	BC,$104C	; tight multiplication
-	LD	HL,L2790	; S-NEXT
-MULS_R:	EX	(SP),HL		; replace return address by it
-	JR	DSWAP2
 
 ERR_CONT:
 	POP	BC
@@ -454,21 +490,26 @@ DISPAT:	BIT	4,(IY+1)
 	SBC	HL,BC
 	ADD	HL,BC
 	JR	Z,RUN_CONT
+	LD	BC,GOTOER
+	AND	A
+	SBC	HL,BC
+	ADD	HL,BC
+	JP	Z,GOTO_CONT
 	LD	BC,SCANNER
 	AND	A
 	SBC	HL,BC
 	ADD	HL,BC
 	JR	Z,SCAN_CONT
-	LD	BC,OPERTR
-	AND	A
-	SBC	HL,BC
-	ADD	HL,BC
-	JR	Z,OPER_CONT
 	LD	BC,DIGITR
 	AND	A
 	SBC	HL,BC
 	ADD	HL,BC
 	JR	Z,DIGIT_CONT
+	LD	BC,OPERTR
+	AND	A
+	SBC	HL,BC
+	ADD	HL,BC
+	JR	Z,OPER_CONT
 	LD	BC,SCRNER
 	AND	A
 	SBC	HL,BC
@@ -2091,9 +2132,9 @@ D_LBLR:	DEC	HL
 	PUSH	BC
 	JP	SWAP
 
-F_LBL:	SET	7,(IY+FLAGS2-ERR_NR)
-	POP	BC		; label start
-	PUSH	BC
+F_LBL:	SET	7,(IY+FLAGS2-ERR_NR)	; Mark cache dirty
+;;	POP	BC		; label start
+;;	PUSH	BC
 	LD	HL,(PROG)
 F_LBLL:	LD	A,(HL)
 	AND	$C0
@@ -2103,8 +2144,7 @@ F_LBLL:	LD	A,(HL)
 	DEFW	X1D91		; inside LOOK-PROG
 	JR	C,ERROR_U
 	LD	(LIST_SP),BC
-	LD	BC,$0007
-	ADD	HL,BC		; skip pointer
+	INC	HL
 	POP	BC		; label start
 	PUSH	BC
 NXBC:	LD	A,(BC)
@@ -2119,6 +2159,8 @@ NXBC:	LD	A,(BC)
 L_DIG:	LD	E,A
 NXHL:	LD	A,(HL)
 	INC	HL
+	CP	$0E
+	JR	Z,NXHL1
 	CP	" " + 1
 	JR	C,NXHL
 	RST	$28
@@ -2133,6 +2175,14 @@ NXLBL:	LD	HL,(LIST_SP)
 	INC	HL
 	JR	F_LBLL
 
+NXHL1:	LD	(MEMBOT+28),HL
+	LD	A,L
+	ADD	A,5
+	LD	L,A
+	JR	NC,NXHL
+	INC	H
+	JR	NXHL
+
 ERROR_U:CALL	ERROR
 	DEFB	$1D		; U Label not found
 
@@ -2145,17 +2195,20 @@ E_LBL:	LD	A,(HL)
 	RST	$28
 	DEFW	L2C88		; alphanum
 	JR	C,NXLBL
-
-; TODO: cache destination rather than line number
 E_LBL2:	LD	L,C
 	LD	H,B
 	INC	HL
 	INC	HL
-	LD	BC,(NEWPPC)
-	LD	(HL),C
+	EX	DE,HL
+	LD	HL,(PROG)
+	LD	BC,(MEMBOT+28)
+	AND	A
+	SBC	HL,BC
+	EX	DE,HL
+	LD	(HL),E
 	INC	HL
-	LD	(HL),B
-	JR	D_LBLR
+	LD	(HL),D
+	JP	D_LBLR
 
 MAIN_ADD_CONT:
 	POP	BC
