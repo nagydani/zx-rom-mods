@@ -71,17 +71,22 @@ NOCLSL:	CP	$88
 	ADD	A,$100 - $70	; transpose to $18..$1F, set CF
 	JR	K_ING0
 
-K_INW:	CP	POKE_T
-	JR	NZ,K_POKE
-	LD	A,PEEK_T
-K_POKE:	CP	RND_T		; USR "V" +
+K_INW:	CP	RND_T		; USR "V" +
 	JR	C,K_INB
 	BIT	1,(IY+$07)	; mode G?
 	JR	Z,K_INB
 	ADD	A,$100 - $A4	; transpose to 1..5, set CF
 K_ING0:	RES	1,(IY+$07)
 	JP	SWAP
-K_INB:	CP	$20
+K_INB:	BIT	3,(IY+$01)	; mode K?
+	JR	NZ,K_MDL	; jump, if not
+	LD	HL,K_MODE
+	LD	C,A
+	CALL	INDEXER
+	LD	A,C
+	JR	NC,K_MDL
+	LD	A,(HL)
+K_MDL:	CP	$20
 	CCF
 	JR	C,K_ING0	; regular key pressed
 	CP	$0D
@@ -160,6 +165,11 @@ K_ENT:	LD	HL,K_STATE
 	SCF
 	JR	K_INR2
 
+; K-MODE translation table
+K_MODE:	DEFB	POKE_T,PEEK_T
+	DEFB	"@",LABEL_T
+	DEFB	0
+
 ; print flashing cursor (invert character)
 PCURSOR:PUSH	AF
 	RST	$28
@@ -215,6 +225,10 @@ TOKENI1:SUB	FREE_T - RND_T	; FREE / DEF FN
 TOKEN2I:INC	B
 	LD	DE,TOKENS1
 	CALL	TOKEN
+	RRA
+	RST	$28
+	DEFW	L2C8D		; ALPHA
+	RET	NC
 TSPACE:	LD	A," "
 	EXX
 	RST	$10
