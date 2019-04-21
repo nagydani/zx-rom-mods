@@ -174,9 +174,9 @@ L0028:  JP      L335B           ; jump forward to the CALCULATE routine.
 ; ---
 ;;; BUGFIX: extensible instruction set
 REPORT_C_EXTRA:
-	CALL	NOPAGE
-RUNNER:	RST	$08
-	DEFB	$0B
+	CALL	RUN_HOOK
+	RST	$08
+	DEFB	$0B		; C Nonsense in BASIC
 ;;;	DEFB    $FF, $FF, $FF   ; spare - note that on the ZX81, space being a
 ;;;	DEFB    $FF, $FF        ; little cramped, these same locations were
 				; used for the five-byte end-calc literal.
@@ -6000,9 +6000,9 @@ L1313:  PUSH    AF              ; save the error number.
 
         POP     AF              ; bring back the true error number
 ;;; BUGFIX: abstract error reporting
-	CALL	NOPAGE
+	CALL	ERROR_HOOK
 ;;;
-ERRRR:	LD      B,A             ; and make a copy in B.
+	LD      B,A             ; and make a copy in B.
         CP      $0A             ; is it a print-ready digit ?
         JR      C,MAIN_5	; forward to MAIN-5 if so.
 
@@ -6173,7 +6173,7 @@ L1555:  LD      A,$10           ; i.e. 'G' -$30 -$07
 
 ;;; BUGFIX: perform optional housekeeping before adding a line
 MAIN_ADD:
-	CALL	NOPAGE
+	CALL	MAINADD_HOOK
 ; -----------------------------
 ; Handle addition of BASIC line
 ; -----------------------------
@@ -9583,8 +9583,8 @@ L1E5F:  JP	CONTINUE
 ; - Steven Vickers, 1984.
 
 ;;; BUGFIX: handle large targets in ROM0
-NOGOTO:	CALL	NOPAGE
-GOTOER:	JR	L1E9F		; REPORT-B
+NOGOTO:	CALL	GOTO_HOOK
+	JR	L1E9F		; REPORT-B
 ;;; ---
 ;; GO-TO
 L1E67:  CALL    L1E99           ; routine FIND-INT2 puts operand in BC
@@ -12317,9 +12317,9 @@ L2530:  BIT     7,(IY+$01)      ; test FLAGS  - checking syntax only ?
 ;; S-SCRN$-S
 L2535:  CALL    L2307           ; routine STK-TO-BC.
 ;;; BUGFIX: extensibility for different screen modes
-	CALL	NOPAGE
+	CALL	SCRN_HOOK
 ;;;
-SCRNER:	LD      HL,(CHARS)      ; fetch address of CHARS.
+	LD      HL,(CHARS)      ; fetch address of CHARS.
 ;;; Bugfix: save 3 bytes
 	INC	H		; Saves 3 bytes
 ;;;        LD      DE,$0100        ; fetch offset to chr$ 32
@@ -14947,8 +14947,8 @@ L2C9B:
 
 ; ---
 DIGIT:	SUB	"0"
-	CALL	NOPAGE		; consider systems over ten, in 128k mode
-DIGITR:	JR	C,NOTDGT
+	CALL	DIGIT_HOOK	; consider systems over ten, in 128k mode
+	JR	C,NOTDGT
 	CP	(IY+$6E)
 	CCF
 	RET	NC
@@ -19775,8 +19775,8 @@ CONTINUE:
 	LD	HL,(OLDPPC)
 	LD	D,(IY+$36)	; fetch OSPPC statement.
 	JP	Z,L1E73		; forward to GO-TO-2
-	CALL	NOPAGE
-CONTER:	RST	$08
+	CALL	CONTINUE_HOOK
+	RST	$08
 	DEFB	$0B		; Nonsense in BASIC
 
 ; Clean up after report in MAIN-EXEC (8 bytes)
@@ -19822,8 +19822,8 @@ SETFX6:	SET	6,(IY+$37)
 	JP	L1BB3		; LINE-END
 
 ; Infix operators on non-standard types (5 bytes)
-INFIX:	CALL	NOPAGE
-INFIXR:	RST	$08
+INFIX:	CALL	INFIX_HOOK
+	RST	$08
 	DEFB	$0B		; C Nonsense in BASIC
 
 ; ---------------------
@@ -19967,38 +19967,63 @@ INFIXR:	RST	$08
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF;	, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;       DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;       DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+        DEFB    $FF, $FF, $FF, $FF, $FF;	, $FF, $FF, $FF;
+;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 
-; 23 bytes used before the character set
+; 83 bytes used before the character set
 ; Abstacted NEW routine
-NEW:	LD	HL,L11B7	; 48k NEW routine
-	PUSH	HL		; stacked
-	JR	NOPAGE
+NEW:	CALL	NEW_HOOK
+	JP	L11B7		; NEW
 INDEXER_2:
 	CALL	L16DC		; INDEXER
 	RET	C		; if code is found, return immediately
-; This routine does nothing, if paging is disabled, otherwise switches to ROM0
+	CALL	NOPAGE
+INFIX_HOOK:
+	CALL	NOPAGE
+CONTINUE_HOOK:
+	CALL	NOPAGE
+DIGIT_HOOK:
+	CALL	NOPAGE
+SCRN_HOOK:
+	CALL	NOPAGE
+GOTO_HOOK:
+	CALL	NOPAGE
+MAINADD_HOOK:
+	CALL	NOPAGE
+ERROR_HOOK:
+	CALL	NOPAGE
+RUN_HOOK:
+	CALL	NOPAGE
+NEW_HOOK:
+	CALL	NOPAGE
+POUT:	CALL	NOPAGE
+PIN:	CALL	NOPAGE
+SOUT:	CALL	NOPAGE
+KOUT:	CALL	NOPAGE
+KIN:	CALL	NOPAGE
+XOUT:	CALL	NOPAGE
+XIN:	CALL	NOPAGE
+NXOUT:	CALL	NOPAGE
+NXIN:	CALL	NOPAGE
+FSCAN:	CALL	NOPAGE
+; Switch to ROM0, if 128k mode
 NOPAGE:	PUSH	AF
-	PUSH	BC
-	LD	BC,$7FFD	; 128k pager port
-	XOR	A		; ROM0, RAM0
-	DI
-	OUT	(C),A		; page in ROM0, if possible
-	EI
-	POP	BC
+	LD	A,(FLAGS)
+	AND	$10
+	JP	NZ,$5B01	; SWAP + 1, after PUSH AF
 	POP	AF
+	INC	SP
+	INC	SP
 	RET
-
 ORG $3D00
 
 ; -------------------------------

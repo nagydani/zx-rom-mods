@@ -249,7 +249,7 @@ NEST2:	EQU	NESTING + 1
 ELSE:	POP	BC		; discard STMT-RET
 	BIT	7,(IY+$01)
 	JR	Z,ELSE_1
-	BIT	6,(IY+$37)
+	BIT	6,(IY+$37)	; FLAGX, check if last IF was false
 	RES	6,(IY+$37)
 	JR	NZ,ELSE_1
 	RST	$18
@@ -396,7 +396,7 @@ REPEAT:	POP	DE
 	LD	HL,(NXTLIN)
 	SBC	HL,BC
 	EX	(SP),HL
-	LD	BC,$3E02
+	LD	BC,$3EFB
 	PUSH	BC
 	PUSH	HL
 	LD	(ERR_SP),SP
@@ -416,15 +416,25 @@ UNTIL:	RST	$28
 	POP	DE		; marker
 	LD	A,D
 	CP	$3E
-	JR	NZ,ERROR_S
-				; TODO: check LOCAL
+	JR	NZ,ERROR_S	; after GO SUB
 	LD	A,E
-	CP	$02
-	JR	NZ,ERROR_S
+	CP	$FB
+	JR	Z,UNT_NL	; no local variables
+	EXX
+	CALL	SKIP_LC
+	CP	$FB
+	EXX
+	JR	NZ,ERROR_S	; after FOR or ...
 	EX	AF,AF'
+	JR	C,UNT_R		; repeat, without destroying local context
+	EXX
+	LD	SP,HL		; reclaim local variables
+	EXX
+	JR	UNT_E		; continue after UNTIL
+
+UNT_NL:	EX	AF,AF'
 	JR	NC,END_REP
-	LD	E,2
-	PUSH	DE		; marker
+UNT_R:	PUSH	DE		; marker
 	PUSH	HL		; error address
 	PUSH	BC		; return address
 	LD	HL,$0006
@@ -455,7 +465,7 @@ END_REP:EX	DE,HL
 	ADD	HL,SP
 	LD	SP,HL
 	PUSH	DE
-	LD	(ERR_SP),SP
+UNT_E:	LD	(ERR_SP),SP
 	PUSH	BC
 	JR	REPSW
 

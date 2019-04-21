@@ -2,6 +2,7 @@
 ; 4 - 128k mode
 
 ; FLAGX unused bits
+; 2 - up-value
 ; 6 - last IF's outcome is false
 
 ; FLAGS2 unused bits
