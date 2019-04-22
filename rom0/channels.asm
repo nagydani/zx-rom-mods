@@ -90,7 +90,7 @@ K_MDL:	CP	$20
 	CCF
 	JR	C,K_ING0	; regular key pressed
 	CP	$0D
-	JR	Z,K_ENT
+	JR	Z,K_ENT		; ENTER pressed
 	CP	$10
 	JR	NC,KEY_CONTR0
 	CP	$06
@@ -161,6 +161,7 @@ KEY_DATA0:
 	JR	K_INR2
 
 K_ENT:	LD	HL,K_STATE
+	LD	(IY+DEFADD+1-ERR_NR),1	; TODO: this is an ugly hack
 	RES	6,(HL)		; turn off blinking cursor
 	SCF
 	JR	K_INR2

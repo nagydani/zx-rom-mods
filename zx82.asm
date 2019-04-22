@@ -49,7 +49,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 13-APR-2019
+; Last updated: 22-APR-2019
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -13575,8 +13575,10 @@ L28E3:  LD      A,($5C0C)       ; load A with DEFADD_hi
 ; Note.
 
         CALL    L2530           ; routine SYNTAX-Z
-        JP      NZ,L2951        ; JUMP to STK-F-ARG in runtime and then
-                                ; back to this point if no variable found.
+;;; BUGFIX: extensibility for local variables
+	JP	NZ,STK_F_ARG
+;;;     JP      NZ,L2951        ; JUMP to STK-F-ARG in runtime and then
+;;;                             ; back to this point if no variable found.
 
 ;; V-RUN/SYN
 L28EF:  LD      B,C             ; save flags in B
@@ -14521,7 +14523,9 @@ L2B66:  BIT     6,(IY+$01)      ; test FLAGS - numeric or string result ?
 ; -*-> the branch was here if a string existed.
 
 ;; L-DELETE$
-L2B72:  LD      HL,(DEST)      ; fetch DEST to HL.
+;;; BUGFIX: local string assignment
+L2B72:	CALL	STRING_HOOK
+;;; L2B72:  LD      HL,(DEST)      ; fetch DEST to HL.
                                 ; (still set from first instruction)
         LD      BC,(STRLEN)      ; fetch STRLEN to BC.
         BIT     0,(IY+$37)      ; test FLAGX - handling a complete simple
@@ -19966,8 +19970,8 @@ INFIX:	CALL	INFIX_HOOK
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF;	, $FF, $FF, $FF;
+        DEFB    $FF;	, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
@@ -19979,10 +19983,16 @@ INFIX:	CALL	INFIX_HOOK
 ;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 
-; 83 bytes used before the character set
+; 94 bytes used before the character set
+
+; Local variables in 128k mode
+STK_F_ARG:
+	CALL	LOCAL_HOOK
+	JP	L2951		; STK_F_ARG
 ; Abstacted NEW routine
 NEW:	CALL	NEW_HOOK
 	JP	L11B7		; NEW
+; Extended INDEXER
 INDEXER_2:
 	CALL	L16DC		; INDEXER
 	RET	C		; if code is found, return immediately
@@ -19990,6 +20000,8 @@ INDEXER_2:
 INFIX_HOOK:
 	CALL	NOPAGE
 CONTINUE_HOOK:
+	CALL	NOPAGE
+STRING_HOOK:
 	CALL	NOPAGE
 DIGIT_HOOK:
 	CALL	NOPAGE
@@ -20002,6 +20014,8 @@ MAINADD_HOOK:
 ERROR_HOOK:
 	CALL	NOPAGE
 RUN_HOOK:
+	CALL	NOPAGE
+LOCAL_HOOK:
 	CALL	NOPAGE
 NEW_HOOK:
 	CALL	NOPAGE

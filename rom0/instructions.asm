@@ -52,7 +52,7 @@
 	DEFB	P_PLUG - $	; EsQ
 	DEFB	P_PLUG - $	; EsW
 	DEFB	P_PLUG - $	; EsE
-	DEFB	P_PLUG - $	; EZ
+	DEFB	P_LOCAL - $	; LOCAL
 	DEFB	P_PLUG - $	; EX
 	DEFB	P_REPEAT - $	; REPEAT
 	DEFB	P_PLUG - $	; EH
@@ -101,6 +101,9 @@ P_USR:	DEFB	$06, $00
 
 P_LABEL:DEFB	$05
 	DEFW	LABEL
+
+P_LOCAL:DEFB	$05
+	DEFW	LOCAL
 
 P_PLAY:
 ; unimplemented instruction, accepted w/o parameters, but not executed
@@ -420,26 +423,34 @@ UNTIL:	RST	$28
 	LD	A,E
 	CP	$FB
 	JR	Z,UNT_NL	; no local variables
+	PUSH	DE		; put back marker
 	EXX
 	CALL	SKIP_LC
 	CP	$FB
 	EXX
 	JR	NZ,ERROR_S	; after FOR or ...
 	EX	AF,AF'
-	JR	C,UNT_R		; repeat, without destroying local context
+	JR	NC,UNT_R	; reclaim local context
+	PUSH	HL		; error address
+	PUSH	BC		; return address
 	EXX
+	INC	HL
+	INC	HL		; skip marker
+	JR	UNT_C		; continue loop
+
+UNT_R:	EXX
 	LD	SP,HL		; reclaim local variables
 	EXX
-	JR	UNT_E		; continue after UNTIL
+	JR	END_REP		; continue after UNTIL
 
 UNT_NL:	EX	AF,AF'
 	JR	NC,END_REP
-UNT_R:	PUSH	DE		; marker
+	PUSH	DE		; marker
 	PUSH	HL		; error address
 	PUSH	BC		; return address
 	LD	HL,$0006
 	ADD	HL,SP
-	LD	BC,(PROG)
+UNT_C:	LD	BC,(PROG)
 	LD	E,(HL)
 	INC	HL
 	LD	D,(HL)
@@ -568,6 +579,119 @@ UPD_DO:	POP	BC		; discard marker, B=0
 	DEFW	L24FB + 1	; SCANNING + 1
 	POP	HL
 	JP	(HL)
+
+LOCAL_S:RST	$28
+	DEFW	L2C8D		; ALPHA
+	JR	NC,ERROR_C_J
+	RST	$20
+	CP	"$"
+	LD	B,$40
+	JR	NZ,LOCAL_N
+	LD	B,$00
+	RST	$20
+LOCAL_N:CP	"("
+	JR	NZ,LOCAL_I
+	LD	C,$A1
+	RST	$28
+	DEFW	L2996
+LOCAL_E:LD	HL,L1BEE + 5	; CHECK_END + 5; TODO: array initializer?
+	PUSH	HL
+	JP	SWAP
+LOCAL_I:CP	"="
+	JR	NZ,LOCAL_E
+	RST	$20
+	PUSH	BC
+	RST	$28
+	DEFW	L24FB + 1	; SCANNING + 1
+	LD	A,(FLAGS)
+	POP	BC
+	XOR	B
+	AND	$40
+	JR	NZ,ERROR_C_J	; type mismatch
+	JR	LOCAL_E
+
+LOCAL:	CALL	SYNTAX_Z
+	JR	Z,LOCAL_S
+	AND	$1F
+	OR	$60		; assume simple numeric
+	LD	C,A
+	RST	$20
+	CP	"$"
+	JR	NZ,LCL_N
+	RES	5,C
+	RST	$20
+LCL_N:	CP	"("
+	JR	Z,LCL_A
+	CALL	LOOK_LC
+	JR	C,LCL_F
+	RST	$18
+	CP	"="
+	JR	NZ,LCL_E
+	PUSH	BC
+	RST	$20
+	RST	$28
+	DEFW	L24FB + 1	; SCANNING + 1
+	POP	BC
+	POP	DE		; return address
+	POP	HL		; error address
+	EXX
+	RST	$28
+	DEFW	L2BF1		; STK-FETCH
+	BIT	6,(IY+$01)	; type
+	JR	NZ,LCL_NX
+	LD	(STRLEN),BC
+	LD	HL,$0000
+	ADD	HL,SP
+	AND	A
+	SBC	HL,BC
+	LD	SP,HL
+	EX	DE,HL
+	LD	A,B
+	OR	C
+	JR	Z,LCL_Z
+	LDIR
+LCL_Z:	LD	BC,(STRLEN)
+	PUSH	BC
+	INC	BC
+	INC	BC
+	PUSH	BC
+	JR	LCL_EXX
+
+LCL_A:	call	ERROR
+	defb	$02		; 3 Subscript wrong
+
+LCL_NX:	PUSH	BC
+	PUSH	DE
+	PUSH	AF
+	JR	LCL_EX
+
+LCL_E:	POP	DE		; return address
+	POP	HL		; error address
+	BIT	5,C
+	EXX
+	LD	HL,0
+	PUSH	HL
+	PUSH	HL
+	JR	NZ,LCL_EN
+	LD	H,$03
+LCL_EN:	PUSH	HL
+LCL_EX:	INC	SP
+LCL_EXX:EXX
+	LD	B,$3E		; marker
+	PUSH	BC
+	PUSH	HL		; error address
+	LD	(ERR_SP),SP
+	PUSH	DE		; return address
+LCL_SW:	JP	SWAP
+
+LCL_F:	RST	$18
+	CP	"="
+	JR	NZ,LCL_SW
+	RST	$20
+	CALL	SKIPEX
+	DEC	HL
+	LD	(CH_ADD),HL
+	JR	LCL_SW
 
 PLAY:
 ; unimplemented instruction, reports error, if executed
