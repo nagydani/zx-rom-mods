@@ -383,27 +383,27 @@ USR:	CALL	SYNTAX_Z
 	PUSH	BC
 	JR	POKE_SWAP
 
-REPEAT:	POP	DE
+REPEAT:	POP	DE		; DE = return address
 	LD	HL,(SUBPPC - 1)
-	EX	(SP),HL
-	INC	SP
+	EX	(SP),HL		; HL = error address
+	INC	SP		; stack SUBPPC (1 byte)
 	LD	BC,(PPC)
-	PUSH	BC
+	PUSH	BC		; stack PPC (2 bytes)
 	PUSH	HL
 	LD	HL,(CH_ADD)
 	AND	A
 	LD	BC,(PROG)
 	SBC	HL,BC
-	EX	(SP),HL
+	EX	(SP),HL		; stack CH_ADD - PROG (2 bytes)
 	PUSH	HL
 	LD	HL,(NXTLIN)
 	SBC	HL,BC
-	EX	(SP),HL
-	LD	BC,$3EFB
-	PUSH	BC
-	PUSH	HL
+	EX	(SP),HL		; stack NXTLIN - PROG (2 bytes)
+	LD	BC,$3E00 + REPEAT_M
+	PUSH	BC		; stack marker
+	PUSH	HL		; stack error address
 	LD	(ERR_SP),SP
-	PUSH	DE
+	PUSH	DE		; stack return address
 	LD	BC,$0014	; why this much? see $1F02 in ROM1
 	LD	HL,L1F05	; TEST-ROOM
 	PUSH	HL
@@ -421,14 +421,14 @@ UNTIL:	RST	$28
 	CP	$3E
 	JR	NZ,ERROR_S	; after GO SUB
 	LD	A,E
-	CP	$FB
+	CP	REPEAT_M
 	JR	Z,UNT_NL	; no local variables
 	PUSH	DE		; put back marker
 	EXX
-	CALL	SKIP_LC
-	CP	$FB
+	CALL	SKIP_LL
+	CP	REPEAT_M
 	EXX
-	JR	NZ,ERROR_S	; after FOR or ...
+	JR	NZ,ERROR2S	; wrong context
 	EX	AF,AF'
 	JR	NC,UNT_R	; reclaim local context
 	PUSH	HL		; error address
@@ -441,7 +441,8 @@ UNTIL:	RST	$28
 UNT_R:	EXX
 	LD	SP,HL		; reclaim local variables
 	EXX
-	JR	END_REP		; continue after UNTIL
+	EX	DE,HL
+	JR	UNT_ER		; continue after UNTIL
 
 UNT_NL:	EX	AF,AF'
 	JR	NC,END_REP
@@ -475,13 +476,13 @@ END_REP:EX	DE,HL
 	LD	HL,$0007
 	ADD	HL,SP
 	LD	SP,HL
-	PUSH	DE
+UNT_ER:	PUSH	DE
 UNT_E:	LD	(ERR_SP),SP
 	PUSH	BC
 	JR	REPSW
 
 ERROR_S:PUSH	DE
-	PUSH	HL
+ERROR2S:PUSH	HL
 	CALL	ERROR
 	DEFB	$1B		; S UNTIL without REPEAT
 
@@ -821,3 +822,40 @@ SKIP_NUM:
 	INC	HL
 	LD	A,(HL)
 	RET
+
+; Handling argumentless NEXT
+LV_CONT:LD	A,(T_ADDR)
+	CP	$99		; interpreting NEXT?
+	JP	NZ,SWAP		; return, if not
+	RST	$18		; get the character following NEXT
+	CP	$0D		; CR?
+	JR	Z,NEXT		; if so, it's an argumentless NEXT
+	CP	":"		; colon?
+	JP	NZ,SWAP		; return, if not
+NEXT:	POP	BC
+	POP	BC
+	POP	BC		; discard return addresses
+	CALL	SYNTAX_Z
+	JR	Z,NEXT_SW
+	CALL	SKIP_LC
+	ADD	A,A
+	JR	NC,ERROR_1
+	PUSH	HL
+	RST	$28
+	DEFW	X1DB9		; execute NEXT
+	POP	HL
+	JP	NC,SWAP		; execute loop body again
+	LD	BC,$0017	; jump over loop variable
+	ADD	HL,BC
+	POP	BC		; save return address
+	POP	DE		; save error address
+	LD	SP,HL
+	PUSH	DE		; restore error address
+	LD	(ERR_SP),SP
+	PUSH	BC		; restore return address
+	JP	SWAP
+NEXT_SW:POP	BC		; discard one more return address
+	JP	SWAP
+
+ERROR_1:CALL	ERROR
+	DEFB	$00		; 1 NEXT without FOR

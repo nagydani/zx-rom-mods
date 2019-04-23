@@ -5,10 +5,27 @@
 ; 21..3A numeric array: 2 bytes of length + 1 byte dimensions + content
 ; 41..5A simple string:	2 bytes of max length + 2 bytes of actual length + content
 ; 61..7A simple numeric: 5 bytes
+
+; 7B REPEAT, 7 bytes: (NXTLIN)-(PROG), (CHADD)-(PROG), (PPC), (SUBPPC)
+
 ; 81..9A string reference: 2 bytes of length + symbolic reference
 ; A1..BA numeric reference: 2 bytes of length + symbolic reference
 ; E1..FA for loop variable: 22 bytes: value, target, step, (PPC), (SUBPPC), (NXTLIN-PROG), (CHADD)-(PROG)
-; FB REPEAT, 7 bytes: (NXTLIN)-(PROG), (CHADD)-(PROG), (PPC), (SUBPPC)
+
+
+REPEAT_M:	EQU	$7B
+
+; Skip all local variables, incl. loops
+SKIP_LL:CALL	SKIP_LC
+SKIPLL:	BIT	7,A
+	RET	Z
+	LD	DE,$0017
+	ADD	HL,DE
+	CALL	LOC_L
+	JR	SKIPLL
+
+; Skip local variables excl. loops
+SKIP_LC:LD	C,0		; this will never be found
 
 ; Look up local variables
 ; Input: C variable discriminator
@@ -25,14 +42,15 @@ LOC_L:	LD	A,$3E
 	LD	A,E
 	OR	A
 	RET	Z		; end-of-stack, local variable not found
-	CP	$FB
+	CP	REPEAT_M
 	JR	Z,LOC_REP	; REPEAT entry
 	BIT	7,A
 	JR	Z,LOC_SA	; simple variables and arrays
 	SUB	$E0
 	JR	NC,LOC_SA	; loop variables
 	ADD	$A0		; references
-LOC_SA:	CP	C
+LOC_SA:	OR	$60		; adjust type bits
+	CP	C
 	JR	NZ,LOC_NX
 	SCF
 	RET			; local variable found
@@ -55,32 +73,6 @@ LOC_SKL:INC	HL		; skip references
 LOC_SK:	ADD	HL,DE
 	JR	LOC_L
 
-; skip local variables
-; Output: HL=marker address, A=local context type, $3E for GO SUB
-SKIP_LC:LD	HL,(ERR_SP)
-	LD	C,$E0
-	INC	HL
-SKIP_L:	LD	A,$3E
-	INC	HL
-	INC	HL
-	CP	(HL)
-	DEC	HL
-	RET	NZ		; GO SUB entry
-	LD	A,(HL)
-	CP	C
-	RET	NC		; other local context
-	INC	HL
-	AND	C
-	CP	$60
-	LD	DE,$0005
-	JR	Z,SKIP_N
-	INC	HL
-	LD	E,(HL)
-	INC	HL
-	LD	D,(HL)
-SKIP_N:	ADD	HL,DE
-	JR	SKIP_L
-
 ; Look up local variables
 LOCAL_CONT:
 	DEC	A
@@ -89,7 +81,11 @@ LOCAL_CONT:
 LC_LL:	JR	C,LC_FND
 	OR	A
 	JR	Z,LC_NOTF
-	CALL	LOC_L
+	ADD	A,A
+	JR	NC,LC_LOOP	; not a loop variable
+	LD	DE,$0017	; skip loop variable
+	ADD	HL,DE
+LC_LOOP:CALL	LOC_L
 	JR	LC_LL
 LC_NOTF:LD	HL,L28EF
 LC_JP:	EX	(SP),HL		; replace the return address with V_RUN_SYN
@@ -233,3 +229,70 @@ STRNG_LONG:
 	POP	BC		; discard target address
 	POP	BC		; discard return address
 	JR	STRNG_Z
+
+; LET substitute for FOR
+FOR_CONT:
+	LD	BC,22		; enough space for a FOR loop
+	RST	$28
+	DEFW	L1F05		; TEST-ROOM
+	POP	DE		; discard return address
+	POP	DE		; discard return address
+	POP	DE		; save return address
+	POP	BC		; save error address
+	LD	HL,-22		; 22 bytes for a FOR loop
+	ADD	HL,SP
+	LD	(MEM),HL	; set calculator memory area
+	LD	SP,HL
+	PUSH	HL		; placeholder for marker
+	PUSH	BC		; error address
+	LD	(ERR_SP),SP
+	PUSH	DE		; return address
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL
+	EX	DE,HL
+	LD	HL,(STKEND)
+	DEC	HL
+	LD	BC,5
+	LDDR
+	INC	HL
+	LD	(STKEND),HL
+	LD	HL,(DEST)
+	EX	DE,HL
+	LD	(HL),$3E	; marker
+	BIT	1,(IY+$37)
+	JR	NZ,LF_GETN	; jump, if not found
+	EX	DE,HL
+	AND	A
+	SBC	HL,SP
+	ADD	HL,SP
+	JR	NC,LF_GLOB
+	DEC	HL
+LF_GLOB:DEC	HL
+	EX	DE,HL
+LF_GETN:LD	A,(DE)
+	AND	$1F
+	OR	$E0
+	DEC	HL
+	LD	(HL),A		; marker-discriminator
+	LD	DE,$0007
+	ADD	HL,DE		; HL points to limit
+	LD	DE,L1D34	; F-L-S
+	PUSH	DE
+	JR	LF_SWAP
+
+; Check local variables for NEXT
+NEXT_CONT:
+	AND	A
+	SBC	HL,SP
+	ADD	HL,SP
+	JR	C,LF_SWAP	; not local
+	DEC	HL
+	BIT	7,(HL)
+	JR	Z,LF_SWAP	; not a loop variable
+	INC	HL
+	EX	(SP),HL
+	LD	HL,X1DB9	; continue with NEXT
+	EX	(SP),HL
+LF_SWAP:JP	SWAP
