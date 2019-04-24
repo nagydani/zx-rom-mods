@@ -23,8 +23,10 @@ ED_COPY:SET	6,(HL)
 	RES	3,(HL)
 	LD	HL,C_SPCC
 	LD	(HL),1
+	PUSH	HL
 	RST	$28
 	DEFW	L111D		; ED-COPY
+	POP	HL
 	RET
 
 ; channel K input
