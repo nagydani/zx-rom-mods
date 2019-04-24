@@ -47,10 +47,10 @@ LOC_L:	LD	A,$3E
 	BIT	7,A
 	JR	Z,LOC_SA	; simple variables and arrays
 	SUB	$E0
-	JR	NC,LOC_SA	; loop variables
+	JR	NC,LOC_LV	; loop variables
 	ADD	$A0		; references
-LOC_SA:	OR	$60		; adjust type bits
-	CP	C
+LOC_LV:	OR	$60		; adjust type bits
+LOC_SA:	CP	C
 	JR	NZ,LOC_NX
 	SCF
 	RET			; local variable found

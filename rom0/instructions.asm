@@ -1,4 +1,5 @@
 	DEFB	P_PLUG - $	; G8
+	DEFB	P_PLUG - $	; G1
 	DEFB	P_PLUG - $	; G2
 	DEFB	P_PLUG - $	; G3
 	DEFB	P_PLUG - $	; G4
@@ -6,6 +7,7 @@
 	DEFB	P_PLUG - $	; G6
 	DEFB	P_PLUG - $	; G7
 	DEFB	P_PLUG - $	; Gs8
+	DEFB	P_PLUG - $	; Gs1
 	DEFB	P_PLUG - $	; Gs2
 	DEFB	P_PLUG - $	; Gs3
 	DEFB	P_PLUG - $	; Gs4
@@ -38,7 +40,7 @@
 	DEFB	P_PLUG - $	; EM
 	DEFB	P_PLUG - $	; Es2
 	DEFB	P_PLUG - $	; Es8
-	DEFB	P_PLUG - $	; EsK
+	DEFB	P_STACK - $	; STACK
 	DEFB	P_LABEL - $	; EsL
 	DEFB	P_PLUG - $	; sI
 	DEFB	P_PLAY - $	; PLAY
@@ -87,6 +89,9 @@ P_POKE:	DEFB	$06	; numeric expression
 	DEFB	","
 	DEFB	$05	; list of items
 	DEFW	POKE
+
+P_STACK:DEFB	$07
+	DEFW	STACK
 
 P_REPEAT:
 	DEFB	$00
@@ -149,7 +154,7 @@ CMDCLASS2:
 	DEFB	CLASS2_04 - $	; used by FOR & NEXT -- TODO: may be worth replacing
 	DEFB	CLASS2_05 - $	; list of items
 	DEFB	CLASS2_06 - $	; evaluate single numeric expression
-	DEFB	CLASS2_07 - $	; TODO: makes no sense to use original
+	DEFB	CLASS2_07 - $	; open #2 or other stream before execution
 	DEFB	CLASS2_08 - $	; two numeric expressions, separated by comma
 
 CLASS2_03:
@@ -196,8 +201,7 @@ CLASS2_06:
 	RET	NZ
 
 ERROR_C_I:
-	CALL	ERROR
-	DEFB	$0B
+	JP	ERROR_C
 
 FETCH_NUM:
 	CP	$0D
@@ -211,7 +215,17 @@ USE_ZERO:
 	RET
 
 CLASS2_07:
-	; something useful
+	RST	$28
+	DEFW	L2070		; STR-ALTER
+	JR	NC,STR_ALTERED
+	CALL	SYNTAX_Z
+	JR	Z,STR_ALTERED
+	LD	A,2
+	RST	$28
+	DEFW	L1601	; CHAN-OPEN
+STR_ALTERED:
+	JR	CLASS2_00
+
 
 ; instruction routines
 ENDIF:	RES	6,(IY+$37)	; signal true outcome
@@ -698,10 +712,161 @@ LCL_F:	RST	$18
 	LD	(CH_ADD),HL
 	JR	LCL_SW
 
+STACKQ:	POP	DE		; discard STACKE
+	JR	LCL_SW
+
+STACK:	LD	HL,(ERR_SP)
+	INC	HL
+	INC	HL		; skip error address
+STACKL:	LD	DE,STACKE
+	PUSH	DE
+	SET	0,(IY+$01)	; suppress leading spaces
+	LD	A,$3E
+	LD	C,(HL)
+	INC	HL
+	LD	B,(HL)
+	CP	B
+	INC	HL
+	JR	NZ,ST_GOSUB
+	LD	A,C
+	OR	A
+	JR	Z,STACKQ
+	ADD	A,A
+	JR	NC,ST_NFOR	; not FOR variable
+	LD	A,FOR_T
+	RST	$10
+	CALL	ST_NUM
+	LD	A,TO_T
+	RST	$10
+	CALL	ST_NUMV
+	LD	A,STEP_T
+	RST	$10
+	CALL	ST_NUMV
+	LD	A," "
+	RST	$10
+	CALL	ST_SMTV
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL		; skip destination cache
+	RET
+STACKE:	LD	A,$0D
+	RST	$10
+	JR	STACKL
+
+ST_NFOR:CP	REPEAT_M * 2
+	JR	C,ST_VAR
+	LD	A,REPEAT_T	; TODO: other contexts
+	RST	$10
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL		; skip destination cache
+ST_SMTV:LD	C,(HL)
+	INC	HL
+	LD	B,(HL)
+	INC	HL
+ST_STMT:LD	A,AT_T
+	RST	$10
+	RST	$28
+	DEFW	L1A1B		; OUT-NUM-1
+	LD	A,":"
+	RST	$10
+	LD	A,(HL)
+	DEC	A
+	CALL	DECBYTE
+	INC	HL
+	RET
+
+ST_GOSUB:
+	LD	A,GOSUB_T
+	RST	$10
+	JR	ST_STMT
+
+ST_VAR:	LD	A,LOCAL_T
+	RST	$10
+	LD	A,C
+	AND	$20
+	JR	Z,ST_STR
+ST_NUM:	CALL	ST_VARN
+	LD	A,"="
+	RST	$10
+ST_NUMV:RST	$28
+	DEFW	L33B4		; STACK-NUM
+	PUSH	HL
+	RST	$28
+	DEFW	L2DE3		; PRINT-FP
+	POP	HL
+	RET
+
+ST_STR:	CALL	ST_VARN
+	LD	A,"$"
+	RST	$10
+	LD	A,"="
+	RST	$10
+	LD	A,"\""
+	RST	$10
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	INC	HL
+	DEC	DE
+	DEC	DE		; max length in DE
+	LD	C,(HL)
+	INC	HL
+	LD	B,(HL)		; length in BC
+	EX	DE,HL
+	AND	A
+	SBC	HL,BC
+	PUSH	HL		; stack remainder
+	EX	DE,HL
+	INC	HL
+	EX	DE,HL
+	LD	HL,5		; print at most 5 characters
+	SBC	HL,BC
+	EX	DE,HL
+;;	JR	C,ST_LNG	; long string
+	
+ST_STRL:LD	A,B
+	OR	C
+	JR	NZ,ST_NXT
+	LD	A,"\""
+	RST	$10
+	POP	DE
+	ADD	HL,DE		; skip reserved space
+	RET
+ST_NXT:	LD	A,(HL)
+	CP	$18
+	JR	C,ST_CTRL	; control character
+	RST	$10
+	CP	"\""
+	CALL	Z,$0010
+ST_NXT0:DEC	BC
+	INC	HL
+	JR	ST_STRL
+ST_CTRL:LD	A,"\""
+	RST	$10
+	LD	A,"+"
+	RST	$10
+	LD	A,CHR_T
+	RST	$10
+	LD	A,(HL)
+	CALL	DECBYTE
+	LD	A,"+"
+	RST	$10
+	LD	A,"\""
+	RST	$10
+	JR	ST_NXT0
+
+ST_VARN:LD	A,C
+	AND	$1F		; bottom 5 bits
+	OR	"a"-1
+	RST	$10
+	RET
+
 PLAY:
 ; unimplemented instruction, reports error, if executed
-PLUG:	BIT	7,(IY+$01)
-	JP	Z,SWAP
+PLUG:	JP	ERROR_C
 
 ; IF structure table
 T_IF:	DEFB	ELSE_T
@@ -843,6 +1008,8 @@ NEXT:	POP	BC
 	PUSH	HL
 	RST	$28
 	DEFW	X1DB9		; execute NEXT
+	LD	HL,MEMBOT
+	LD	(MEM),HL	; much faster than RST $28:DEFW X16CB, not worth 3 bytes
 	POP	HL
 	JP	NC,SWAP		; execute loop body again
 	LD	BC,$0017	; jump over loop variable

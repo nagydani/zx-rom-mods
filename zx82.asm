@@ -49,7 +49,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 22-APR-2019
+; Last updated: 24-APR-2019
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -6534,7 +6534,10 @@ L1655:  PUSH    HL              ; save the address pointer.
         CALL    L1F05           ; routine TEST-ROOM checks if room
                                 ; exists and generates an error if not.
         POP     HL              ; restore the address pointer.
-        CALL    L1664           ; routine POINTERS updates the
+
+;;; BUGFIX: do not move DEST
+	CALL	POINTERS
+;;;     CALL    L1664           ; routine POINTERS updates the
                                 ; dynamic memory location pointers.
                                 ; DE now holds the old value of STKEND.
         LD      HL,(STKEND)      ; fetch new STKEND the top destination.
@@ -6560,8 +6563,11 @@ LDDRR:	LDDR                    ; the program, variables, etc are moved up.
 ;; POINTERS
 L1664:  PUSH    AF              ; preserve accumulator.
         PUSH    HL              ; put pos pointer on stack.
-        LD      HL,VARS        ; address VARS the first of the
-        LD      A,$0E           ; fourteen variables to consider.
+;;; BUGFIX: do not move DEST
+	LD	HL,CHANS	; address CHANS the first of the
+	LD	A,$0C		; twelve variables to consider
+;;;	LD      HL,VARS		; address VARS the first of the
+;;;	LD      A,$0E           ; fourteen variables to consider.
 
 ;; PTR-NEXT
 L166B:  LD      E,(HL)          ; fetch the low byte of the system variable.
@@ -6691,7 +6697,7 @@ L16BF:  LD      HL,(WORKSP)      ; fetch WORKSP value
 L16C5:  LD      HL,(STKBOT)      ; fetch STKBOT value
         LD      (STKEND),HL      ; and place in STKEND.
 
-        PUSH    HL              ; perhaps an obsolete entry point.
+X16CB:	PUSH    HL              ; perhaps an obsolete entry point.
         LD      HL,MEMBOT        ; normal location of MEM-0
         LD      (MEM),HL      ; is restored to system variable MEM.
         POP     HL              ; saved value not required.
@@ -7936,7 +7942,9 @@ L19E8:  PUSH    BC              ;
         LD      C,A             ;
         INC     BC              ;
 
-        CALL    L1664           ; routine POINTERS
+;;; BUGFIX: do not move DEST
+	CALL	POINTERS
+;;;	CALL    L1664           ; routine POINTERS
         EX      DE,HL           ;
         POP     HL              ;
 
@@ -19855,6 +19863,19 @@ REPORT1:CALL	NEXT_HOOK
 	RST	$08
 	DEFB	$00		; 1 NEXT without FOR
 
+; POINTERS except DEST (19 bytes)
+POINTERS:
+	LD	DE,(VARS)
+	AND	A
+	SBC	HL,DE
+	ADD	HL,DE
+	JP	NC,L1664
+	EX	DE,HL
+	ADD	HL,BC
+	LD	(VARS),HL
+	EX	DE,HL
+	JP	L1664
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
@@ -19903,10 +19924,10 @@ REPORT1:CALL	NEXT_HOOK
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF;	, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+        DEFB    $FF, $FF, $FF, $FF, $FF; , $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
