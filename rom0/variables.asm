@@ -29,14 +29,15 @@ SKIP_LC:LD	C,0		; this will never be found
 
 ; Look up local variables
 ; Input: C variable discriminator
-; Output: CF set, if variable found, HL pointing to variable found or next candidate, A context type $3E for GO SUB
+; Output: CF set, if variable found, HL pointing to variable found or next candidate, A context type $3F for GO SUB
 LOOK_LC:LD	HL,(ERR_SP)
 	INC	HL
 	INC	HL		; skip error address
-LOC_L:	LD	A,$3E
+LOC_L:	LD	A,$3E + 1
 	LD	E,(HL)
 	INC	HL
 	LD	D,(HL)
+	INC	D		; this is necessary because GO SUB can come from command line
 	CP	D
 	RET	NZ		; regular GO SUB stack entry, local variable not found
 	LD	A,E
