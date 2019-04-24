@@ -9881,11 +9881,14 @@ L1F23:  POP     BC              ; drop the address STMT-RET.
 
 ;; REPORT-7
 L1F36:  PUSH    DE              ; replace the end-marker.
-        PUSH    HL              ; now restore the error address
+
+;;; BUGFIX: allow for local context reclaim before RETURN
+	JP	REPORT7
+;;;        PUSH    HL              ; now restore the error address
                                 ; as will be required in a few clock cycles.
 
-        RST     08H             ; ERROR-1
-        DEFB    $06             ; Error Report: RETURN without GOSUB
+;;;        RST     08H             ; ERROR-1
+;;;        DEFB    $06             ; Error Report: RETURN without GOSUB
 
 ; --------------------
 ; Handle PAUSE command
@@ -19863,6 +19866,12 @@ REPORT1:CALL	NEXT_HOOK
 	RST	$08
 	DEFB	$00		; 1 NEXT without FOR
 
+; REPORT7, check for local variables first (6 bytes)
+REPORT7:CALL	RETURN_HOOK
+	PUSH	HL
+	RST	$08
+	DEFB	$06		; 7 RETURN without GOSUB
+
 ; POINTERS except DEST (19 bytes)
 POINTERS:
 	LD	DE,(VARS)
@@ -19875,6 +19884,7 @@ POINTERS:
 	LD	(VARS),HL
 	EX	DE,HL
 	JP	L1664
+
 
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
@@ -19927,7 +19937,8 @@ POINTERS:
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF; , $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF;	, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
@@ -20013,8 +20024,7 @@ POINTERS:
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+        DEFB    $FF, $FF, $FF, $FF, $FF;	, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
@@ -20029,7 +20039,7 @@ POINTERS:
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 
-; 104 bytes used before the character set
+; 107 bytes used before the character set
 
 ; Local variables in 128k mode
 STK_F_ARG:
@@ -20060,6 +20070,8 @@ FOR_HOOK:
 NEXT_HOOK:
 	CALL	NOPAGE
 LV_HOOK:
+	CALL	NOPAGE
+RETURN_HOOK:
 	CALL	NOPAGE
 MAINADD_HOOK:
 	CALL	NOPAGE

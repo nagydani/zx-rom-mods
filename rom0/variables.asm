@@ -301,3 +301,28 @@ NEXT_CONT:
 	LD	HL,X1DB9	; continue with NEXT
 	EX	(SP),HL
 LF_SWAP:JP	SWAP
+
+; Discard local variables before RETURN
+RETURN_CONT:
+	PUSH	HL
+	PUSH	BC
+RET_L:	CALL	SKIP_LL
+	OR	A
+	JR	Z,LF_SWAP	; 7 RETURN without GOSUB
+	CP	$3F
+	JR	Z,RETURN_GS
+	CP	REPEAT_M
+	JR	Z,RET_L
+	jr	LF_SWAP		; TODO: consider other contexts
+
+RETURN_GS:
+	POP	BC
+	POP	DE
+	DEC	HL
+	DEC	HL
+	DEC	HL
+	LD	SP,HL
+	EX	DE,HL
+	LD	DE,L1F23 + 2	; RETURN + 2
+	PUSH	DE
+	JR	LF_SWAP		; RETURN again
