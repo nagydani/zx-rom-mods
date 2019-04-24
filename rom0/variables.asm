@@ -39,7 +39,7 @@ LOC_L:	LD	A,$3E + 1
 	LD	D,(HL)
 	INC	D		; this is necessary because GO SUB can come from command line
 	CP	D
-	RET	NZ		; regular GO SUB stack entry, local variable not found
+	JR	NZ,LOC_GS	; regular GO SUB stack entry, local variable not found
 	LD	A,E
 	OR	A
 	RET	Z		; end-of-stack, local variable not found
@@ -73,6 +73,10 @@ LOC_SKL:INC	HL		; skip references
 	INC	HL
 LOC_SK:	ADD	HL,DE
 	JR	LOC_L
+
+LOC_GS:	INC	HL		; skip line number
+	INC	HL		; skip statement number
+	RET
 
 ; Look up local variables
 LOCAL_CONT:
