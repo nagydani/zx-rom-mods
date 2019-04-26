@@ -495,7 +495,7 @@ L0095:  DEFB    ('?')+$80
         DEFB    'T',('O')+$80
         DEFM    "STE"
         DEFB    ('P')+$80
-        DEFM    "DEF F"
+X0119:	DEFM    "DEF F"
         DEFB    ('N')+$80
         DEFM    "CA"
         DEFB    ('T')+$80
@@ -19872,19 +19872,95 @@ REPORT7:CALL	RETURN_HOOK
 	RST	$08
 	DEFB	$06		; 7 RETURN without GOSUB
 
-; POINTERS except DEST (19 bytes)
+; POINTERS except DEST (41 bytes)
 POINTERS:
 	LD	DE,(VARS)
+	AND	A
+	SBC	HL,DE
+	ADD	HL,DE
+	EX	DE,HL
+	JR	NC,CH_DEST
+	ADD	HL,BC
+	LD	(VARS),HL
+	AND	A
+CH_DEST:LD	HL,(DEST)
+	SBC	HL,SP
+	ADD	HL,SP
+	JR	NC,SK_DEST
+	EX	DE,HL
 	AND	A
 	SBC	HL,DE
 	ADD	HL,DE
 	JP	NC,L1664
 	EX	DE,HL
 	ADD	HL,BC
-	LD	(VARS),HL
-	EX	DE,HL
+	LD	(DEST),HL
+SK_DEST:EX	DE,HL
 	JP	L1664
 
+; Find token in this ROM (67 bytes)
+; Input: HL text to match, DE token table, B number of tokens in the table, C = 0
+; Output: CF set iff token found, A remaining tokens in the table at longest match, C length of match
+FTOKEN_R1:
+	PUSH	AF
+FTOKENL_R1:
+	PUSH	BC
+	LD	BC,$A000
+; Test one keyword
+; Input: HL text to match, DE keyword to check, BC=$A000
+; Output: CF set iff keyword matches fully, C length of match, DE next keyword
+TESTKW_R1:
+	BIT	7,(HL)
+	JR	NZ,NEXTKW_R1
+	LD	A,(DE)
+	CP	B		; final space is not matched
+	JR	Z,TESTKW1_R1
+	AND	$7F
+	CALL	L2C8D		; ALPHA
+	ADC	A,A
+	RRCA
+	XOR	(HL)
+	ADD	A,A
+	JR	NC,TESTKW0_R1	; not a letter
+	AND	$BF		; capitalize
+TESTKW0_R1:
+	JR	NZ,SPACEKW_R1
+	INC	C		; increment length
+	LD	A,(DE)
+TESTKW1_R1:
+	INC	DE
+	ADD	A
+	JR	C,FTOKEN1_R1	; token found
+	INC	HL
+	JR	TESTKW_R1
+SPACEKW_R1:
+	LD	A,(DE)
+	INC	DE
+	CP	" "		; spaces inside keywords are optional
+	JR	Z,TESTKW_R1
+	INC	HL
+NEXTKW_R1:
+	LD	A,(DE)
+	INC	DE
+	ADD	A,A
+	JR	NC,NEXTKW_R1
+	POP	BC
+FTOKEN0_R1:
+	DJNZ	FTOKENL_R1
+	POP	AF
+	AND	A
+	RET
+FTOKEN1_R1:
+	LD	A,C
+	POP	BC
+	CP	C
+	JR	C,FTOKEN0_R1
+	LD	C,A
+	POP	AF
+	LD	A,B
+	DJNZ	FTOKEN_R1
+	SCF
+	RET
 
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
@@ -19938,18 +20014,18 @@ POINTERS:
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF;	, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
