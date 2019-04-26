@@ -49,7 +49,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 24-APR-2019
+; Last updated: 26-APR-2019
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -19872,7 +19872,7 @@ REPORT7:CALL	RETURN_HOOK
 	RST	$08
 	DEFB	$06		; 7 RETURN without GOSUB
 
-; POINTERS except DEST (41 bytes)
+; POINTERS except DEST, if pointing to local variable (41 bytes)
 POINTERS:
 	LD	DE,(VARS)
 	AND	A
