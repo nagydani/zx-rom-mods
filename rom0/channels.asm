@@ -42,7 +42,10 @@ K_IN:	LD	HL,K_STATE
 K_IN0:	BIT	3,(IY+$02)
 	CALL	NZ,ED_COPY
 	AND	A
-	BIT	5,(IY+$01)
+	BIT	5,(IY+$30)	; mode K suppressed?
+	JR	Z,K_IN1		; jump, if not
+	SET	3,(IY+$01)	; switch off K mode
+K_IN1:	BIT	5,(IY+$01)
 	JR	Z,K_INNK	; no key pressed
 	BIT	5,(HL)
 	RES	5,(HL)
@@ -80,31 +83,6 @@ K_INW:	CP	RND_T		; USR "V" +
 	ADD	A,$100 - $A4	; transpose to 1..5, set CF
 K_ING0:	RES	1,(IY+$07)
 	JP	SWAP
-K_INB:	BIT	3,(IY+$01)	; mode K?
-	JR	NZ,K_MDL	; jump, if not
-	LD	HL,K_MODE
-	LD	C,A
-	CALL	INDEXER
-	LD	A,C
-	JR	NC,K_MDL
-	LD	A,(HL)
-K_MDL:	CP	$20
-	CCF
-	JR	C,K_ING0	; regular key pressed
-	CP	$0D
-	JR	Z,K_ENT		; ENTER pressed
-	CP	$10
-	JR	NC,KEY_CONTR0
-	CP	$06
-	JR	NC,KEY_M_CL0
-
-	LD	B,A
-	AND	$01
-	LD	C,A
-	LD	A,B
-	RRA
-	ADD	A,$12
-	JR	KEY_DATA0
 
 K_INNK:	LD	B,(HL)
 	BIT	6,B
@@ -124,13 +102,54 @@ K_INNK:	LD	B,(HL)
 	XOR	A
 	JP	SWAP
 
+K_INB:	BIT	3,(IY+$01)	; mode K?
+	JR	NZ,K_MDL	; jump, if not
+	LD	HL,K_MODE
+	LD	C,A
+	CALL	INDEXER
+	LD	A,C
+	JR	NC,K_MDL
+	LD	A,(HL)
+K_MDL:	CP	$20
+	JR	Z,KEY_M_K0	; jump, if space
+K_NSP:	CCF
+	JR	C,K_ING0	; regular key pressed
+	CP	$0D
+	JR	Z,K_ENT		; ENTER pressed
+	CP	$10
+	JR	NC,KEY_CONTR0
+	CP	$06
+	JR	NC,KEY_M_CL0
+
+	LD	B,A
+	AND	$01
+	LD	C,A
+	LD	A,B
+	RRA
+	ADD	A,$12
+	JR	KEY_DATA0
+
+KEY_M_K0:
+	LD	HL,FLAGS
+	BIT	3,(HL)		; mode K?
+	JR	Z,K_M_SPC	; jump, if so
+	LD	HL,MODE
+	BIT	0,(HL)		; mode E?
+	JR	Z,K_NSP		; jump back, if not
+	DEC	(HL)		; leave mode E
+	LD	A,$20		; toggle bit 5
+	JR	TFLAGS2
 KEY_M_CL0:
 	JR	NZ,KEY_MODE0
-	LD	HL,FLAGS2
 	LD	A,$08
+TFLAGS2:LD	HL,FLAGS2
 	XOR	(HL)
 	LD	(HL),A		; toggle CAPS LOCK
 	JR	KEY_FLAG0
+
+K_M_SPC:SET	3,(HL)		; turn off K mode
+	SET	5,(IY+$30)	; suppress K mode
+	JR	K_NSP
 
 KEY_MODE0:
 	CP	$0E
@@ -165,6 +184,15 @@ KEY_DATA0:
 K_ENT:	LD	HL,K_STATE
 	LD	(IY+DEFADD+1-ERR_NR),1	; TODO: this is an ugly hack
 	RES	6,(HL)		; turn off blinking cursor
+	SCF
+	BIT	5,(IY+$30)	; K mode suppressed?
+	JR	Z,K_INR2	; if not, do not attempt tokenization
+;;	BIT	3,(IY+$02)	; Editor mode?
+;;	JR	Z,K_INR2	; if not, do not attempt tokenization
+	BIT	5,(IY+$37)	; Line editing mode?
+	LD	HL,(E_LINE)
+	CALL	Z,TOKPRG
+	LD	A,$0D
 	SCF
 	JR	K_INR2
 
@@ -439,16 +467,21 @@ GR_TAB:	DEFB	$00, $FF
 	DEFB	$F0, $00
 	DEFB	$00, $0F
 
-E_QUEST:LD	HL,(X_PTR)
-	LD	(K_CUR),HL
-	JR	T_SWX
-
 ; draw editor header
 E_HEAD:	EX	DE,HL
 	RES	2,(HL)
 	CP	"?"
 	JR	Z,E_QUEST
-	LD	(RETADDR),BC
+	LD	HL,FLAGS2
+	BIT	5,(HL)
+	JR	Z,K_HEAD
+	CP	"K"
+	JR	NZ,K_HEAD
+	INC	A		; LD A,"L" see $1900 in ROM1
+	BIT	3,(HL)
+	JR	Z,K_HEAD
+	LD	A,"C"
+K_HEAD:	LD	(RETADDR),BC
 	PUSH	BC
 	PUSH	DE
 	EXX
@@ -486,6 +519,10 @@ E_HEAD1:LD	(FLAGS),A
 	POP	HL
 	POP	BC
 TSTORE3:JR	TSTORE
+
+E_QUEST:LD	HL,(X_PTR)
+	LD	(K_CUR),HL
+	JR	T_SWX
 
 TCTRL:	DEFB	TNOP - $	; $00 does nothing
 	DEFB	TQUEST - $	; $01 prints question mark
@@ -625,7 +662,8 @@ POSCR:	RST	$28	; TODO: take width into account
 	RET
 
 EDITOR_HEADER0:
-	DEFB	$16,$00,$00,$13,$01,$10,$07,$11,$80
+	DEFB	$14,$00,$16,$00,$00,$13,$01,$10,$07
+	DEFB	$11,$80
 	DEFM	"BASIC"
 	DEFB	$80 + ":"
 EDITOR_HEADER1:

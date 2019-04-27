@@ -160,6 +160,7 @@ F_SCAN:	LD	HL,10
 	JP	(HL)
 
 	INCLUDE "channels.asm"
+	INCLUDE "tokenizer.asm"
 
 PR_OUT:
 PR_IN:

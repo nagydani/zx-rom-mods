@@ -19898,20 +19898,19 @@ CH_DEST:LD	HL,(DEST)
 SK_DEST:EX	DE,HL
 	JP	L1664
 
-; Find token in this ROM (67 bytes)
+; Find token in this ROM (64 bytes)
 ; Input: HL text to match, DE token table, B number of tokens in the table, C = 0
-; Output: CF set iff token found, A remaining tokens in the table at longest match, C length of match
+; Output: A remaining tokens in the table at longest full match, C length of match
 FTOKEN_R1:
 	PUSH	AF
 FTOKENL_R1:
 	PUSH	BC
+	PUSH	HL
 	LD	BC,$A000
 ; Test one keyword
 ; Input: HL text to match, DE keyword to check, BC=$A000
 ; Output: CF set iff keyword matches fully, C length of match, DE next keyword
 TESTKW_R1:
-	BIT	7,(HL)
-	JR	NZ,NEXTKW_R1
 	LD	A,(DE)
 	CP	B		; final space is not matched
 	JR	Z,TESTKW1_R1
@@ -19938,20 +19937,21 @@ SPACEKW_R1:
 	INC	DE
 	CP	" "		; spaces inside keywords are optional
 	JR	Z,TESTKW_R1
-	INC	HL
+	DEC	DE
 NEXTKW_R1:
 	LD	A,(DE)
 	INC	DE
 	ADD	A,A
 	JR	NC,NEXTKW_R1
+	POP	HL
 	POP	BC
 FTOKEN0_R1:
 	DJNZ	FTOKENL_R1
 	POP	AF
-	AND	A
 	RET
 FTOKEN1_R1:
 	LD	A,C
+	POP	HL
 	POP	BC
 	CP	C
 	JR	C,FTOKEN0_R1
@@ -19959,7 +19959,6 @@ FTOKEN1_R1:
 	POP	AF
 	LD	A,B
 	DJNZ	FTOKEN_R1
-	SCF
 	RET
 
 ; ---------------------
@@ -20024,8 +20023,8 @@ FTOKEN1_R1:
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF;	, $FF;
+	DEFB    $FF, $FF;	, $FF, $FF, $FF, $FF, $FF, $FF;
+        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;

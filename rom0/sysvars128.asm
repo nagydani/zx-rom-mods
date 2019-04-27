@@ -5,6 +5,7 @@
 ; 6 - last IF's outcome is false
 
 ; FLAGS2 unused bits
+; 5 - suppress K mode, if set
 ; 7 - jump locations are cached
 
 
