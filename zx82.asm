@@ -922,14 +922,18 @@ L02D1:  LD      A,L             ; make a copy of the low address byte.
 
         LD      HL,KSTATE        ; point to KSTATE-0
         CP      (HL)            ; does the main key code match ?
-        JR      Z,L0310         ; forward to K-REPEAT if so
+;;; BUGFIX: K-REPEAT has moved
+	JR      Z,K_REPEAT	; forward to K-REPEAT if so
+;;;     JR      Z,L0310         ; forward to K-REPEAT if so
 
 ;   if not consider the second key map.
 
         EX      DE,HL           ; save kstate-0 in de
         LD      HL,$5C04        ; point to KSTATE-4
         CP      (HL)            ; does the main key code match ?
-        JR      Z,L0310         ; forward to K-REPEAT if so
+;;; BUGFIX: K-REPEAT has moved
+	JR      Z,K_REPEAT	; forward to K-REPEAT if so
+;;;        JR      Z,L0310         ; forward to K-REPEAT if so
 
 ;   having excluded a repeating key we can now consider a new key.
 ;   the second set is always examined before the first.
@@ -953,10 +957,15 @@ L02F1:  LD      E,A             ; store key in E
         LD      A,(REPDEL)       ; pick up the system variable REPDEL
         LD      (HL),A          ; and insert that for first repeat delay.
         INC     HL              ; advance to last location of state map.
-
-	LD      C,(IY+$07)      ; pick up MODE  (3 bytes)
-        LD      D,(IY+$01)      ; pick up FLAGS (3 bytes)
-        PUSH    HL              ; save state map location
+;;; BUGFIX: avoid the use of IY
+	PUSH	HL
+	LD	L,MODE - $100*(MODE/$100)
+	LD	C,(HL)
+	LD	L,FLAGS - $100*(FLAGS/$100)
+	LD	D,(HL)
+;;;	LD      C,(IY+$07)      ; pick up MODE  (3 bytes)
+;;;	LD      D,(IY+$01)      ; pick up FLAGS (3 bytes)
+;;;	PUSH    HL              ; save state map location
                                 ; Note. could now have used, to avoid IY,
                                 ; ld l,$41; ld c,(hl); ld l,$3B; ld d,(hl).
                                 ; six and two threes of course.
@@ -967,10 +976,13 @@ L02F1:  LD      E,A             ; store key in E
         LD      (HL),A          ; put the decoded key in last location of map.
 
 ;; K-END
-L0308:  LD      (LAST_K),A       ; update LASTK system variable.
-        SET     5,(IY+$01)      ; update FLAGS  - signal a new key.
+;;; BUGFIX: avoid the use of IY (save 4 bytes)
+K_END:	LD      (LAST_K),A       ; update LASTK system variable.
+;;;L0308:  LD      (LAST_K),A       ; update LASTK system variable.
+;;;	SET     5,(IY+$01)      ; update FLAGS  - signal a new key.
+	LD	L,FLAGS - $100*(FLAGS/$100)
+	SET	5,(HL)
         RET                     ; return to interrupt routine.
-
 ; -----------------------
 ; THE 'REPEAT KEY' BRANCH
 ; -----------------------
@@ -980,7 +992,9 @@ L0308:  LD      (LAST_K),A       ; update LASTK system variable.
 ;   is syntactically incorrect and not really desirable.
 
 ;; K-REPEAT
-L0310:  INC     HL              ; increment the map pointer to second location.
+;;;L0310:
+K_REPEAT:
+	INC     HL              ; increment the map pointer to second location.
         LD      (HL),$05        ; maintain interrupt counter at 5.
         INC     HL              ; now point to third location.
         DEC     (HL)            ; decrease the REPDEL value which is used to
@@ -993,12 +1007,14 @@ L0310:  INC     HL              ; increment the map pointer to second location.
 
         INC     HL              ; advance
                                 ;
-        LD      A,(HL)          ; pick up the key decoded possibly in another
+	LD      A,(HL)          ; pick up the key decoded possibly in another
                                 ; context.
                                 ; Note. should compare with $A5 (RND) and make
                                 ; a simple return if this is a keyword.
                                 ; e.g. cp $a5; ret nc; (3 extra bytes)
-        JR      L0308           ; back to K-END
+;;; BUGFIX: K-END has moved
+        JR      K_END		; back to K-END
+;;;     JR      L0308           ; back to K-END
 
 ; ----------------------
 ; THE 'KEY-TEST' ROUTINE
@@ -18227,12 +18243,14 @@ L353B:  LD      A,B             ; transfer literal to accumulator.
 
         BIT     2,A             ; isolate '>', '<', '='.
 
-        JR      NZ,L3543        ; skip to EX-OR-NOT with these.
+        JR      NZ,EX_OR_NOT	; skip to EX-OR-NOT with these.
 
         DEC     A               ; else make $00-$02, $08-$0A to match bits 0-2.
 
 ;; EX-OR-NOT
-L3543:  RRCA                    ; the first RRCA sets carry for a swap.
+EX_OR_NOT:
+	RRCA                    ; the first RRCA sets carry for a swap.
+;;;L3543:  RRCA                    ; the first RRCA sets carry for a swap.
         JR      NC,L354E        ; forward to NU-OR-STR with other 8 cases
 
 ; for the other 4 cases the two values on the calculator stack are exchanged.
