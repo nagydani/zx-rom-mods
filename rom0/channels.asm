@@ -355,15 +355,19 @@ KS_OUT:	BIT	0,(HL)		; direct output
 	JR	C,PR_GR_0
 	CP	$80
 	JR	NC,P_GR_TK
+	CP	">"		; can be program cursor
+	JR	Z,PR_NQ
 	BIT	2,(IY+$30)	; inside quotes
 	JR	NZ,PR_NQ
 	CP	":"
-	JR	NZ,PR_NQ
+	JR	C,PR_NQ
 	EX	DE,HL
+	SET	3,(HL)		; pr-able outside of quotes sets oprt. mode
+	JR	NZ,PR_NO
 	RES	3,(HL)		; colon outside of quotes sets instr. mode
 	LD	HL,C_SPCC
 	INC	(HL)
-	EX	DE,HL
+PR_NO:	EX	DE,HL
 PR_NQ:	RST	$28
 	DEFW	L0B65	; PO-CHAR
 	JR	TSTORE2
@@ -414,13 +418,6 @@ PR_TK:	EX	DE,HL
 	LD	HL,C_SPCC
 	INC	(HL)
 PR_TK0:	JP	TOKEN_O
-PR_INST:CP	ELSE_T - RND_T
-	JR	Z,PR_TK1
-	SET	3,(HL)
-	JR	PR_TK2
-PR_TK1:	LD	HL,C_SPCC
-	INC	(HL)
-PR_TK2:	JP	TOKEN_I
 
 KS_CTRL:PUSH	BC
 	LD	C,A
@@ -451,6 +448,15 @@ PR_GR_L:LD	(HL),E
 	RL	E
 	DJNZ	PR_GR_L
 	JR	PR_GR_E
+
+PR_INST:CP	ELSE_T - RND_T
+	JR	Z,PR_TK1
+	SET	3,(HL)
+	JR	PR_TK2
+PR_TK1:	LD	HL,C_SPCC
+	INC	(HL)
+PR_TK2:	JP	TOKEN_I
+
 PR_GR_R:RR	E
 	RR	D
 	LD	(HL),D
