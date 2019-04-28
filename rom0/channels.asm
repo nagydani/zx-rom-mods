@@ -81,7 +81,16 @@ K_INW:	CP	RND_T		; USR "V" +
 	BIT	1,(IY+$07)	; mode G?
 	JR	Z,K_INB
 	ADD	A,$100 - $A4	; transpose to 1..5, set CF
-K_ING0:	RES	1,(IY+$07)
+K_ING0:	BIT	5,(IY+$30)
+	JR	Z,K_ING2
+	LD	C,A
+	LD	HL,L_MODE
+	CALL	INDEXER
+	LD	A,C
+	JR	NC,K_ING1
+	LD	A,(HL)
+K_ING1:	SCF
+K_ING2:	RES	1,(IY+$07)
 	JP	SWAP
 
 K_INNK:	LD	B,(HL)
@@ -199,6 +208,17 @@ K_ENT:	LD	HL,K_STATE
 ; K-MODE translation table
 K_MODE:	DEFB	POKE_T,PEEK_T
 	DEFB	"@",LABEL_T
+	DEFB	0
+
+; L-MODE translation table
+L_MODE:	DEFB	$E2,"~"
+	DEFB	$C3,"|"
+	DEFB	$CD,"\\"
+	DEFB	$CC,"{"
+	DEFB	$CB,"}"
+	DEFB	$C6,"["
+	DEFB	$C5,"]"
+	DEFB	$AC,$7F		; copyright
 	DEFB	0
 
 ; print flashing cursor (invert character)
