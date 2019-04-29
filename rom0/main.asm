@@ -231,6 +231,8 @@ TESTL3:	DEC	L
 	LD	(RAMTOP),HL
 STARTN:	LD	A,$10
 	LD	(FLAGS),A	; indicate 128k mode
+	ADD	A,A
+	LD	(FLAGS2),A	; set-letter-by-letter mode
 	LD	(HL),$3E
 	DEC	HL
 	LD	(HL),$00	; mark end of stack

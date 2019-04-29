@@ -5142,7 +5142,6 @@ L103E:  LD      H,D             ; transfer DE - leftmost pointer
                                 ; that is, is it followed by a parameter ?
         JR      NZ,L1051        ; to ED-EDGE-2 if not
                                 ; HL has been incremented once
-
         INC     HL              ; address next as at least one parameter.
 
 ; in fact since 'tab' and 'at' cannot be entered the next section seems
@@ -5150,12 +5149,17 @@ L103E:  LD      H,D             ; transfer DE - leftmost pointer
 ; The test will always fail and the jump to ED-EDGE-2 will be taken.
 
         LD      A,(DE)          ; reload leftmost character
-        SUB     $17             ; decimal 23 ('tab')
-        ADC     A,$00           ; will be 0 for 'tab' and 'at'.
-        JR      NZ,L1051        ; forward to ED-EDGE-2 if not
-                                ; HL has been incremented twice
-
-        INC     HL              ; increment a third time for 'at'/'tab'
+;;; BUGFIX: no need to check for AT or TAB, but do not treat $18..$F as controls
+	CP	$18		; check $18..$1F
+	JR	C,L1051		; jump forward, if not in this range
+	DEC	HL		; go back with HL
+	NOP
+	NOP
+;;;        SUB     $17             ; decimal 23 ('tab')
+;;;        ADC     A,$00           ; will be 0 for 'tab' and 'at'.
+;;;        JR      NZ,L1051        ; forward to ED-EDGE-2 if not
+;;;                                ; HL has been incremented twice
+;;;        INC     HL              ; increment a third time for 'at'/'tab'
 
 ;; ED-EDGE-2
 L1051:  AND     A               ; prepare for true subtraction
