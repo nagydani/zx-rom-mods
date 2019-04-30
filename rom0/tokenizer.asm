@@ -9,6 +9,22 @@ TOK_Q:	LDI
 	LD	A,(HL)
 	RET
 
+; Tokenize input line in place
+; Input: HL line address
+TOKINP:	PUSH	HL
+	LD	BC,$100		; only one token
+	LD	DE,X017F
+	RST	$28
+	DEFW	FTOKEN_R1	; search in ROM1
+	XOR	A
+	CP	C
+	POP	DE
+	JR	Z,TOK_L2
+	LD	A,STOP_T
+	LD	(DE),A
+	INC	DE
+	ADD	HL,BC
+	JR	TOK_L2
 
 ; Tokenize a program line in place
 ; Input: HL line address
@@ -27,6 +43,7 @@ TOK_L1:	LD	A,(HL)
 	LDI
 	CALL	OSPACE
 	JR	TOK_L1
+
 TOK_NN:	LDI
 	CP	$0D
 	JR	NZ,TOK_L1
@@ -52,6 +69,7 @@ TOK_NP:	LD	B,A
 	JR	C,TOK_CI
 	LD	A,(HL)
 	JR	TOK_IF
+
 TOK_CI:	DEC	A
 	CPL
 	LD	(DE),A

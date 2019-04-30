@@ -266,8 +266,8 @@ NEST2:	EQU	NESTING + 1
 ELSE:	POP	BC		; discard STMT-RET
 	BIT	7,(IY+$01)
 	JR	Z,ELSE_1
-	BIT	6,(IY+$37)	; FLAGX, check if last IF was false
-	RES	6,(IY+$37)
+	BIT	4,(IY+$37)	; FLAGX, check if last IF was false
+	RES	4,(IY+$37)
 	JR	NZ,ELSE_1
 	RST	$18
 	CP	$0D

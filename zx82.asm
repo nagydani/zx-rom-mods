@@ -535,7 +535,7 @@ XTOKEN: DEFB    ('#')+$80
         DEFB    ('T')+$80
         DEFM    "LLIS"
         DEFB    ('T')+$80
-        DEFM    "STO"
+X017F:	DEFM    "STO"
         DEFB    ('P')+$80
         DEFM    "REA"
         DEFB    ('D')+$80
@@ -9131,7 +9131,7 @@ L1CF0:  POP     BC              ; drop return address - STMT-RET
         EX      DE,HL           ; make HL point to deleted value
         CALL    L34E9           ; routine TEST-ZERO
 ;;; BUGFIX: signal result in bit 6 of FLAGX
-	JP	C2FLAGX6
+	JP	C2FLAGX4
 ;;;	JP      C,L1BB3         ; jump to LINE-END if FALSE (0)
 
 ;; IF-1
@@ -19862,11 +19862,11 @@ S_COPY:	LD	A,3
 	JP	L15F2		; output service routine
 
 ; Branching of IF statement, with result recorded (16 bytes)
-C2FLAGX6:
-	JR	C,SETFX6
-	RES	6,(IY+$37)
+C2FLAGX4:
+	JR	C,SETFX4
+	RES	4,(IY+$37)
 	JP	L1B29		; SSTMT-L-1
-SETFX6:	SET	6,(IY+$37)
+SETFX4:	SET	4,(IY+$37)
 	JP	L1BB3		; LINE-END
 
 ; Infix operators on non-standard types (5 bytes)

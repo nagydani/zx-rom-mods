@@ -2,7 +2,7 @@
 ; 4 - 128k mode
 
 ; FLAGX unused bits
-; 6 - last IF's outcome is false
+; 4 - last IF's outcome is false
 
 ; FLAGS2 unused bits
 ; 5 - suppress K mode, if set

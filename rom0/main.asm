@@ -792,6 +792,7 @@ PLAY_T:	EQU	$A4
 LABEL_T:EQU	$AB
 LOCAL_T:EQU	$B8
 REPEAT_T:EQU	$BA
+STOP_T:	EQU	$E2
 FOR_T:	EQU	$EB
 GOSUB_T:EQU	$ED
 POKE_T:	EQU	$F4
@@ -854,9 +855,21 @@ STK0_L:	LD	(HL),C
 	EX	DE,HL
 	RET
 
+; print the decimal value of a word in register HL
+DECWORD:LD	A,H
+	OR	L
+	LD	A,L
+	JR	Z,DECBYTE
+	LD	C,L
+	LD	B,H
+	RST	$28
+	DEFW	L2D2B		; STACK-BC
+	RST	$28
+	DEFW	L2DE3		; PRINT-FP
+	RET
+
 ; print the decimal value of a byte in register A
-DECBYTE:
-	CP	10
+DECBYTE:CP	10
 	JR	NC,P_DB1
 	ADD	"0"
 	RST	$10
