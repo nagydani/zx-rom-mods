@@ -1,0 +1,246 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html>
+<head>
+	<title>Become A Wizard</title>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8" />
+	<style type="text/css">
+	@font-face {
+		font-family: 'ZX';
+		src: url('font/ZXSpectrumNext.ttf') format('truetype')
+	}
+	body {
+		margin: 5em;
+		padding: 1em;
+		font-family: Helvetica, Geneva, Arial, sans-serif
+	}
+	code {
+		font-family: ZX
+	}
+	pre {
+		font-family: ZX
+	}
+	td {
+		padding-right: 2em;
+	}
+	</style>
+</head>
+<body>
+
+<h1>Become A Wizard</h1>
+
+<em>This is the manual to the ZX2020 computer, a project dedicated to 
+Steve Vickers, the author of the manual and the firmware for the ZX
+Spectrum computer.</em>
+
+<h2>Contents</h2>
+<ol>
+	<li><a href="#intro">Introduction</a>
+	<li><a href="#console">Meet the Console</a>
+	<li><a href="#basics">The Basics of BASIC</a>
+	<li><a href="#first">Guess the Number</a>
+</ol>
+
+<h2><a id="intro" />Introduction</h2>
+
+<p><em>Yet to be written</em></p>
+
+<h2><a id="console" />Meet the Console</h2>
+
+<p>The <em>console</em> is how wizards talk to computers, in their own 
+language. Unlike the <em>desktop</em>, which is what muggles use to get 
+the computer do what they need, the console allows you, in principle, to 
+make the computer do <em>anything</em> that the computer is capable of 
+doing at all. It might seem less fancy, but it is far more powerful and 
+expressive than the desktop. Different computers might speak different 
+languages on their console, but they are, in many ways, similar. </p>
+
+<p>The language your ZX2020 understands is called <code>BASIC</code>, 
+which stands for
+<strong>B</strong>eginner's 
+<strong>A</strong>ll-purpose
+<strong>S</strong>ymbolic 
+<strong>I</strong>nstruction
+<strong>C</strong>ode.
+
+There are many dialects of BASIC; ours is an evolution of <em>ZX 
+BASIC</em>, developed for Sinclair's ZX line of computers in the early 
+1980's. In particular, it is to a large extent backwards compatible 
+with that of the <em>ZX Spectrum</em>, upon which ZX2020 is based.</p>
+
+<p>When you turn on your ZX2020, it performs a quick self-test and greets
+you with the following message near the bottom of the screen:
+<pre>
+© 2019 ePoint Systems Ltd
+© 1982 Sinclair Research Ltd
+</pre>
+</p>
+
+<p>You are using the console now. It is, essentially a dialog with the 
+computer, similar to instant messaging. You type something, hit the 
+ENTER key and the computer responds. ENTER is just about the most 
+important key on the keyboard. Just pressing it means, &quot;Okay computer, 
+I've typed in your orders. Now go and obey them.&quot;</p>
+ 
+<p>As you start typing, you can immediately notice that the screen 
+is divided into two parts by a black stripe with a rainbow: </p>
+<img src="stripe.png" alt="BASIC:1 L ////" height="16" width="512"/>
+
+<p>In fact, the part <em>below</em> the stripe is the console, the part 
+<em>above</em> it is the <em>canvas</em>. Inside the stripe, you find 
+the following information: <code>BASIC</code> stands for the kind of 
+input the console expects from you. In this case, it expects a sequence 
+of </em>statements</em> in BASIC. Then you have <code>:1</code>, which 
+just indicates that you are about to type the <em>first</em> statement. 
+Near the middle of the stripe, you see an <code>L</code> character, 
+which is the current <em>input mode</em>. It tells you that if you press 
+a letter key, it will produce a <em>lower-case</em> letter (try it!).
+The rest is just decoration.</p>
+
+<p>If you press CAPS LOCK, the mode changes to <code>C</code> which 
+stands for <em>capital-case</em> letters (try!). You can also type 
+capital-case letters in <code>L</code> mode by pressing and holding the 
+SHIFT key <em>before</em> hitting the letter key. Release SHIFT 
+<em>after</em> you have released the letter key. If you keep any key 
+pressed long enough, it will repeat its function. To type the symbols on 
+either number or letter keys, you should press the SYM key (also called 
+<em>Symbol Shift</em>) similarly to how you type capital-case letters 
+with SHIFT.</p>
+
+<p><strong>Note:</strong> On many <em>other</em> computers, the symbols 
+on number keys are typed with the SHIFT key, while the symbols on letter 
+keys are typed with some other shift-like key (typically ALT GR). 
+<strong><em>Not on a ZX!</em></strong> Here, all symbols are 
+consistently typed with Symbol Shift, while SHIFT'ed numbers are 
+performing the functions of control keys (for example, SHIFT+1 is the 
+same as EDIT, which will undo everything you have typed so far). Be 
+careful with those.</p>
+
+<p>The blinking square is the so-called <em>cursor</em> which shows you 
+where what you type is going to appear. You can move the cursor by the 
+arrow keys. You can also delete what is before the cursor (which is 
+normally what you have typed last) by hitting the DELETE key. Now you 
+know enough to start talking to the ZX2020.</p>
+
+
+<h2><a id="basics"/>The Basics of BASIC</h2>
+
+<p>If you try to greet the computer by typing <code>Hello ZX!</code> and 
+hitting ENTER, the cursor will jump to after the first letter. This is 
+the computer's tactful way of telling you it does not understand a word 
+you're saying. In fact, the cursor is moved to after the first character 
+that the computer did not understand; the very first one, in this case.</p>
+ 
+<p>Any valid statement in ZX BASIC must begin with a so-called 
+<em>instruction keyword</em>. They are, in alphabetical order, the 
+following:</p>
+<table>
+<tr>
+<td>
+<pre>
+BEEP
+BORDER
+BRIGHT
+CAT
+CIRCLE
+CLEAR
+CLOSE #
+CLS
+CONTINUE
+COPY
+DATA
+DEF FN
+DIM
+DRAW
+ELSE
+END IF
+</pre>
+</td>
+<td>
+<pre>
+ERASE
+FLASH
+FOR
+FORMAT
+GO SUB
+GO TO
+IF
+INK
+INPUT
+INVERSE
+LET
+LIST
+LLIST
+LOAD
+LPRINT
+MERGE
+</pre>
+</td>
+<td>
+<pre>
+MOVE
+NEW
+NEXT
+OPEN #
+OUT
+OVER
+PALETTE
+PAPER
+PAUSE
+PLAY
+PLOT
+POKE
+POKE
+PRINT
+RANDOMIZE
+READ
+</pre>
+</td>
+<td>
+<pre>
+REM
+RENUM
+REPEAT
+RESTORE
+RETURN
+RUN
+SAVE
+STEP
+STOP
+UNTIL
+USR
+VERIFY
+
+
+
+
+</pre>
+</td>
+</tr>
+</table>
+
+<p>If you type <code>Draw.</code> and hit ENTER, you will notice that 
+all the letters of the word <code>DRAW</code> are turned to capitals, an 
+extra space is inserted before the period and the cursor is flashing 
+after the period. The computer does still not understand what this is 
+supposed to mean, though it understands a bit more than last time. </p>
+
+<p><strong>Note:</strong> Even though the keywords of BASIC are English 
+words, <em>BASIC is not English</em>.</p>
+
+<h2><a id="first"/>Guess the Number</h2>
+
+<pre>
+  10 LET number=1+INT (1000*RND)
+  20 LET guesses=0
+  30 REPEAT
+  40 INPUT "Your guess?",guess
+  50 IF guess&lt;number THEN PRINT guess;" is too low."
+  60 IF guess&gt;number THEN PRINT guess;" is too high."
+  70 LET guesses+=1
+  80 UNTIL guess=number
+  90 PRINT "Congratulations, you guessed ";number;"."
+ 100 PRINT "It took you ";guesses;" guesses."
+</pre>
+
+</body>
+</html>
