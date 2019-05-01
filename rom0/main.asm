@@ -138,6 +138,9 @@ S_WIDTH:DEFB	$20
 S_TV:	DEFW	0
 S_MODE:	DEFS	1
 C_SPCC:	DEFB	1
+RCLINE:	DEFS	2		; current line being renumbered
+RCSTART:DEFW	10		; starting line number for renumbering
+RCSTEP:	DEFW	10		; step for renumbering
 
 INIT_5B00_L:	EQU	$ - $5B00
 
@@ -632,7 +635,7 @@ TOKENS1:DEFB	$8D
 	DEFB	$80+"T"
 	DEFM	"_E"
 	DEFB	$80+"N"
-	DEFM	"_E"
+	DEFM	"RENU"
 	DEFB	$80+"M"
 	DEFM	"_Es"
 	DEFB	$80+"2"

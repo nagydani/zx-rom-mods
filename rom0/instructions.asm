@@ -37,7 +37,7 @@
 	DEFB	P_PLAY - $	; PLAY
 	DEFB	P_PLUG - $	; ET
 	DEFB	P_PLUG - $	; EN
-	DEFB	P_PLUG - $	; EM
+	DEFB	P_RENUM - $	; RENUM
 	DEFB	P_PLUG - $	; Es2
 	DEFB	P_PLUG - $	; Es8
 	DEFB	P_STACK - $	; STACK
@@ -81,6 +81,9 @@ P_END:	EQU	$
 ; No parameters, no action
 P_ENDIF:DEFB	$00
 	DEFW	ENDIF
+
+P_RENUM:DEFB	$00	; TODO: all sorts of arguments for RENUM
+	DEFW	RENUM
 
 P_ELSE:	DEFB	$05
 	DEFW	ELSE
@@ -1322,3 +1325,64 @@ COLTABB:DEFB	$00		; BLACK
 	DEFB	$40		; DARK GREEN
 	DEFB	$2c		; BROWN
 	DEFB	$28		; DARK BROWN
+
+RENUM:	POP	BC		; return address
+	POP	DE		; error address
+	LD	HL,(RAMTOP)
+	DEC	HL
+	DEC	HL		; skip the end-of-stack marker
+	LD	SP,HL		; clear the stack
+	PUSH	DE		; error address
+	LD	(ERR_SP),SP
+	PUSH	BC		; return address
+	LD	DE,$0000	; line counter
+	LD	HL,(PROG)
+RENUML0:LD	A,(HL)
+	CP	$28
+	JR	NC,RENUMC
+	INC	HL
+	INC	HL		; skip line number
+	LD	C,(HL)
+	INC	HL
+	LD	B,(HL)		; get line length in BC
+	SCF			; faster than INC HL
+	ADC	HL,BC		; move to next line
+	INC	DE
+	JR	RENUML0
+RENUMC:	LD	HL,(RCSTEP)
+	DEC	DE
+	RST	$28
+	DEFW	L30A9		; HL=HL*DE
+	JR	C,ERROR_G
+	LD	DE,(RCSTART)
+	ADC	HL,DE
+	JR	C,ERROR_G
+	LD	BC,10000
+	SBC	HL,BC
+	JR	NC,ERROR_G	; the last line number must not exceed 9999
+	LD	HL,(PROG)
+RENUML:	LD	A,(HL)
+	CP	$28
+	JR	NC,RENUME
+	LD	B,(HL)
+	LD	(HL),D
+	INC	HL
+	LD	C,(HL)
+	LD	(HL),E
+	LD	(RCLINE),BC
+	EX	DE,HL
+	LD	BC,(RCSTEP)
+	ADD	HL,BC
+	EX	DE,HL
+	INC	HL
+	LD	C,(HL)
+	INC	HL
+	LD	B,(HL)
+	SCF			; faster than INC HL
+	ADC	HL,BC		; TODO: print all problematic instructions
+	JR	RENUML
+RENUME:	CALL	ERROR
+	DEFB	$FF		; 0 Ok.
+
+ERROR_G:CALL	ERROR
+	DEFB	$0F		; G No room for line
