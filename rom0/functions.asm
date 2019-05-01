@@ -651,6 +651,7 @@ STR_FR:	CALL	STK_BASE
 	JR	NROUND
 
 D_STR_E:POP	AF		; fractional digits, Z set if zero
+	LD	(STKEND),HL
 	CALL	STEPBACK	; remove zero quotient from stack
 	POP	HL		; restore channel
 	RST	$28
