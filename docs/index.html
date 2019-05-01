@@ -96,15 +96,22 @@ which is the current <em>input mode</em>. It tells you that if you press
 a letter key, it will produce a <em>lower-case</em> letter (try it!).
 The rest is just decoration.</p>
 
+<p>The blinking square is the so-called <em>cursor</em> which shows you 
+where what you type is going to appear. If you have already typed in 
+anything, you can move the cursor using the arrow keys. You can also 
+delete what is before the cursor (which is normally what you have typed 
+last) by hitting the DELETE key.</p>
+
 <p>If you press CAPS LOCK, the mode changes to <code>C</code> which 
-stands for <em>capital-case</em> letters (try!). You can also type 
+stands for <em>capital-case</em> letters (try!). You can change back to 
+<code>L</code> mode by hitting CAPS LOCK again. You can also type 
 capital-case letters in <code>L</code> mode by pressing and holding the 
-SHIFT key <em>before</em> hitting the letter key. Release SHIFT 
-<em>after</em> you have released the letter key. If you keep any key 
-pressed long enough, it will repeat its function. To type the symbols on 
-either number or letter keys, you should press the SYM key (also called 
-<em>Symbol Shift</em>) similarly to how you type capital-case letters 
-with SHIFT.</p>
+SHIFT key <em>before</em> hitting the letter key. The SHIFT key needs to 
+be pressed while you are hitting the letter key in order for it to 
+produce a capital letter. If you keep any key pressed long enough, it 
+will repeat its function. To type the symbols on either number or letter 
+keys, you should press the SYM key (also called <em>Symbol Shift</em>) 
+similarly to how you type capital-case letters with SHIFT.</p>
 
 <p><strong>Note:</strong> On many <em>other</em> computers, the symbols 
 on number keys are typed with the SHIFT key, while the symbols on letter 
@@ -115,11 +122,7 @@ performing the functions of control keys (for example, SHIFT+1 is the
 same as EDIT, which will undo everything you have typed so far). Be 
 careful with those.</p>
 
-<p>The blinking square is the so-called <em>cursor</em> which shows you 
-where what you type is going to appear. You can move the cursor by the 
-arrow keys. You can also delete what is before the cursor (which is 
-normally what you have typed last) by hitting the DELETE key. Now you 
-know enough to start talking to the ZX2020.</p>
+<p>Now you know enough to start chatting with the ZX2020.</p>
 
 
 <h2><a id="basics"/>The Basics of BASIC</h2>
@@ -224,8 +227,118 @@ extra space is inserted before the period and the cursor is flashing
 after the period. The computer does still not understand what this is 
 supposed to mean, though it understands a bit more than last time. </p>
 
-<p><strong>Note:</strong> Even though the keywords of BASIC are English 
-words, <em>BASIC is not English</em>.</p>
+<p><strong>Note:</strong> Even though the keywords of BASIC are mostly 
+English words, <em>BASIC is not English</em>. For the computer to 
+understand what you type, it needs to be correct BASIC, not correct 
+English. For instance, in BASIC, you do not end statements with a 
+period.</p>
+
+<p>If you move the cursor around, the computer won't let you move it 
+inside the (now capitalized) keyword anymore; it jumps from one side, to 
+the other. That is because it has recognized the keyword and now treats 
+it as a single unit, a so-called <em>token</em>.</p>
+
+<p><strong>Trivia:</strong> Statements instructing the computer to 
+answer us in writing begin with the <code>PRINT</code> keyword. The 
+reason for this is historical: computers got consoles before they became 
+able to display anything on screens. In those days, the console's output 
+was a roll of paper on which things were literally PRINTed. While this 
+has no longer been the case for many decades now, the keyword stuck.</p>
+
+<p>So let's try this: type <code>PRINT 2+2</code> and hit ENTER. The 
+computer dutifully writes <code>4</code> on the canvas and reports
+<pre>
+0 OK, 0:1
+</pre>
+on the console. Note, that we get the same result no matter which letters 
+are capitalized in the <code>PRINT</code> keyword; <code>pRiNt 2+2</code> 
+would work just the same.</p>
+
+<p>What happened here? The <code>4</code> is, as you might have guessed, 
+the <em>evaluation</em> of <code>2+2</code>. <code>OK</code> means what 
+you'd think it means: that there was no error in <em>executing</em> this 
+statement. The <code>0:1</code> after the comma tells us that this was 
+the first statement (<code>:1</code>, same as in the black stripe) of a 
+sequence entered from the console. The very first <code>0</code> in the 
+report is the <em>report code</em> identifiying the report. 
+<code>0</code> stands for <code>OK</code>. While we need to talk to the 
+ZX2020 in BASIC, it reports to us in English. However, it can be changed 
+to report in other human languages as well, in which case the text of 
+the report might change to the point of unintelligibility for those who 
+do not know that particular language, but the report code remains the 
+same, no matter what the langauge of the report is. Thus, one can 
+understand what the report says even without understanding the language 
+in which the computer is reporting, given a full list of error codes. If 
+the computer needs to read its own or another computer's reports, it 
+can just look at the report code, ignoring the text in a language which
+it does not understand (such as English).</p>
+
+<p>So, now we can use the computer as a calculator. But if we type 
+<code>PRINT Hello</code> and hit ENTER, instead of a greeting on the 
+canvas, we get an error report:</p>
+<pre>
+2 Variable not found, 0:1
+</pre>
+
+<p>This is because <code>Hello</code> is treated as a <em>name</em> of a 
+<em>variable</em> (more on this a bit later), not as a text to print. If 
+we mean a specific text, in BASIC, we must put it inside double quotes. 
+<code>PRINT &quot;Hello&quot;</code> actually does write 
+<code>Hello</code> on the canvas.</p>
+
+<p>Instructions given on the console are called <em>commands</em>.  
+However, one can also assemble sequences of instructions, which are 
+called <em>programs</em> and execute them together. Type
+
+<pre>
+1 PRINT "Hello World!"
+</pre>
+
+in the console and hit ENTER. Instead of just writing <code>Hello 
+World!</code> on the canvas, the entire command gets &quot;moved&quot; up 
+to the canvas. Something very important has happened: you have just written 
+your first computer program. Congratulations!</p>
+
+<p><strong>Trivia:</strong> ZX BASIC is a programming language in which 
+the instructions for programs and the instructions for commands are 
+exactly the same. Such languages are called <em>scripting 
+languages</em>, because programs are like scripted commands.</p>
+
+<p>To <em>run</em> the program, just type the <code>RUN</code> command. 
+It does write <code>Hello World!</code> on the canvas, just like in the 
+previous example, but the report is slightly different:</p>
+<pre>
+0 OK, 1:1
+</pre>
+
+<p>The difference is the statement identifier. It says <code>1:1</code> 
+now instead of <code>0:1</code>. This is because the last statement 
+executed was not directly from the console, but from <em>program 
+line</em> 1. You can enter another program line, too:</p>
+
+<pre>
+2 PRINT "My name is ZX2020."
+</pre>
+
+<p>When you ENTER this program line, it also moves up and you see this in 
+the canvas area:</p>
+<pre>
+   1 PRINT "Hello World!"
+   2&gt;PRINT "My name is ZX2020."
+</pre>
+
+<p>That little <code>&gt</code> sign after line number <code>2</code> is 
+the so-called <em>program cursor</em>. You can move it up and down with 
+the arrow keys and bring the pointed program line back down to the console 
+by pressing the EDIT key for further EDITing. Now try giving your ZX2020 a
+personal name by EDITing line 2. If you wish to delete a program line, just
+enter its number without any instructions. Thus, for example, entering 
+<code>1</code> would remove the greeting from before the self-introduction.</p>
+
+<p>In order to make it easier to insert new program lines in between 
+existing ones, there is a convention to number program lines by the 
+multiples of 10. The command <code>RENUM</code> re-numbers the program 
+to follow this convention.</p>
 
 <h2><a id="first"/>Guess the Number</h2>
 
