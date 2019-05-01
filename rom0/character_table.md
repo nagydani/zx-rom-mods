@@ -154,11 +154,13 @@
 | C0 | USR
 | ... |
 | C2 | UNTIL
+| C3 | PALETTE
 | ... |
 | C5 | END IF
 | ... |
 | CB | ELSE
 | ... |
+| CD | STEP
 | CE | DEF FN
 | CF | CAT
 | D0 | FORMAT
