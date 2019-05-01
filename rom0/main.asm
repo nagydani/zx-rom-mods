@@ -251,6 +251,7 @@ R_KEY:	XOR	A
 	OR	$E0
 	INC	A
 	JR	NZ,R_KEY
+	CALL	PAL_0		; ULAplus to ZX Spectrum mode
 	LD	A,$3F
 	LD	I,A
 	IM	1
