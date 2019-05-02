@@ -28,7 +28,7 @@
 
 <h1>Become A Wizard</h1>
 
-<em>This is the manual to the ZX2020 computer, a project dedicated to 
+<em>This is the manual to the ZX85 computer, a project dedicated to 
 Steve Vickers, the author of the manual and the firmware for the ZX
 Spectrum computer.</em>
 
@@ -54,7 +54,7 @@ doing at all. It might seem less fancy, but it is far more powerful and
 expressive than the desktop. Different computers might speak different 
 languages on their console, but they are, in many ways, similar. </p>
 
-<p>The language your ZX2020 understands is called <code>BASIC</code>, 
+<p>The language your ZX85 understands is called <code>BASIC</code>, 
 which stands for
 <strong>B</strong>eginner's 
 <strong>A</strong>ll-purpose
@@ -65,9 +65,9 @@ which stands for
 There are many dialects of BASIC; ours is an evolution of <em>ZX 
 BASIC</em>, developed for Sinclair's ZX line of computers in the early 
 1980's. In particular, it is to a large extent backwards compatible 
-with that of the <em>ZX Spectrum</em>, upon which ZX2020 is based.</p>
+with that of the <em>ZX Spectrum</em>, upon which ZX85 is based.</p>
 
-<p>When you turn on your ZX2020, it performs a quick self-test and greets
+<p>When you turn on your ZX85, it performs a quick self-test and greets
 you with the following message near the bottom of the screen:
 <pre>
 © 2019 ePoint Systems Ltd
@@ -122,7 +122,7 @@ performing the functions of control keys (for example, SHIFT+1 is the
 same as EDIT, which will undo everything you have typed so far). Be 
 careful with those.</p>
 
-<p>Now you know enough to start chatting with the ZX2020.</p>
+<p>Now you know enough to start chatting with the ZX85.</p>
 
 
 <h2><a id="basics"/>The Basics of BASIC</h2>
@@ -262,7 +262,7 @@ the first statement (<code>:1</code>, same as in the black stripe) of a
 sequence entered from the console. The very first <code>0</code> in the 
 report is the <em>report code</em> identifiying the report. 
 <code>0</code> stands for <code>OK</code>. While we need to talk to the 
-ZX2020 in BASIC, it reports to us in English. However, it can be changed 
+ZX85 in BASIC, it reports to us in English. However, it can be changed 
 to report in other human languages as well, in which case the text of 
 the report might change to the point of unintelligibility for those who 
 do not know that particular language, but the report code remains the 
@@ -273,7 +273,7 @@ the computer needs to read its own or another computer's reports, it
 can just look at the report code, ignoring the text in a language which
 it does not understand (such as English).</p>
 
-<p>So, now we can use the computer as a calculator. But if we type 
+<p>So, now you can use the computer as a calculator. But if you type 
 <code>PRINT Hello</code> and hit ENTER, instead of a greeting on the 
 canvas, we get an error report:</p>
 <pre>
@@ -285,6 +285,15 @@ canvas, we get an error report:</p>
 we mean a specific text, in BASIC, we must put it inside double quotes. 
 <code>PRINT &quot;Hello&quot;</code> actually does write 
 <code>Hello</code> on the canvas.</p>
+
+<p><strong>Note:</strong> Computers are very fussy that you should 
+distinguish between the digit zero and the letter O. To make it 
+absolutely clear, zero appears on the screen as <code>0</code>, with a 
+slash through it. You also need to distinguish between the digit one 
+(<code>1</code>), the capital letter i (<code>I</code>) and the small 
+letter L (<code>l</code>). All ten digits are on the top row of the 
+keyboard. Furthermore, you must use the star (<code>*</code>) for 
+multiplication, <em>not</em> the letter x.</p>
 
 <p>Instructions given on the console are called <em>commands</em>.  
 However, one can also assemble sequences of instructions, which are 
@@ -317,20 +326,20 @@ executed was not directly from the console, but from <em>program
 line</em> 1. You can enter another program line, too:</p>
 
 <pre>
-2 PRINT "My name is ZX2020."
+2 PRINT "My name is ZX85."
 </pre>
 
 <p>When you ENTER this program line, it also moves up and you see this in 
 the canvas area:</p>
 <pre>
    1 PRINT "Hello World!"
-   2&gt;PRINT "My name is ZX2020."
+   2&gt;PRINT "My name is ZX85."
 </pre>
 
 <p>That little <code>&gt</code> sign after line number <code>2</code> is 
 the so-called <em>program cursor</em>. You can move it up and down with 
 the arrow keys and bring the pointed program line back down to the console 
-by pressing the EDIT key for further EDITing. Now try giving your ZX2020 a
+by pressing the EDIT key for further EDITing. Now try giving your ZX85 a
 personal name by EDITing line 2. If you wish to delete a program line, just
 enter its number without any instructions. Thus, for example, entering 
 <code>1</code> would remove the greeting from before the self-introduction.</p>
@@ -338,9 +347,31 @@ enter its number without any instructions. Thus, for example, entering
 <p>In order to make it easier to insert new program lines in between 
 existing ones, there is a convention to number program lines by the 
 multiples of 10. The command <code>RENUM</code> re-numbers the program 
-to follow this convention.</p>
+to follow this convention. After <code>RENUM</code>. the two-line program 
+above becomes this:</p>
+
+<pre>
+  10 PRINT "Hello World!"
+  20 PRINT "My name is ZX85."
+</pre>
+
+<p>Re-numbering does not change what the program does, at least for 
+well-written programs, it just makes it easier to work on it.</p>
+
+<p>Now you know enough to start programming your ZX85. In each of the 
+following chapters, you find programs of increasingly complex computer 
+games and explanations of how and why they work. You are encouraged to 
+modify them, make them better and, eventually, write your own games</p>
+
 
 <h2><a id="first"/>Guess the Number</h2>
+
+<p>The following ten-line program is a simple number guessing game. 
+The computer picks a random number between 1 and 1000 and you need to 
+guess it. After each guess, the computer would tell you whether your 
+guess was correct, too high or too low. Based on this information, you can 
+close in on the number picked by the computer. Type in the following program 
+and then enter the <code>RUN</code> command to play a game.</p>
 
 <pre>
   10 LET number=1+INT (1000*RND)
@@ -355,5 +386,148 @@ to follow this convention.</p>
  100 PRINT "It took you ";guesses;" guesses."
 </pre>
 
+<p>When the game ends, the console shows the following report:
+<pre>
+0 OK, 100:1
+</pre>
+By now, you know what that means. You can always play another round by 
+entering <code>RUN</code> again.</p>
+
+<p><strong>Note:</strong> When the game asks you to guess a number, the 
+separator stripe between the canvas and the console says 
+<code>NUMERIC</code> instead of <code>BASIC</code> which means that it
+expects a number or a <em>numeric expression</em>; a formula that, 
+when evaluated, results in a number. So, if you type <code>100+200</code>, 
+it qualifies as a guess of <code>300</code>. Try it!</p>
+
+<p><strong>Challenge:</strong> This behavior actually allows the player 
+to &quot;cheat&quot; and always guess the number picked by the computer 
+correctly upon first attempt. Wizards that are good at noticing and 
+exploiting such opportunities are called <em>hackers</em>. Can you think 
+like a hacker and win the game in one guess every time?</p>
+
+<p>Now, let's see what it actually does. In the first two lines 
+(numbered <code>10</code> and <code>20</code>, respectively), the 
+instruction keyword is <code>LET</code>. It <em>assigns</em> 
+<em>values</em> to <em>variable names</em>. That is, it LETs the name 
+mean a particular number, until further assignments. For example, in 
+line <code>20</code>, the variable name <code>guesses</code> is made to 
+stand for zero. You can try it separately. If you enter that line 
+without the line number and then type <code>PRINT guesses</code> it will 
+output <code>0</code>. If you enter <code>LET five=2+2</code> and then
+<code>PRINT five</code>, it will output <code>4</code>. This is perfectly
+<code>OK</code>, because <code>five</code> is just a name, and 
+when a wizard uses a name, it means just what the wizard chooses it to 
+mean &mdash; neither more nor less.</p>
+
+<p><strong>Note:</strong> In ZX BASIC, anywhere where you can enter a 
+number, you can also enter numeric expressions. There is only one 
+exception from this rule: the line number before statements. Thus 
+<code>2+2 PRINT</code> is not correct BASIC, but anywhere else where 
+<code>4</code> is accepted, <code>2+2</code> or <code>2*(1+1)</code> is 
+also accepted and means the same.</p>
+
+<p>Line <code>10</code> has two keywords that are not even on the list 
+of the previous chapter: <code>INT</code> and <code>RND</code>. This is 
+because they are not instruction keywords. BASIC statements cannot begin 
+with those. Let's explore them in more detail!</p>
+
+<p><code>RND</code> is similar to variables, except that it does 
+not need to be assigned and changes its value all by itself. It means a
+random number that is at least zero and always less than 1. If you enter
+<code>PRINT RND</code>, it will output a different fractional number
+every time. Once in a while, it will output <code>0</code>, though the 
+chances of that happening are pretty slim: one to 65536. It will never
+output <code>1</code>, though it can get pretty close.</p>
+
+<p>Thus, <code>1000*RND</code> is a number that is at least zero and 
+always less than 1000. Try <code>PRINT 1000*RND</code> a few times. Most 
+of these numbers have a fractional part after a decimal point. This is 
+what <code>INT</code> removes. <code>INT</code> is a <em>function</em> 
+that does something to the number that follows it. In particular, it 
+turns it into an <em>integer</em> (which is just wizard-speak for whole 
+numbers), removing the fractional part of numbers greater than zero.</p>
+ 
+<p>However, <code>PRINT INT 1000*RND</code> does exactly the same as 
+<code>PRINT 1000*RND</code> (try!). This is because the number that 
+follows <code>INT</code> is <code>1000</code> so it takes the whole part 
+of 1000, which is still 1000. Only then is it multiplied by 
+<code>RND</code>. Similarly, <code>INT RND * 1000</code> is still not 
+what we want (try it!), because the number following <code>INT</code> in 
+this case is <code>RND</code>. Since <code>RND</code> has only a 
+fractional part, <code>INT RND</code> is always zero. If you multiply 
+that by 1000, it is still zero.</p>
+
+<p>To exactly determine the order of operations, you need to use 
+<code>(</code> and <code>)</code>, the so-called <em>parentheses</em>. 
+What is between these is evaluated before what is outside of them. 
+Hence, <code>INT (1000*RND)</code>. This results in a random whole number 
+that is at least zero and less than 1000, that is at most 999. But since 
+we want a random number between 1 and 1000, 1 needs to be added to it.
+Actually, <code>INT (RND*1000)+1</code> would work just the same. This is 
+because the results of multiplication and addition do not change if 
+we switch the order of the numbers to multiply or to add. Wizards call 
+such operations <em>commutative</em>.</p>
+
+<p>Line <code>30</code> contains a single keyword <code>REPEAT</code>. 
+It means that what follows until the keyword <code>UNTIL</code> (see 
+line <code>80</code>) must be repeated. It must be repeated 
+UNTIL the condition following that keyword becomes true. 
+In our case, until the player's <code>guess</code> and the <code>number</code> 
+picked by the computer (in line <code>10</code>) become equal.</p>
+
+<p>Now let's look to the four lines between <code>REPEAT</code> and 
+<code>UNTIL</code>, which is what needs to be REPEATed.</p>
+
+<p>Line <code>40</code> begins with the keyword <code>INPUT</code>. Its 
+purpose is somewhat similar to that of <code>LET</code> in that it 
+assigns values to variables, but, unlike <code>LET</code>, it reads the 
+value from the console. The keyword <code>INPUT</code> is followed by a 
+list consisting of things to write to the console and variable names 
+which are to be assigned the values read from the console. These can be 
+separated by comma (<code>,</code>), semicolon (<code>;</code>), or 
+apostrophe (<code>'</code>). The difference is where the next item is 
+going to appear on the console: in case of a comma, it is going to be 
+neatly tabulated to either the middle of the line, or, if there is no 
+space for that, to the beginning of the next line, in case of a 
+semicolon, it is going to appear right after the end of the previous 
+item, while in case of an apostrophe, it is going to appear at the 
+beginning of the next line. Try changing the separator between 
+<code>"Your guess?"</code> and <code>guess</code> in line 
+<code>40</code> to see all this in action.</p>
+
+<p>Lines <code>50</code> and <code>60</code> begin with an 
+<code>IF</code> keyword followed by a condition, a <code>THEN</code> 
+keyword and a <code>PRINT</code> statement. Such program lines execute 
+the part after <code>THEN</code> only IF the condition following 
+<code>IF</code> holds true.</p>
+
+<p>Line <code>70</code> contains an unusual <code>LET</code> statement, 
+a so-called <em>update</em>. It is, essentially, a shorthand for
+<code>LET guesses=guesses+1</code>. It requires less typing on the wizard's
+part and less interpreting on the computer's part.</p>
+
+<p>Line <code>80</code> closes the <em>loop</em> started in line 
+<code>30</code>. It is called a loop, because if you draw 
+little arrows from each statement to possible next statements, your 
+arrows are going to form a loop; a sequence of statements to be 
+(possibly) repeated.</p>
+
+<p><strong>Trivia:</strong> Loops that read the console and depending on 
+what has been entered print something are called <em>REPL</em> by 
+wizards, which stands for 
+<strong>R</strong>ead -
+<strong>E</strong>valuate -
+<strong>P</strong>rint -
+<strong>L</strong>oop. If you think about it, ZX BASIC itself is a REPL.</p>
+
+<p>Lines <code>90</code> and <code>100</code> are just regular 
+<code>PRINT</code> statements. Just like in <code>INPUT</code> the 
+separators between things to be printed determine how they are going to be
+positioned relative to one another on the canvas.</p>
+
+</p>
+
 </body>
 </html>
+
