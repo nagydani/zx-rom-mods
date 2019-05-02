@@ -65,11 +65,11 @@
 	DEFB	P_USR - $	; EL
 	DEFB	P_PLUG - $	; EY
 	DEFB	P_UNTIL - $	; UNTIL
-	DEFB	P_PALETTE - $	; PALETTE
+	DEFB	P_ASSERT - $	; ASSERT
 	DEFB	P_PLUG - $	; EB
 	DEFB	P_ENDIF - $	; END IF
 	DEFB	P_PLUG - $	; sY
-	DEFB	P_PLUG - $	; sQ
+	DEFB	P_PALETTE - $	; PALETTE
 	DEFB	P_PLUG - $	; sE
 	DEFB	P_PLUG - $	; sW
 	DEFB	P_PLUG - $	; Es3
@@ -116,6 +116,10 @@ P_LOCAL:DEFB	$05
 P_PALETTE:
 	DEFB	$05
 	DEFW	PALETTE
+
+P_ASSERT:
+	DEFB	$06, $00
+	DEFW	ASSERT
 
 P_STEP:
 P_PLAY:
@@ -435,10 +439,26 @@ REPEAT:	POP	DE		; DE = return address
 	PUSH	HL
 	JP	SWAP
 
-UNTIL:	RST	$28
-	DEFW	L35BF		; STK-PNTRS
-	RST	$28
-	DEFW	L34E9		; TEST-ZERO
+TEST_ZERO:
+	LD	HL,(STKEND)
+	DEC	HL
+	XOR	A
+	DEC	HL
+	OR	(HL)
+	DEC	HL
+	OR	(HL)
+	DEC	HL
+	OR	(HL)
+	DEC	HL
+	OR	(HL)
+	RET
+
+ASSERT:	CALL	TEST_ZERO
+	JP	NZ,SWAP
+	CALL	ERROR
+	DEFB	$1E		; V ASSERT failed
+
+UNTIL:	CALL	TEST_ZERO
 	EX	AF,AF'
 	POP	BC		; return address
 	POP	HL		; error address
@@ -456,7 +476,7 @@ UNTIL:	RST	$28
 	EXX
 	JR	NZ,ERROR2S	; wrong context
 	EX	AF,AF'
-	JR	NC,UNT_R	; reclaim local context
+	JR	NZ,UNT_R	; reclaim local context
 	PUSH	HL		; error address
 	PUSH	BC		; return address
 	EXX
@@ -471,7 +491,7 @@ UNT_R:	EXX
 	JR	UNT_ER		; continue after UNTIL
 
 UNT_NL:	EX	AF,AF'
-	JR	NC,END_REP
+	JR	NZ,END_REP
 	PUSH	DE		; marker
 	PUSH	HL		; error address
 	PUSH	BC		; return address

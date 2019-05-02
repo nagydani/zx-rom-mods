@@ -156,9 +156,11 @@
 | C0 | USR
 | ... |
 | C2 | UNTIL
-| C3 | PALETTE
+| C3 | ASSERT
 | ... |
 | C5 | END IF
+| ... |
+| C7 | PALETTE
 | ... |
 | CB | ELSE
 | ... |
