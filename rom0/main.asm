@@ -927,7 +927,7 @@ OPERTB:	DEFB	"|"
 	DEFB	S_XOR - $
 	DEFB	"%"
 	DEFB	S_MOD - $
-	DEFB	"'"
+	DEFB	"!"
 	DEFB	S_CPL - $
 	DEFB	"?"
 	DEFB	S_ELVIS - $
