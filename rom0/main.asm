@@ -344,7 +344,7 @@ GOTO_CONT:
 	POP	DE		; discard ERROR B
 	LD	HL,(PROG)
 	AND	A
-	SBC	HL,DE
+	SBC	HL,BC		; subtract large target from PROG
 	LD	E,(HL)
 	INC	HL
 	LD	D,(HL)

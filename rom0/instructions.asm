@@ -246,33 +246,19 @@ ENDIF:	RES	6,(IY+$37)	; signal true outcome
 
 THENLESS:
 	RES	6,(IY+$37)	; signal true outcome
-	RST	$28
-        DEFW	L35BF	; STK-PNTRS
-	CALL	STEPBACK
-	EX	DE,HL
+	CALL	TEST_ZERO
 	LD	(STKEND),HL
-	XOR	A
-	CP	(HL)
 SWAPNZ:	JP	NZ,SWAP		; Upon true condition, simply continue
-	INC	HL
-	INC	HL
-	CP	(HL)
-	JR	NZ,SWAPNZ
-	INC	HL
-	CP	(HL)
-	JR	NZ,SWAPNZ
-	INC	HL
-	CP	(HL)
-	JR	NZ,SWAPNZ
 
 NESTING:EQU	TSTACK - 2
 NEST2:	EQU	NESTING + 1
 
 ; Upon false condition start scanning for END IF, ELSE or end of code
-	SET	6,(IY+$37)	; signal false outcome
+	SET	4,(IY+$37)	; signal false outcome
 	LD	BC,(NXTLIN)
 	LD	DE,T_IF
 	CALL	LOOK_PROG2
+	INC	BC		; increment end-of-line pointer
 	LD	(NXTLIN),BC
 	JR	C,ERROR_T
 	POP	BC		; discard SCAN-LOOP
@@ -280,7 +266,7 @@ NEST2:	EQU	NESTING + 1
 	JP	SWAP
 
 ELSE:	POP	BC		; discard STMT-RET
-	BIT	7,(IY+$01)
+	CALL	SYNTAX_Z
 	JR	Z,ELSE_1
 	BIT	4,(IY+$37)	; FLAGX, check if last IF was false
 	RES	4,(IY+$37)
@@ -448,9 +434,8 @@ TEST_ZERO:
 	DEC	HL
 	OR	(HL)
 	DEC	HL
-	OR	(HL)
 	DEC	HL
-	OR	(HL)
+	OR	(HL)		; zero only for small integers
 	RET
 
 ASSERT:	CALL	TEST_ZERO
