@@ -377,10 +377,10 @@ and then enter the <code>RUN</code> command to play a game.</p>
   10 LET number=1+INT (1000*RND)
   20 LET guesses=0
   30 REPEAT
-  40 INPUT "Your guess?",guess
-  50 IF guess&lt;number THEN PRINT guess;" is too low."
-  60 IF guess&gt;number THEN PRINT guess;" is too high."
-  70 LET guesses+=1
+  40  INPUT "Your guess?",guess
+  50  IF guess&lt;number THEN PRINT guess;" is too low."
+  60  IF guess&gt;number THEN PRINT guess;" is too high."
+  70  LET guesses+=1
   80 UNTIL guess=number
   90 PRINT "Congratulations, you guessed ";number;"."
  100 PRINT "It took you ";guesses;" guesses."
@@ -526,7 +526,33 @@ wizards, which stands for
 separators between things to be printed determine how they are going to be
 positioned relative to one another on the canvas.</p>
 
-</p>
+<p>How many attempts do you need to guess the number without cheating? 
+Let's switch sides with the ZX85 now and write a program that plays this 
+same game as the guesser: the player thinks of a number and the computer 
+tries to guess it.</p>
+
+<pre>
+  10 PRINT "Think of a whole number between 1 and 1000."''
+  20 LET low=0: LET high=1024
+  30 REPEAT
+  40  LET guess=(low+high)/2
+  50  PRINT "Is it ";guess;"?",
+  60  INPUT "0: Too high."'"1: Too low."'"2: Correct."'answer
+  70  IF answer=0
+  80   LET high=guess
+  90   PRINT "0: Too high."
+ 100  ELSE IF answer=1
+ 110   LET low=guess
+ 120   PRINT "1: Too high."
+ 130  ELSE IF answer=2
+ 140   PRINT "2: It is ";guess;"."
+ 150   STOP
+ 160  ELSE
+ 170   PRINT
+ 180  END IF
+ 190 UNTIL high-low<2
+ 200 PRINT "This cannot be."'low;" is too low, but ";high;" is too high."
+</pre>
 
 </body>
 </html>
