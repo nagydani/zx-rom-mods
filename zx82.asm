@@ -8490,7 +8490,8 @@ L1B29:  CALL    L16BF           ; routine SET-WORK clears workspace etc.
         JR      Z,L1B28         ; back to STMT-LOOP if so.
 
         LD      HL,L1B76        ; address: STMT-RET
-        PUSH    HL              ; is now pushed as a return address
+;;; Entry point for step-by-step execution
+X1B40:	PUSH    HL              ; is now pushed as a return address
         LD      C,A             ; transfer the current character to C.
 
 ; advance CH_ADD to a position after command and test if it is a command.
@@ -20121,7 +20122,7 @@ FTOKEN1_R1:
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF;	, $FF, $FF, $FF;
+        DEFB    $FF, $FF;	, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
@@ -20136,7 +20137,7 @@ FTOKEN1_R1:
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 
-; 107 bytes used before the character set
+; 110 bytes used before the character set
 
 ; Local variables in 128k mode
 STK_F_ARG:
@@ -20179,6 +20180,8 @@ RUN_HOOK:
 LOCAL_HOOK:
 	CALL	NOPAGE
 NEW_HOOK:
+	CALL	NOPAGE
+STEP_HOOK:
 	CALL	NOPAGE
 POUT:	CALL	NOPAGE
 PIN:	CALL	NOPAGE

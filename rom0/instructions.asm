@@ -121,7 +121,10 @@ P_ASSERT:
 	DEFB	$06, $00
 	DEFW	ASSERT
 
-P_STEP:
+P_STEP:	DEFB	$05
+	DEFW	STEP
+
+
 P_PLAY:
 ; unimplemented instruction, accepted w/o parameters, but not executed
 P_PLUG:
@@ -1408,3 +1411,218 @@ RENUME:	CALL	ERROR
 
 ERROR_G:CALL	ERROR
 	DEFB	$0F		; G No room for line
+
+
+; Step syntax check, like PRINT
+STEP_S:	RST	$28
+	DEFW	L1FDF		; PRINT-2
+	LD	HL,L1BEE + 5	; CHECK-END + 5
+	PUSH	HL
+	JP	SWAP
+
+STEP:	CALL	SYNTAX_Z
+	JR	Z,STEP_S
+	POP	HL		; discard return address
+	LD	HL,(PPC)
+	LD	(STEPPPC),HL
+	LD	A,(SUBPPC)
+	LD	(STEPSUB),A
+	CALL	STEP_P		; print STEP arguments, catching errors
+STEP_CONT:
+	LD	HL,(ERR_SP)
+	AND	A
+	SBC	HL,SP		; Handling an error?
+	JP	NZ,STEP_E	; jump, if so
+	BIT	7,(IY+$0A)	; Jump to be made?
+	JR	NZ,STEP_NX	; forward, if not
+	LD	HL,(NEWPPC)
+	BIT	7,H
+	JR	Z,STEP_LN
+	LD	HL,$FFFE
+	LD	(PPC),HL
+	LD	HL,(WORKSP)
+	DEC	HL
+	LD	DE,(E_LINE)
+	DEC	DE
+	LD	A,(NSPPC)
+	JR	STEP_NL
+
+STEP_NX:RST	$18
+	CP	":"
+	JR	Z,STEP_N
+	CP	$0D
+	JR	Z,STEP_LE
+	JP	ERROR_C
+
+STEP_LN:RST	$28
+	DEFW	L196E		; LINE-ADDR
+	LD	A,(NSPPC)
+	JR	Z,STEP_LC
+	OR	A
+	JR	NZ,ERROR_N
+	DEC	HL
+STEP_LE:INC	HL
+	LD	A,1
+STEP_LC:LD	D,(HL)
+	BIT	7,D
+	JR	NZ,RENUME	; Program finished
+	BIT	6,D
+	JR	NZ,RENUME	; Program finished
+	INC	HL
+	LD	E,(HL)
+	LD	(PPC),DE
+	INC	HL
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	EX	DE,HL
+	ADD	HL,DE
+	INC	HL
+STEP_NL:LD	(NXTLIN),HL
+	LD	(CH_ADD),DE
+	LD	D,A
+	LD	E,$00
+	LD	(IY+$0A),$FF
+	DEC	D
+	LD	(IY+$0D),D
+	JR	Z,STEP_N
+	INC	D
+	RST	$28
+	DEFW	L198B		; EACH-STMT
+	JR	NZ,ERROR_N
+	RST	$18
+	DEFB	$1E		; LD E, skip one byte
+; STMT-LOOP
+STEP_N:	RST	$20		; read next
+	CP	$0D
+	JR	Z,STEP_LE	; LINE-END
+	INC	(IY+$0D)
+	CP	":"
+	JR	Z,STEP_N
+
+;;	LD	HL,(CH_ADD)
+	LD	(T_ADDR),HL		; Save execution pointer
+	LD	HL,(STEPPPC)
+	BIT	7,H
+	JR	NZ,STEP_C	; STEP was a command
+	RST	$28
+	DEFW	L196E		; LINE-ADDR
+	INC	HL
+	INC	HL		; step over line number
+	INC	HL
+	INC	HL		; step over line length
+	JR	Z,STEP_0
+ERROR_N:CALL	ERROR
+	DEFB	$16		; N Statement lost
+STEP_C:	LD	HL,(E_LINE)
+STEP_0:	DEC	HL
+	LD	(CH_ADD),HL
+	LD	A,(STEPSUB)
+	LD	E,$00
+	LD	D,A
+	DEC	A
+	JR	Z,STEP_1	; STEP is first statement
+	RST	$28
+	DEFW	L198B		; EACH-STMT
+	JR	NZ,ERROR_N
+	RST	$18
+	CP	":"
+	JR	NZ,ERROR_N
+STEP_1:	RST	$20		; advance
+	RST	$20		; twice
+	CALL	STEP_P
+	LD	HL,(PPC)
+	BIT	7,H		; executing command line?
+	JR	Z,STEP_2	; jump, if not
+	INC	HL
+	INC	HL
+STEP_2:	CALL	DECWORD
+	LD	A,":"
+	RST	$10
+	LD	A,(SUBPPC)
+	CALL	DECBYTE
+	LD	A," "
+	RST	$10
+	LD	HL,(T_ADDR)
+	LD	(CH_ADD),HL	; restore execution pointer
+	
+	LD	A,(HL)
+	RST	$10		; TODO: proper line listing
+	
+	RES	3,(IY+$02)	; no edit line
+	RST	$28
+	DEFW	L15DE		; WAIT-KEY1
+	PUSH	AF
+	RST	$28
+	DEFW	L0D6E		; CLS-LOWER
+	POP	AF
+	CP	" "
+	JR	Z,ERROR_L	; BREAK
+	CP	"c"
+	JR	Z,STEP_X
+	CP	"C"
+	JR	Z,STEP_X
+	RST	$28
+	DEFW	L16BF		; SET-WORK
+	RST	$18
+	LD	B,0
+	LD	HL,X1B40
+	PUSH	HL
+	LD	HL,STEP_HOOK
+	JP	SWAP
+
+ERROR_L:CALL	ERROR
+	DEFB	$14		; L Break into program
+
+STEP_X:	LD	HL,L1B29	; STMT-L-1
+	PUSH	HL
+	JP	SWAP
+
+; Print STEP's arguments
+STEP_P:	RST	$28
+	DEFW	L0D6E		; CLS-LOWER
+	LD	A,$16		; AT
+	RST	$10
+	XOR	A
+	RST	$10
+	XOR	A
+	RST	$10		; AT 0,0
+	POP	HL
+	LD	(RETADDR),HL
+	PUSH	HL
+	LD	HL,(ERR_SP)
+;;	LD	E,(HL)
+	LD	(HL),STEP_HOOK - $100*(STEP_HOOK/$100)
+	INC	HL
+;;	LD	D,(HL)
+	LD	(HL),STEP_HOOK/$100
+	RST	$28
+	DEFW	L1FDF		; PRINT-2
+	LD	HL,(ERR_SP)
+	LD	(HL),L1303 - $100*(L1303/$100)
+	INC	HL
+	LD	(HL),L1303/$100
+	RET
+
+; Print any error that might occur during STEP
+STEP_E:	LD	HL,L1303
+	PUSH	HL
+	LD	HL,(RETADDR)
+	PUSH	HL
+	LD	A,(ERR_NR)
+	LD	(IY+$00),$FF
+	INC	A
+	PUSH	AF
+	RST	$28
+	DEFW	L15EF		; OUT-CODE
+	LD	A," "
+	RST	$10
+	POP	AF
+	CP	$1C
+	JP	NC,REPORT
+STEP_EO:LD	DE,L1391
+	RST	$28
+	DEFW	L0C0A		; PO-MSG
+	LD	A,$0D
+	RST	$10
+	RET

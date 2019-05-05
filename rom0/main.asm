@@ -141,6 +141,8 @@ C_SPCC:	DEFB	1
 RCLINE:	DEFS	2		; current line being renumbered
 RCSTART:DEFW	10		; starting line number for renumbering
 RCSTEP:	DEFW	10		; step for renumbering
+STEPPPC:EQU	$
+STEPSUB:EQU	STEPPPC+2
 
 INIT_5B00_L:	EQU	$ - $5B00
 
@@ -392,15 +394,7 @@ INFIX_T:CP	$0C		; multiplication?
 ERR_CONT:
 	CP	$1C
 	JR	C,DSWAP2
-	SUB	$1C
-	LD	B,A
-	INC	B
-	ADD	"S"
-	RST	$10
-	LD	A," "
-	RST	$10
-	LD	DE,REPORTS
-	CALL	TOKEN
+	CALL	REPORT
 	LD	HL,X1349
 	EX	(SP),HL
 	JR	DSWAP2
@@ -553,6 +547,15 @@ STDERR_MSG:
 	DEFW	L1601
 	POP	DE
 	JR	MESSAGE
+
+REPORT:	SUB	$1C
+	LD	B,A
+	INC	B
+	ADD	"S"
+	RST	$10
+	LD	A," "
+	RST	$10
+	LD	DE,REPORTS
 TOKEN:	LD	A,(DE)
 	ADD	A,A
 	INC	DE
@@ -1557,6 +1560,7 @@ C256:	DEFB	$00, $00, $00, $01, $00
 	JP	RUN_CONT
 	JP	LOCAL_CONT
 	JP	NEW128
+	JP	STEP_CONT
 	JP	PR_OUT
 	JP	PR_IN
 	JP	S_OUT
