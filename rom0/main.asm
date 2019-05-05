@@ -875,7 +875,7 @@ STK0_L:	LD	(HL),C
 
 ; print the decimal value of a word in register HL
 DECWORD:LD	A,H
-	OR	L
+	OR	A
 	LD	A,L
 	JR	Z,DECBYTE
 	LD	C,L
@@ -921,6 +921,7 @@ P_DB2L:	RL	E
 	RST	$10
 	LD	A,E
 	AND	$0F
+	ADD	"0"
 	RST	$10
 	RET
 
