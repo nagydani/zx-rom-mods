@@ -481,7 +481,8 @@ UNTIL:	CALL	TEST_ZERO
 	PUSH	HL		; error address
 	PUSH	BC		; return address
 	EXX
-	INC	HL
+	AND	A
+	SBC	HL,DE
 	INC	HL		; skip marker
 	JR	UNT_C		; continue loop
 
