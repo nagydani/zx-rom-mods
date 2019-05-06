@@ -101,7 +101,7 @@ FN_ARG:	LD	HL,L2951	; STK-FN-ARK
 
 LC_FND:	POP	DE		; discard return address
 	POP	DE		; discard variable pointer
-	LD	DE,L28EF
+;;	LD	DE,L28EF	; V-RUN-SYN TODO: ???
 	RLCA
 	RLCA
 	RLCA

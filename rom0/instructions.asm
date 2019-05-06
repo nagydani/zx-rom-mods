@@ -1503,7 +1503,9 @@ STEP_N:	RST	$20		; read next
 	JR	Z,STEP_N
 
 ;;	LD	HL,(CH_ADD)
-	LD	(T_ADDR),HL		; Save execution pointer
+	LD	(T_ADDR),HL	; Save execution pointer
+	RST	$28
+	DEFW	L16BF		; SET-WORK
 	LD	HL,(STEPPPC)
 	BIT	7,H
 	JR	NZ,STEP_C	; STEP was a command
@@ -1564,8 +1566,6 @@ STEP_2:	CALL	DECWORD
 	JR	Z,STEP_X
 	CP	"C"
 	JR	Z,STEP_X
-	RST	$28
-	DEFW	L16BF		; SET-WORK
 	RST	$18
 	LD	B,0
 	LD	HL,X1B40
