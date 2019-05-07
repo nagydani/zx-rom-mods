@@ -1553,6 +1553,9 @@ STEP_2:	CALL	DECWORD
 	LD	A,(HL)
 	RST	$10		; TODO: proper line listing
 	
+	LD	A,$FD		; re-open system K channel
+	RST	$28
+	DEFW	L1601		; CHAN-OPEN
 	RES	3,(IY+$02)	; no edit line
 	RST	$28
 	DEFW	L15DE		; WAIT-KEY1
