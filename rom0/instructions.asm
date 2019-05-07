@@ -55,7 +55,7 @@
 	DEFB	P_PLUG - $	; EsW
 	DEFB	P_PLUG - $	; EsE
 	DEFB	P_LOCAL - $	; LOCAL
-	DEFB	P_PLUG - $	; EX
+	DEFB	P_DELETE - $	; DELETE
 	DEFB	P_REPEAT - $	; REPEAT
 	DEFB	P_PLUG - $	; EH
 	DEFB	P_PLUG - $	; EF
@@ -124,6 +124,9 @@ P_ASSERT:
 P_STEP:	DEFB	$05
 	DEFW	STEP
 
+P_DELETE:
+	DEFB	$09, $00
+	DEFW	DELETE
 
 P_PLAY:
 ; unimplemented instruction, accepted w/o parameters, but not executed
@@ -171,6 +174,7 @@ CMDCLASS2:
 	DEFB	CLASS2_06 - $	; evaluate single numeric expression
 	DEFB	CLASS2_07 - $	; open #2 or other stream before execution
 	DEFB	CLASS2_08 - $	; two numeric expressions, separated by comma
+	DEFB	CLASS2_09 - $	; interval
 
 CLASS2_03:
 	CALL	FETCH_NUM
@@ -219,6 +223,29 @@ CLASS2_06:
 ERROR_C_I:
 	JP	ERROR_C
 
+CLASS2_09:
+	RST	$18
+	CP	TO_T
+	JR	Z,FROM_1
+	CALL	CLASS2_06	; beginning
+	CP	TO_T
+	JR	NZ,TO_SAME
+FROM_1R:RST	$20
+	LD	HL,DELIM
+	LD	BC,DELIM_E - DELIM
+	CPIR
+	JR	NZ,CLASS2_06
+	CALL	SYNTAX_Z
+	RET	Z
+	RST	$28
+	DEFW	L33A9		; TEST-5-SP
+	LD	DE,(STKEND)
+	LD	HL,CM1
+	LD	BC,$0005
+	LDIR			; STK-MINUS-ONE
+	LD	(STKEND),DE
+	RET
+
 FETCH_NUM:
 	CP	$0D
 	JR	Z,USE_ZERO
@@ -242,6 +269,27 @@ CLASS2_07:
 STR_ALTERED:
 	JR	CLASS2_00
 
+FROM_1:	CALL	SYNTAX_Z
+	JR	Z,FROM_1R
+	RST	$28
+	DEFW	L1CE6 + 4	; USE-ZERO + 4
+	INC	HL
+	INC	HL
+	LD	(HL),$01	; ONE
+	JR	FROM_1R
+
+TO_SAME:CALL	SYNTAX_Z
+	RET	Z
+	RST	$28
+	DEFW	L35BF		; STK-PNTRS
+	RST	$28
+	DEFW	L33C0		; DUP
+	LD	(STKEND),DE
+	RET
+
+DELIM:	DEFB	$0D
+	DEFM	":,;)"
+DELIM_E:
 
 ; instruction routines
 ENDIF:	RES	6,(IY+$37)	; signal true outcome
@@ -1631,3 +1679,40 @@ STEP_EO:LD	DE,L1391
 	LD	A,$0D
 	RST	$10
 	RET
+
+DEL_E:	LD	HL,(VARS)
+	JR	DEL_NE
+
+DELETE:	RST	$28
+	DEFW	L2DA2		; FP-TO-BC
+	JR	NZ,DEL_E
+	JR	C,DEL_E
+	LD	L,C
+	LD	H,B
+	RST	$28
+	DEFW	L196E		; LINE-ADDR
+	JR	NZ,DEL_NE
+	INC	HL
+	INC	HL
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	SCF			; faster than INC HL
+	ADC	HL,DE		; skip last line
+DEL_NE:	PUSH	HL
+	RST	$28
+	DEFW	L1E99		; FIND-INT2
+	LD	L,C
+	LD	H,B
+	RST	$28
+	DEFW	L196E		; LINE-ADDR
+	EX	DE,HL
+	POP	HL
+	RST	$28
+	DEFW	L19E5		; RECLAIM-1
+	LD	HL,(PPC)
+	LD	A,(SUBPPC)
+	LD	(NEWPPC),HL
+	INC	A
+	LD	(NSPPC),A
+	JP	MAIN_ADD_CONT

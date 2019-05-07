@@ -673,8 +673,8 @@ TOKENS1:DEFB	$8D
 	DEFB	$80+"E"
 	DEFM	"LOCA"
 	DEFB	$80+"L"
-	DEFM	"_E"
-	DEFB	$80+"X"
+	DEFM	"DELET"
+	DEFB	$80+"E"
 	DEFM	"REPEA"
 	DEFB	$80+"T"
 	DEFM	"_E"
@@ -1723,6 +1723,7 @@ SKNUM:	ADD	HL,DE
 	INCLUDE "variables.asm"
 	INCLUDE	"instructions.asm"
 
+CM1:	DEFB	$00, $FF, $FF, $FF
 C256:	DEFB	$00, $00, $00, $01, $00
 
 	DEFS	INFIX_HOOK - $

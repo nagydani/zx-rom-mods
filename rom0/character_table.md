@@ -150,6 +150,8 @@
 | ... |
 | AD | PLAY
 | ... |
+| B8 | LOCAL
+| B9 | DELETE
 | BA | REPEAT
 | ... |
 | BE | POKE
