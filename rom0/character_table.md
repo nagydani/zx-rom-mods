@@ -135,7 +135,8 @@
 | ... |
 | E2 | ><
 | E3 | READ #
-| ... |
+| E4 | >>
+| E5 | <<
 
 ## Instruction tokens
 
