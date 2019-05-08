@@ -512,8 +512,11 @@ C_THEN:	LD	A,$CB		; THEN
 	CP	C
 	JR	NZ,ERROR_C_NZ
 	CALL	SYNTAX_Z	; checking sytax?
-	JP	Z,SWAP		; if so, we're done here
-	JP	THENLESS
+	JP	NZ,THENLESS	; if not, execute THENless IF
+	RES	4,(IY+$37)	; signal that we're NOT after THEN
+	LD	HL,L1B29	; STMT-L-1
+	EX	(SP),HL
+	JP	SWAP		; we're done here
 
 SEPARATOR:
 	RST	$18

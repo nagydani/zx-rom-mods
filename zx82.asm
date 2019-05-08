@@ -9131,12 +9131,14 @@ L1CF0:  POP     BC              ; drop return address - STMT-RET
 
         EX      DE,HL           ; make HL point to deleted value
         CALL    L34E9           ; routine TEST-ZERO
-;;; BUGFIX: signal result in bit 6 of FLAGX
+;;; BUGFIX: signal result in bit 4 of FLAGX
 	JP	C2FLAGX4
 ;;;	JP      C,L1BB3         ; jump to LINE-END if FALSE (0)
 
 ;; IF-1
-L1D00:  JP      L1B29           ; to STMT-L-1, if true (1) to execute command
+;;; BUGFIX: signal THEN in bit 4 of FLAGX
+L1D00:	JP	SFLAGX4
+;;;L1D00:  JP      L1B29           ; to STMT-L-1, if true (1) to execute command
                                 ; after 'THEN' token.
 
 ; ------------------
@@ -19862,13 +19864,15 @@ S_COPY:	LD	A,3
 	INC	A		; A=1, CF=0
 	JP	L15F2		; output service routine
 
-; Branching of IF statement, with result recorded (16 bytes)
+; Branching of IF statement, with result recorded (22 bytes)
 C2FLAGX4:
 	JR	C,SETFX4
 	RES	4,(IY+$37)
-	JP	L1B29		; SSTMT-L-1
+SSTMTL1:JP	L1B29		; SSTMT-L-1
 SETFX4:	SET	4,(IY+$37)
 	JP	L1BB3		; LINE-END
+SFLAGX4:SET	4,(IY+$37)
+	JR	SSTMTL1
 
 ; Infix operators on non-standard types (5 bytes)
 INFIX:	CALL	INFIX_HOOK
@@ -20046,8 +20050,8 @@ FTOKEN1_R1:
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-	DEFB    $FF, $FF;	, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+	DEFB    $FF, $FF, $FF, $FF;	, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;

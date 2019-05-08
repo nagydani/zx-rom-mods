@@ -295,11 +295,11 @@ DELIM:	DEFB	$0D
 DELIM_E:
 
 ; instruction routines
-ENDIF:	RES	6,(IY+$37)	; signal true outcome
+ENDIF:	RES	4,(IY+$37)	; signal true outcome
 	JP	SWAP
 
 THENLESS:
-	RES	6,(IY+$37)	; signal true outcome
+	RES	4,(IY+$37)	; signal true outcome
 	CALL	TEST_ZERO
 	LD	(STKEND),HL
 SWAPNZ:	JP	NZ,SWAP		; Upon true condition, simply continue
@@ -321,7 +321,7 @@ NEST2:	EQU	NESTING + 1
 
 ELSE:	POP	BC		; discard STMT-RET
 	CALL	SYNTAX_Z
-	JR	Z,ELSE_1
+	JR	Z,ELSE_S
 	BIT	4,(IY+$37)	; FLAGX, check if last IF was false
 	RES	4,(IY+$37)
 	JR	NZ,ELSE_1
@@ -333,6 +333,8 @@ ELSE:	POP	BC		; discard STMT-RET
 	JR	Z,ELSEIF	; ELSE IF
 ELSE_0:	LD	BC,L1BB3	; LINE-END
 	JR	ELSE_2
+ELSE_S:	BIT	4,(IY+$37)	; after THEN
+	JP	NZ,ERROR_C	; ELSE is an error
 ELSE_1:	LD	BC,L1B29	; STMT-L-1
 ELSE_2:	PUSH	BC
 	JP	SWAP
