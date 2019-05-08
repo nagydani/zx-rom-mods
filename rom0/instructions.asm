@@ -1706,8 +1706,8 @@ DELETE:	RST	$28
 	RL	C
 	JR	C,DEL_SK	; return, if checking syntax
 	SBC	HL,SP
-	ADD	HL,SP
 	JR	NC,DEL_LC	; DELETE local
+	ADD	HL,SP
 	PUSH	HL
 	RST	$18
 	CP	"("
@@ -1740,8 +1740,6 @@ DEL_ST:	INC	HL
 	INC	BC
 	INC	BC
 	JR	DEL_N1
-
-DEL_LC:	jp	ERROR_C		;TODO: delete locals
 
 DEL_PR:	CALL	CLASS2_09
 	CALL	SYNTAX_Z
@@ -1779,3 +1777,44 @@ DEL_NE:	PUSH	HL
 	INC	A
 	LD	(NSPPC),A
 	JP	MAIN_ADD_CONT
+
+DEL_LC:	LD	A,$BF
+	CP	C
+	DEC	HL
+	JR	NC,DEL_LH
+	INC	HL
+	INC	HL
+DEL_LH:	PUSH	HL		; save stack length
+	ADD	HL,SP		; add one more for simple numeric
+	LD	A,(HL)
+	AND	$60
+	CP	$60
+	LD	E,L
+	LD	D,H
+	JR	Z,DEL_LF
+	INC	HL
+	INC	HL
+	LD	C,(HL)
+	INC	HL
+	LD	B,(HL)
+DEL_LF0:ADD	HL,BC
+	EX	DE,HL
+	POP	BC
+	DEC	HL
+	DEC	BC
+	DEC	BC
+	LDDR
+	INC	DE
+	EX	DE,HL
+	LD	SP,HL
+	INC	HL
+	INC	HL
+	LD	(ERR_SP),HL
+	JR	DEL_SW
+
+DEL_LF:	LD	BC,$0017
+	LD	A,(HL)
+	CP	$E0
+	JR	NC,DEL_LF0
+	LD	C,$06
+	JR	DEL_LF0
