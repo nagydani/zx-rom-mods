@@ -373,7 +373,7 @@ NEST2:	EQU	NESTING + 1
 
 ; instruction routines
 ENDIF:	RES	4,(IY+$37)	; signal true outcome
-	JP	SWAP
+ENDPROC:JP	SWAP
 
 ; Skip FOR block if condition unsatisfied
 SKIP_FOR_CONT:
@@ -401,7 +401,7 @@ SWAPNZ:	JP	NZ,SWAP		; Upon true condition, simply continue
 	CALL	LOOK_PROG2
 	INC	BC		; increment end-of-line pointer
 	LD	(NXTLIN),BC
-	JR	C,ERROR_T
+	JR	C,ERROR_S
 	POP	BC		; discard SCAN-LOOP
 	RST	$20
 	JP	SWAP
@@ -430,12 +430,12 @@ ELSE_3:	PUSH	BC		; put back STMT-RET
 	LD	DE,T_IF
 	CALL	LOOK_PROG2
 	LD	(NXTLIN),BC
-	JR	C,ERROR_T	; missing END IF
+	JR	C,ERROR_S	; missing END IF
 	RST	$20
 	JP	SWAP
 
-ERROR_T:CALL	ERROR
-	DEFB	$1C		; T Missing END IF
+ERROR_S:CALL	ERROR
+	DEFB	$1B		; S Missing END
 
 ELSEIF:	INC	HL
 	PUSH	BC
@@ -547,7 +547,7 @@ UNTIL:	CALL	TEST_ZERO
 	POP	DE		; marker
 	LD	A,D
 	CP	$3E
-	JR	NZ,ERROR_S	; after GO SUB
+	JR	NZ,ERROR_U	; after GO SUB
 	LD	A,E
 	CP	REPEAT_M
 	JR	Z,UNT_NL	; no local variables
@@ -556,7 +556,7 @@ UNTIL:	CALL	TEST_ZERO
 	CALL	SKIP_LL
 	CP	REPEAT_M
 	EXX
-	JR	NZ,ERROR2S	; wrong context
+	JR	NZ,ERROR2U	; wrong context
 	EX	AF,AF'
 	JR	NZ,UNT_R	; reclaim local context
 	PUSH	HL		; error address
@@ -610,10 +610,10 @@ UNT_E:	LD	(ERR_SP),SP
 	PUSH	BC
 	JR	REPSW
 
-ERROR_S:PUSH	DE
-ERROR2S:PUSH	HL
+ERROR_U:PUSH	DE
+ERROR2U:PUSH	HL
 	CALL	ERROR
-	DEFB	$1B		; S UNTIL without REPEAT
+	DEFB	$1D		; U UNTIL without REPEAT
 
 ERROR_2:RST	$28
 	DEFW	L0670		; 2 Variable not found
@@ -731,7 +731,14 @@ DP_NUM:	CP	","
 DP_E:	CP	")"
 ERRC_NZ:JR	NZ,ERROR_C_J
 	RST	$20
-	JR	SW_LOC
+	CALL	SYNTAX_Z
+	JR	Z,SW_LOC
+	LD	DE,T_DP
+	CALL	LOOK_PROG2
+	INC	BC
+	LD	(NXTLIN),BC
+	JR	NC,SW_LOC
+	JP	ERROR_S		; S Missing END (PROC)
 
 LOCAL_S:RST	$28
 	DEFW	L2C8D		; ALPHA
@@ -1002,12 +1009,17 @@ ST_VARN:LD	A,C
 	RST	$10
 	RET
 
-ENDPROC:
-
 PLAY:
 ; unimplemented instruction, reports error, if executed
 PLUG:	JP	ERROR_C
 
+
+; DEF PROC structure table
+T_DP:	DEFB	ENDPROC_T
+	DEFB	F_ENDPROC - $
+	DEFB	DEFPROC_T
+	DEFB	F_DEFPROC - $
+	DEFB	0
 
 ; FOR structure table
 T_FOR:	DEFB	NEXT_T
@@ -1044,6 +1056,7 @@ F_NEXT:	RST	$20
 	CP	(IY+$38)
 	JR	Z,F_ELSER		; TODO: skip update for backwards compatibility
 	JR	EACH_COMEBACK
+F_ENDPROC:
 F_ENDIF:DEC	(IY+NESTING-ERR_NR)
 	JR	NZ,EACH_COMEBACK
 F_ELSER:EX	DE,HL
@@ -1103,6 +1116,7 @@ EACH_1:	INC	(IY+NSPPC-ERR_NR)
 	LD	C,(HL)
 	ADD	HL,BC
 	JP	(HL)		; jump to appropriate routine
+F_DEFPROC:
 F_FOR:
 F_IF:	INC	(IY+NESTING-ERR_NR)
 EACH_COMEBACK:

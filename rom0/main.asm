@@ -767,14 +767,16 @@ TOKENS0:DEFB	$80+"P"
 	DEFB	$80+">"
 	DEFM	"<"		; E S, $E5
 REPORTS:DEFB	$80+"<"
-	DEFM	"UNTIL without REPEA"
-	DEFB	$80+"T"
-	DEFM	"Missing END I"
-	DEFB	$80+"F"
+	DEFM	"Missing EN"
+	DEFB	$80+"D"		; S
 	DEFM	"Label not foun"
-	DEFB	$80+"d"
+	DEFB	$80+"d"		; T
+	DEFM	"UNTIL without REPEA"
+	DEFB	$80+"T"		; U
 	DEFM	"ASSERT faile"
-	DEFB	$80+"d"
+	DEFB	$80+"d"		; V
+	DEFM	"END WHILE without WHIL"
+	DEFB	$80+"E"		; W
 
 PEEK_T:	EQU	$BE
 THEN_T:	EQU	$CB
@@ -815,6 +817,7 @@ ENDIF_T:EQU	$C5
 ENDPROC_T:EQU	$CA
 ELSE_T:	EQU	$CB
 PROC_T:	EQU	$CC
+DEFPROC_T:EQU	$A8
 LABEL_T:EQU	$AB
 LOCAL_T:EQU	$B8
 REPEAT_T:EQU	$BA
@@ -1615,11 +1618,11 @@ F_LBL:	SET	7,(IY+FLAGS2-ERR_NR)	; Mark cache dirty
 	LD	HL,(PROG)
 F_LBLL:	LD	A,(HL)
 	AND	$C0
-	JR	NZ,ERROR_U
-	LD	E,LABEL_T
+	JR	NZ,ERROR_T
+	LD	E,LABEL_T	; T Label not found
 	RST	$28
 	DEFW	X1D91		; inside LOOK-PROG
-	JR	C,ERROR_U
+	JR	C,ERROR_T	; T Label not found
 	LD	(LIST_SP),BC
 	INC	HL
 	POP	BC		; label start
@@ -1660,8 +1663,8 @@ NXHL1:	LD	(MEMBOT+28),HL
 	INC	H
 	JR	NXHL
 
-ERROR_U:CALL	ERROR
-	DEFB	$1D		; U Label not found
+ERROR_T:CALL	ERROR
+	DEFB	$1C		; T Label not found
 
 E_LBL:	LD	A,(HL)
 	INC	HL
