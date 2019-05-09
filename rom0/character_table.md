@@ -124,6 +124,8 @@
 | D3 | OPEN #
 | D4 | EOF #
 | ... |
+| D6 | REF
+| ... |
 | D8 | HEX
 | D9 | INK
 | DA | PAPER
@@ -145,6 +147,7 @@
 | A5 | ...
 | ... |
 | A7 | RENUM
+| A8 | DEF PROC
 | ... |
 | AB | LABEL
 | ... |
@@ -165,8 +168,9 @@
 | ... |
 | C7 | PALETTE
 | ... |
+| CA | END PROC
 | CB | ELSE
-| ... |
+| CC | PROC
 | CD | STEP
 | CE | DEF FN
 | CF | CAT

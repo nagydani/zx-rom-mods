@@ -38,10 +38,10 @@
 	DEFB	P_PLUG - $	; ET
 	DEFB	P_PLUG - $	; EN
 	DEFB	P_RENUM - $	; RENUM
-	DEFB	P_PLUG - $	; Es2
+	DEFB	P_DEFPROC - $	; DEF PROC
 	DEFB	P_PLUG - $	; Es8
 	DEFB	P_STACK - $	; STACK
-	DEFB	P_LABEL - $	; EsL
+	DEFB	P_LABEL - $	; LABEL/@
 	DEFB	P_PLUG - $	; sI
 	DEFB	P_PLAY - $	; PLAY
 	DEFB	P_PLUG - $	; EsJ
@@ -72,7 +72,7 @@
 	DEFB	P_PALETTE - $	; PALETTE
 	DEFB	P_PLUG - $	; sE
 	DEFB	P_PLUG - $	; sW
-	DEFB	P_PLUG - $	; Es3
+	DEFB	P_ENDPROC - $	; END PROC
 	DEFB	P_ELSE - $	; ELSE
 	DEFB	P_PLUG - $	; sF
 	DEFB	P_STEP - $	; STEP
@@ -82,15 +82,15 @@ P_END:	EQU	$
 P_ENDIF:DEFB	$00
 	DEFW	ENDIF
 
-P_RENUM:DEFB	$00	; TODO: all sorts of arguments for RENUM
+P_RENUM:DEFB	$00		; TODO: all sorts of arguments for RENUM
 	DEFW	RENUM
 
 P_ELSE:	DEFB	$05
 	DEFW	ELSE
 
-P_POKE:	DEFB	$06	; numeric expression
+P_POKE:	DEFB	$06		; numeric expression
 	DEFB	","
-	DEFB	$05	; list of items
+	DEFB	$05		; list of items
 	DEFW	POKE
 
 P_STACK:DEFB	$07
@@ -107,8 +107,18 @@ P_UNTIL:
 P_USR:	DEFB	$06, $00
 	DEFW	USR
 
-P_LABEL:DEFB	$05
+P_LABEL:DEFB	$0A, $00	; just a label
 	DEFW	LABEL
+
+P_DEFPROC:
+	DEFB	$0A		; label
+	DEFB	"("
+	DEFB	$05		; list of arguments
+	DEFW	DEFPROC
+
+P_ENDPROC:
+	DEFB	$00
+	DEFW	ENDPROC
 
 P_LOCAL:DEFB	$05
 	DEFW	LOCAL
@@ -175,6 +185,7 @@ CMDCLASS2:
 	DEFB	CLASS2_07 - $	; open #2 or other stream before execution
 	DEFB	CLASS2_08 - $	; two numeric expressions, separated by comma
 	DEFB	CLASS2_09 - $	; interval
+	DEFB	CLASS2_0A - $	; label
 
 CLASS2_03:
 	CALL	FETCH_NUM
@@ -294,18 +305,94 @@ DELIM:	DEFB	$0D
 	DEFM	":,;)"
 DELIM_E:
 
+
+CLASS2_0A:
+	CALL	SYNTAX_Z
+	JR	NZ,LABEL_R
+	LD	BC,$0006
+	RST	$28
+	DEFW	L2C8D		; ALPHA
+	JP	NC,ERROR_C
+	INC	HL		; insert pointers after first letter of label
+	RST	$28
+	DEFW	L1655		; MAKE-ROOM
+	LD	DE,(E_LINE)
+LABEL_S:LD	A,(DE)
+	INC	DE
+	CP	" " + 1
+	JR	C,LABEL_S	; skip indent
+LABEL_N:RST	$28
+	DEFW	L2D1B		; NUMERIC
+	JR	C,LABEL_C
+	INC	DE
+	LD	A,(DE)
+	JR	LABEL_N		; skip line number
+LABEL_C:LD	A,(SUBPPC)
+	INC	HL
+	LD	(HL),$0E	; number marker
+	INC	HL
+	PUSH	HL		; length goes here
+	INC	HL
+	INC	HL
+	LD	(HL),A
+	INC	HL
+	EX	DE,HL
+	SCF
+	SBC	HL,DE
+	EX	DE,HL
+	LD	(HL),E
+	INC	HL
+	LD	(HL),D
+	RST	$28
+	DEFW	L0077		; TEMP-PTR1
+LABEL_L:RST	$20
+	RST	$28
+	DEFW	L2C88		; ALPHANUM
+	JR	C,LABEL_L
+	POP	DE		; length pointer
+	SCF
+	SBC	HL,DE
+	EX	DE,HL
+	LD	(HL),E
+	INC	HL
+	LD	(HL),D
+	RET
+
+LABEL_R:INC	HL
+	INC	HL
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	ADD	HL,DE
+	LD	(CH_ADD),HL
+	RET
+
+
+NESTING:EQU	TSTACK - 2
+NEST2:	EQU	NESTING + 1
+
 ; instruction routines
 ENDIF:	RES	4,(IY+$37)	; signal true outcome
 	JP	SWAP
+
+; Skip FOR block if condition unsatisfied
+SKIP_FOR_CONT:
+	POP	DE		; discard return address
+	POP	DE		; discard return address
+	POP	DE		; discard variable name
+	LD	DE,T_FOR
+	CALL	LOOK_PROG2
+	INC	BC		; increment end-of-line pointer
+	LD	(NXTLIN),BC
+	JP	NC,SWAP
+ERROR_I:RST	$28
+	DEFW	L1D84		; I FOR without NEXT
 
 THENLESS:
 	RES	4,(IY+$37)	; signal true outcome
 	CALL	TEST_ZERO
 	LD	(STKEND),HL
 SWAPNZ:	JP	NZ,SWAP		; Upon true condition, simply continue
-
-NESTING:EQU	TSTACK - 2
-NEST2:	EQU	NESTING + 1
 
 ; Upon false condition start scanning for END IF, ELSE or end of code
 	SET	4,(IY+$37)	; signal false outcome
@@ -394,72 +481,13 @@ EPOKE:	LD	C,E
 POKE_L2:EX	AF,AF'
 	CP	","
 	JR	Z,POKE_L
+LABEL:
 POKE_SWAP:
 	JP	SWAP
 
 POKE_S:	LD	HL,L1E2C	; DATA-1
 POKE_E:	PUSH	HL
 	JR	POKE_SWAP
-
-LABEL:	CALL	SYNTAX_Z
-	JR	NZ,LABEL_R
-	LD	BC,$0006
-	RST	$28
-	DEFW	L2C8D		; ALPHA
-	JP	NC,ERROR_C
-	INC	HL		; insert pointers after first letter of label
-	RST	$28
-	DEFW	L1655		; MAKE-ROOM
-	LD	DE,(E_LINE)
-LABEL_S:LD	A,(DE)
-	INC	DE
-	CP	" " + 1
-	JR	C,LABEL_S	; skip indent
-LABEL_N:RST	$28
-	DEFW	L2D1B		; NUMERIC
-	JR	C,LABEL_C
-	INC	DE
-	LD	A,(DE)
-	JR	LABEL_N		; skip line number
-LABEL_C:LD	A,(SUBPPC)
-	INC	HL
-	LD	(HL),$0E	; number marker
-	INC	HL
-	PUSH	HL		; length goes here
-	INC	HL
-	INC	HL
-	LD	(HL),A
-	INC	HL
-	EX	DE,HL
-	SCF
-	SBC	HL,DE
-	EX	DE,HL
-	LD	(HL),E
-	INC	HL
-	LD	(HL),D
-	RST	$28
-	DEFW	L0077
-LABEL_L:RST	$20
-	RST	$28
-	DEFW	L2C88		; ALPHANUM
-	JR	C,LABEL_L
-	POP	DE		; length pointer
-	SCF
-	SBC	HL,DE
-	EX	DE,HL
-	LD	(HL),E
-	INC	HL
-	LD	(HL),D
-	JR	LABEL_E
-LABEL_R:INC	HL
-	INC	HL
-	LD	E,(HL)
-	INC	HL
-	LD	D,(HL)
-	ADD	HL,DE
-	LD	(CH_ADD),HL
-LABEL_E:LD	HL,L1BF4	; STMT-NEXT
-	JR	POKE_E
 
 USR:	CALL	SYNTAX_Z
 	JR	Z,POKE_SWAP
@@ -587,8 +615,8 @@ ERROR2S:PUSH	HL
 	CALL	ERROR
 	DEFB	$1B		; S UNTIL without REPEAT
 
-ERROR_2:CALL	ERROR
-	DEFB	$01		; 2 Variable not found
+ERROR_2:RST	$28
+	DEFW	L0670		; 2 Variable not found
 
 ; LET with operator update
 UPDATE:	LD	C,A
@@ -682,6 +710,29 @@ UPD_DO:	POP	BC		; discard marker, B=0
 	POP	HL
 	JP	(HL)
 
+DEFPROC:RST	$18
+	CP	")"
+	JR	Z,DP_E
+DP_L:	CP	REF_T
+	JR	NZ,DP_REF
+	RST	$20
+DP_REF:	RST	$28
+	DEFW	L2C8D		; ALPHA
+	JR	NC,ERROR_C_J
+	RST	$20
+	CP	"$"
+	JR	NZ,DP_NUM
+	RST	$20
+DP_NUM:	CP	","
+	JR	NZ,DP_E
+	RST	$20
+	JR	DP_L
+
+DP_E:	CP	")"
+ERRC_NZ:JR	NZ,ERROR_C_J
+	RST	$20
+	JR	SW_LOC
+
 LOCAL_S:RST	$28
 	DEFW	L2C8D		; ALPHA
 	JR	NC,ERROR_C_J
@@ -698,7 +749,7 @@ LOCAL_N:CP	"("
 	DEFW	L2996
 LOCAL_E:LD	HL,L1BEE + 5	; CHECK_END + 5; TODO: array initializer?
 	PUSH	HL
-	JP	SWAP
+SW_LOC:	JP	SWAP
 LOCAL_I:CP	"="
 	JR	NZ,LOCAL_E
 	RST	$20
@@ -709,7 +760,7 @@ LOCAL_I:CP	"="
 	POP	BC
 	XOR	B
 	AND	$40
-	JR	NZ,ERROR_C_J	; type mismatch
+	JR	NZ,ERRC_NZ	; type mismatch
 	JR	LOCAL_E
 
 LOCAL:	CALL	SYNTAX_Z
@@ -951,9 +1002,19 @@ ST_VARN:LD	A,C
 	RST	$10
 	RET
 
+ENDPROC:
+
 PLAY:
 ; unimplemented instruction, reports error, if executed
 PLUG:	JP	ERROR_C
+
+
+; FOR structure table
+T_FOR:	DEFB	NEXT_T
+	DEFB	F_NEXT - $
+	DEFB	FOR_T
+	DEFB	F_FOR - $
+	DEFB	0
 
 ; IF structure table
 T_IF:	DEFB	ELSE_T
@@ -973,6 +1034,16 @@ F_ELSE:	LD	A,(NESTING)
 	INC	(IY+NEST2-ERR_NR)	; implicit END IF
 	JR	EACH_COMEBACK
 
+F_NEXT:	RST	$20
+	CP	$0D
+	JR	Z,F_ENDIF
+	CP	":"
+	JR	Z,F_ENDIF
+; Consider variable
+	OR	$20			; lowercase
+	CP	(IY+$38)
+	JR	Z,F_ELSER
+	JR	EACH_COMEBACK
 F_ENDIF:DEC	(IY+NESTING-ERR_NR)
 	JR	NZ,EACH_COMEBACK
 F_ELSER:EX	DE,HL
@@ -1032,6 +1103,7 @@ EACH_1:	INC	(IY+NSPPC-ERR_NR)
 	LD	C,(HL)
 	ADD	HL,BC
 	JP	(HL)		; jump to appropriate routine
+F_FOR:
 F_IF:	INC	(IY+NESTING-ERR_NR)
 EACH_COMEBACK:
 	EX	DE,HL
@@ -1112,8 +1184,8 @@ NEXT:	POP	BC
 NEXT_SW:POP	BC		; discard one more return address
 	JP	SWAP
 
-ERROR_1:CALL	ERROR
-	DEFB	$00		; 1 NEXT without FOR
+ERROR_1:RST	$08
+	DEFW	REPORT1 + 3	; 1 NEXT without FOR
 
 PALETTE:CP	INK_T
 	JR	Z,PAL_I
@@ -1197,8 +1269,8 @@ PAL_SL:	LD	BC,$BF3B
 	JR	C,PAL_SL
 	JP	SWAP
 
-ERROR_K:CALL	ERROR
-	DEFB	$13
+ERROR_K:RST	$08
+	DEFW	L2244		; K Invalid colour
 
 PAL_S:	CALL	NEXT_1NUM
 	CP	";"
@@ -1460,8 +1532,8 @@ RENUML:	LD	A,(HL)
 	SCF			; faster than INC HL
 	ADC	HL,BC		; TODO: print all problematic instructions
 	JR	RENUML
-RENUME:	CALL	ERROR
-	DEFB	$FF		; 0 Ok.
+RENUME:	RST	$28
+	DEFW	L1BB0		; 0 Ok.
 
 ERROR_G:CALL	ERROR
 	DEFB	$0F		; G No room for line
@@ -1569,8 +1641,8 @@ STEP_N:	RST	$20		; read next
 	INC	HL
 	INC	HL		; step over line length
 	JR	Z,STEP_0
-ERROR_N:CALL	ERROR
-	DEFB	$16		; N Statement lost
+ERROR_N:RST	$08
+	DEFW	L1BEC		; N Statement lost
 STEP_C:	LD	HL,(E_LINE)
 STEP_0:	DEC	HL
 	LD	(CH_ADD),HL
@@ -1629,8 +1701,8 @@ STEP_2:	CALL	DECWORD
 	LD	HL,STEP_HOOK
 	JP	SWAP
 
-ERROR_L:CALL	ERROR
-	DEFB	$14		; L Break into program
+ERROR_L:RST	$28
+	DEFW	L1B7B		; L Break into program
 
 STEP_X:	LD	HL,L1B29	; STMT-L-1
 	PUSH	HL
@@ -1823,3 +1895,4 @@ DEL_LF:	LD	BC,$0017
 	JR	NC,DEL_LF0
 	LD	C,$06
 	JR	DEL_LF0
+

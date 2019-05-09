@@ -224,8 +224,8 @@ S_FNC_E:PUSH	BC
 S_SWAP:	LD	B,0
 	JR	RSWAP1
 
-ERROR_B:CALL	ERROR
-	DEFB	$0A		; B Integer out of range
+ERROR_B:RST	$28
+	DEFW	L046C		; B Integer out of range
 
 STK_BASE:
 	LD	A,(MEMBOT+27)
@@ -475,8 +475,8 @@ D_CHR:	POP	HL		; discard return address
 	PUSH	BC
 	JP	SWAP
 
-ERROR_6:CALL	ERROR
-	DEFB	$05		; Number too big
+ERROR_6:RST	$28
+	DEFW	L31AD		; 6 Number too big
 
 D_CHR2:	PUSH	BC
 	LD	BC,$0002
@@ -600,8 +600,8 @@ S_ST0_S:CP	")"
 	POP	AF
 	JR	S_STR_D
 
-ERROR_C:CALL	ERROR
-	DEFB	$0B		; C Nonsense in BASIC
+ERROR_C:RST	$28
+	DEFW	L1C8A		; C Nonsense in BASIC
 
 S_STR3:	CP	","
 	JR	NZ,ERROR_C

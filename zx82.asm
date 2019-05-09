@@ -9244,7 +9244,9 @@ L1D34:  PUSH    HL              ; save position.
 ;; F-LOOP
 L1D64:  PUSH    BC              ; save variable name.
         LD      BC,(NXTLIN)      ; fetch NXTLIN
-        CALL    L1D86           ; routine LOOK-PROG searches for 'NEXT' token.
+;;; BUGFIX allow for argument-less NEXT in ROM0
+	CALL	LOOK_PROG_FOR
+;;;        CALL    L1D86           ; routine LOOK-PROG searches for 'NEXT' token.
         LD      (NXTLIN),BC      ; update NXTLIN
         POP     BC              ; and fetch the letter
         JR      C,L1D84         ; forward to REPORT-I if the end of program
@@ -19988,6 +19990,11 @@ FTOKEN1_R1:
 	DJNZ	FTOKEN_R1
 	RET
 
+; Find closing NEXT (6 bytes)
+LOOK_PROG_FOR:
+	CALL	SKIP_FOR_HOOK
+	JP	L1D86		; LOOK-PROG
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
@@ -20051,7 +20058,8 @@ FTOKEN1_R1:
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-	DEFB    $FF, $FF, $FF, $FF;	, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+	DEFB    $FF, $FF, $FF, $FF, $FF, $FF;	, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
@@ -20124,9 +20132,8 @@ FTOKEN1_R1:
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF;	, $FF, $FF, $FF, $FF, $FF, $FF;
+        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF;	, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
@@ -20141,7 +20148,7 @@ FTOKEN1_R1:
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 
-; 110 bytes used before the character set
+; 113 bytes used before the character set
 
 ; Local variables in 128k mode
 STK_F_ARG:
@@ -20168,6 +20175,8 @@ SCRN_HOOK:
 GOTO_HOOK:
 	CALL	NOPAGE
 FOR_HOOK:
+	CALL	NOPAGE
+SKIP_FOR_HOOK:
 	CALL	NOPAGE
 NEXT_HOOK:
 	CALL	NOPAGE
