@@ -1042,7 +1042,7 @@ F_NEXT:	RST	$20
 ; Consider variable
 	OR	$20			; lowercase
 	CP	(IY+$38)
-	JR	Z,F_ELSER
+	JR	Z,F_ELSER		; TODO: skip update for backwards compatibility
 	JR	EACH_COMEBACK
 F_ENDIF:DEC	(IY+NESTING-ERR_NR)
 	JR	NZ,EACH_COMEBACK
