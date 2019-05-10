@@ -110,9 +110,7 @@ P_USR:	DEFB	$06, $00
 P_LABEL:DEFB	$0A, $00	; just a label
 	DEFW	LABEL
 
-P_PROC:	DEFB	$0A		; label
-	DEFB	"("
-	DEFB	$05		; actual arguments
+P_PROC:	DEFB	$05
 	DEFW	PROC
 
 P_DEFPROC:
@@ -150,10 +148,10 @@ P_PLUG:
 	DEFW	PLUG
 
 CHECK_END:
-	BIT	7,(IY+$01)
+	CALL	SYNTAX_Z
 	RET	NZ
 	POP	BC		; SCAN_LOOP
-	POP	BC		; STMT_RET
+END05:	POP	BC		; STMT_RET
 STMT_NEXT:
 	RST	$18
 	CP	$0D		; CR
@@ -348,8 +346,7 @@ LABEL_C:LD	A,(SUBPPC)
 	LD	(HL),E
 	INC	HL
 	LD	(HL),D
-	RST	$28
-	DEFW	L0077		; TEMP-PTR1
+	LD	(CH_ADD),HL
 LABEL_L:RST	$20
 	RST	$28
 	DEFW	L2C88		; ALPHANUM
@@ -378,7 +375,7 @@ NEST2:	EQU	NESTING + 1
 
 ; instruction routines
 ENDIF:	RES	4,(IY+$37)	; signal true outcome
-ENDPROC:JP	SWAP
+	JP	SWAP
 
 ; Skip FOR block if condition unsatisfied
 SKIP_FOR_CONT:
@@ -503,6 +500,7 @@ USR:	CALL	SYNTAX_Z
 
 REPEAT:	POP	DE		; DE = return address
 	LD	HL,(SUBPPC - 1)
+	INC	H
 	EX	(SP),HL		; HL = error address
 	INC	SP		; stack SUBPPC (1 byte)
 	LD	BC,(PPC)
@@ -742,8 +740,9 @@ ERRC_NZ:JR	NZ,ERROR_C_J
 	CALL	LOOK_PROG2
 	INC	BC
 	LD	(NXTLIN),BC
-	JR	NC,SW_LOC
-	JP	ERROR_S		; S Missing END (PROC)
+	JP	C,ERROR_S	; S Missing END (PROC)
+	INC	(IY+$0A)	; advance NSPPC past END PROC
+	JR	SW_LOC
 
 LOCAL_S:RST	$28
 	DEFW	L2C8D		; ALPHA
@@ -804,22 +803,8 @@ LCL_N:	CP	"("
 	DEFW	L2BF1		; STK-FETCH
 	BIT	6,(IY+$01)	; type
 	JR	NZ,LCL_NX
-	LD	(STRLEN),BC
-	PUSH	DE
-	RST	$28
-	DEFW	L1F05		; TEST-ROOM
-	POP	DE
-	LD	HL,$0000
-	ADD	HL,SP
-	AND	A
-	SBC	HL,BC
-	LD	SP,HL
-	EX	DE,HL
-	LD	A,B
-	OR	C
-	JR	Z,LCL_Z
-	LDIR
-LCL_Z:	LD	BC,(STRLEN)
+	CALL	LCL_STR
+	LD	BC,(STRLEN)
 	PUSH	BC
 	INC	BC
 	INC	BC
@@ -861,6 +846,26 @@ LCL_F:	RST	$18
 	DEC	HL
 	LD	(CH_ADD),HL
 	JR	LCL_SW
+
+LCL_STR:LD	(STRLEN),BC
+	PUSH	DE
+	RST	$28
+	DEFW	L1F05		; TEST-ROOM
+	POP	DE
+	LD	HL,$0002
+	ADD	HL,SP
+	AND	A
+	SBC	HL,BC
+	POP	BC
+	LD	SP,HL
+	PUSH	BC
+	EX	DE,HL
+	LD	BC,(STRLEN)
+	LD	A,B
+	OR	C
+	RET	Z
+	LDIR
+	RET
 
 STACKQ:	POP	DE		; discard STACKE
 	JR	LCL_SW
@@ -907,7 +912,9 @@ STACKE:	LD	A,$0D
 ST_NFOR:CP	REPEAT_M * 2
 	JR	C,ST_VAR
 	LD	A,REPEAT_T	; TODO: other contexts
-	RST	$10
+	JR	Z,ST_REP
+	LD	A,PROC_T
+ST_REP:	RST	$10
 	INC	HL
 	INC	HL
 	INC	HL
@@ -1059,8 +1066,9 @@ F_NEXT:	RST	$20
 ; Consider variable
 	OR	$20			; lowercase
 	CP	(IY+$38)
-	JR	Z,F_ELSER		; TODO: skip update for backwards compatibility
-	JR	EACH_COMEBACK
+	JR	NZ,EACH_COMEBACK
+	INC	(IY+$0A)		; increment NSPPC to skip update
+	JR	F_ELSER			; for backwards compatibility
 F_ENDPROC:
 F_ENDIF:DEC	(IY+NESTING-ERR_NR)
 	JR	NZ,EACH_COMEBACK
@@ -1915,20 +1923,196 @@ DEL_LF:	LD	BC,$0017
 	LD	C,$06
 	JR	DEL_LF0
 
-PROC_SL:RST	$20
-PROC_S:	RST	$18
+PROC_S:	CALL	S_LBLI		; insert label with empty cache
+	RST	$18		; TODO: ???
+	CP	"("
+	JR	NZ,ERR_PR
+	RST	$20
 	CP	")"
 	JR	Z,PROC_SE
+	DEFB	$3E		; LD A, skipping next byte
+PROC_SL:RST	$20
 	RST	$28
-	DEFW	L24FB + 1; SCANNING + 1
+	DEFW	L24FB		; SCANNING
 	CP	","
 	JR	Z,PROC_SL
 	CP	")"
-	JP	NZ,ERROR_C
+ERR_PR:	JP	NZ,ERROR_C
 PROC_SE:RST	$20
-	JR	DELSW
+	JP	END05
 
 PROC:	CALL	SYNTAX_Z
 	JR	Z,PROC_S
-	jp	ERROR_C
+	LD	BC,$0014
+	RST	$28
+	DEFW	L1F05
+	POP	DE		; DE = return address
+	LD	HL,(SUBPPC - 1)
+	INC	H
+	EX	(SP),HL		; HL = error address
+	INC	SP		; stack SUBPPC (1 byte)
+	LD	BC,(PPC)
+	PUSH	BC		; stack PPC (2 bytes)
+	PUSH	HL
+	LD	HL,(NXTLIN)
+	AND	A
+	LD	BC,(PROG)
+	SBC	HL,BC
+	EX	(SP),HL		; stack NXTLIN - PROG (2 bytes)
+	PUSH	HL
+	LD	HL,(DATADD)
+	SBC	HL,BC
+	EX	(SP),HL		; stack DATADD - PROG (2 bytes)
+	LD	BC,$3E00 + PROC_M
+	PUSH	BC		; stack marker
+	PUSH	HL		; stack error address
+	LD	(ERR_SP),SP
+	PUSH	DE		; stack return address
+	RST	$18
+	LD	(MEMBOT+26),HL	; label start
+L_PROC:	LD	A,(HL)
+	CP	$0E
+	INC	HL
+	JR	NZ,L_PROC
+	LD	A,(HL)
+	INC	HL
+	OR	(HL)
+	INC	HL
+	OR	(HL)
+	INC	HL
+	OR	(HL)
+	LD	(IY+MEMBOT+25-ERR_NR),DEFPROC_T
+	CALL	Z,F_LBL
+	LD	(DATADD),HL
+	LD	B,(HL)
+	DEC	HL
+	LD	C,(HL)
+	CALL	JP_LBL
+	LD	HL,(DATADD)
+PROC_L0:INC	HL
+	LD	A,(HL)
+	CP	"("
+	JR	NZ,PROC_L0
+	LD	(DATADD),HL	; opening brace for arguments
+PROC_L1:INC	HL
+	LD	A,(HL)
+	CP	$21
+	JR	NC,PROC_L1
+	CP	")"
+	JR	NZ,PROC_L	; non-empty PROC
+	LD	(DATADD),HL	; closing brace of PROC
+PROC_L:	RST	$20
+	CP	")"		; no more default arguments in DEF PROC?
+	JR	Z,PROC_E	; jump, if so
+	CP	REF_T		; reference?
+	JR	Z,PROC_R	; jump if so
+	AND	$1F
+	OR	$60		; assume simple numeric
+	LD	C,A
+	RST	$20
+	CP	"$"
+	JR	NZ,PROC_N	; jump if numeric indeed
+	RES	5,C
+	RST	$20
+PROC_N:	LD	(X_PTR),HL	; save argument pointer
+	LD	HL,(DATADD)
+	LD	(CH_ADD),HL
+	RST	$20		; skip separator
+	CP	")"		; empty PROC with non-empty DEF PROC?
+	JR	Z,ERROR_Q	; that is an error!
+	PUSH	BC		; save variable name and type
+	RST	$28
+	DEFW	L24FB + 1	; SCANNING + 1
+	POP	BC		; variable name and type
+	POP	DE		; return address
+	POP	HL		; error address
+	EXX
+	RST	$28
+	DEFW	L2BF1		; STK-FETCH
+	BIT	6,(IY+$01)	; type
+	JR	NZ,PROC_NX	; jump, if numeric
+	CALL	LCL_STR		; stack string
+	LD	BC,(STRLEN)
+	PUSH	BC
+	INC	BC
+	INC	BC
+	PUSH	BC
+	EXX
+	BIT	5,C
+	JR	Z,PROC_X
+PROC_R:				; TODO: references
+ERROR_Q:RST	$28
+	DEFW	L288B		; Q Parameter error
 
+PROC_NX:PUSH	BC
+	PUSH	DE
+	PUSH	AF
+	INC	SP
+	EXX
+	BIT	5,C
+	JR	Z,ERROR_Q
+PROC_X:	LD	B,$3E
+	PUSH	BC		; marker
+	PUSH	HL		; error address
+	LD	(ERR_SP),SP
+	PUSH	DE		; return address
+	RST	$18		; separator of PROC arguments
+	LD	(DATADD),HL
+	LD	HL,(X_PTR)
+	LD	(CH_ADD),HL
+	INC	HL
+	RST	$18		; separator in DEF PROC
+	CP	","
+	JR	Z,PROC_L
+PROC_E:	RST	$20		; skip closing bracket Of DEF PROC
+PROC_EE:JP	END05
+
+ERROR_X:CALL	ERROR
+	DEFB	$20		; X END PROC without DEF
+
+ENDPROC:CALL	SKIP_LL
+	CP	REPEAT_M
+	JR	Z,ENDPROC
+	CP	PROC_M
+	JR	NZ,ERROR_X
+	PUSH	HL		; new marker address
+	DEC	HL
+	LD	DE,SUBPPC
+	LDD
+	LDD
+	LDD
+	LD	B,(HL)
+	DEC	HL
+	LD	C,(HL)
+	EX	DE,HL
+	LD	HL,(PROG)
+	ADD	HL,BC
+	LD	(NXTLIN),HL
+	EX	DE,HL
+	DEC	HL
+	LD	B,(HL)
+	DEC	HL
+	LD	C,(HL)
+	EX	DE,HL
+	ADD	HL,BC
+	EX	DE,HL
+	LD	HL,(DATADD)
+	LD	(DATADD),DE
+	LD	A,(HL)
+	CP	")"		; closing bracket of PROC
+	JR	Z,ENDP_C
+	INC	HL
+ENDP_L:	CALL	SKIPEX
+	JR	NC,ENDP_L	; skip unread arguments of PROC
+	DEC	HL
+ENDP_C:	LD	(CH_ADD),HL
+	POP	HL		; new marker address
+	POP	BC		; return address
+	POP	DE		; error address
+	LD	SP,HL
+	PUSH	DE		; error address
+	LD	(ERR_SP),SP
+	PUSH	BC		; return address
+	RST	$20		; advance
+	DEC	(IY+$0D)	; adjust SUBPPC
+ENDP_SW:JP	SWAP

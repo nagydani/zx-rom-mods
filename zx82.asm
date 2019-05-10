@@ -9458,7 +9458,9 @@ L1DED:  CALL    L1C1F           ; routine CLASS-01 checks variable.
 ; else all data in this statement has been read so look for next DATA token
 
         LD      E,$E4           ; token 'DATA'
-        CALL    L1D86           ; routine LOOK-PROG
+;;; BUGFIX: allow for reading argument list
+	CALL	LOOK_READ
+;;;     CALL    L1D86           ; routine LOOK-PROG
         JR      NC,L1E0A        ; forward to READ-1 if DATA found
 
 ; else report the error.
@@ -19993,7 +19995,17 @@ FTOKEN1_R1:
 ; Find closing NEXT (6 bytes)
 LOOK_PROG_FOR:
 	CALL	SKIP_FOR_HOOK
+LOOK_PROG_R:
 	JP	L1D86		; LOOK-PROG
+
+; Find next argument of PROC or DATA (9 bytes)
+LOOK_READ:
+	CP	"("
+	RET	Z
+	CP	")"
+	JR	NZ,LOOK_PROG_R
+	RST	$08
+	DEFB	$19		; Q Parameter error
 
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
@@ -20059,8 +20071,8 @@ LOOK_PROG_FOR:
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-	DEFB    $FF, $FF, $FF, $FF, $FF, $FF;	, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+	DEFB    $FF, $FF, $FF, $FF, $FF;	, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;

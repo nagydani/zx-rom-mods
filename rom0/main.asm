@@ -344,7 +344,9 @@ MULS_R:	EX	(SP),HL		; replace return address by it
 
 GOTO_CONT:
 	POP	DE		; discard ERROR B
-	LD	HL,(PROG)
+	LD	HL,SWAP
+	PUSH	HL
+JP_LBL:	LD	HL,(PROG)
 	AND	A
 	SBC	HL,BC		; subtract large target from PROG
 	LD	E,(HL)
@@ -375,7 +377,7 @@ GOTO_CONT:
 	DEC	HL
 	LD	D,(HL)
 	LD	(PPC),DE
-	JP	SWAP
+	RET
 
 ERROR_5:RST	$08
 	DEFW	L0C86		; 5 Out of screen
@@ -777,6 +779,8 @@ REPORTS:DEFB	$80+"<"
 	DEFB	$80+"d"		; V
 	DEFM	"END WHILE without WHIL"
 	DEFB	$80+"E"		; W
+	DEFM	"END PROC without DE"
+	DEFB	$80+"F"		; X
 
 PEEK_T:	EQU	$BE
 THEN_T:	EQU	$CB
@@ -1603,30 +1607,27 @@ D_LBL:	LD	A,(HL)
 	OR	(HL)
 	INC	HL
 	OR	(HL)
-	JR	Z,F_LBL
-D_LBLR:	DEC	HL
+	LD	(IY+MEMBOT+25-ERR_NR),LABEL_T
+	CALL	Z,F_LBL
 	DEC	HL
 	DEC	HL
-	POP	BC		; discard label start
+	DEC	HL
 	LD	BC,L26B6 + 7	; S-SD-SKIP + 7
 	PUSH	BC
 SW_LBL:	JP	SWAP
 
 F_LBL:	SET	7,(IY+FLAGS2-ERR_NR)	; Mark cache dirty
-;;	POP	BC		; label start
-;;	PUSH	BC
 	LD	HL,(PROG)
 F_LBLL:	LD	A,(HL)
 	AND	$C0
-	JR	NZ,ERROR_T
-	LD	E,LABEL_T	; T Label not found
+	JR	NZ,ERROR_T	; T Label not found
+	LD	DE,(MEMBOT+25)	; Label marker (LABEL_T or DEFPROC_T)
 	RST	$28
 	DEFW	X1D91		; inside LOOK-PROG
 	JR	C,ERROR_T	; T Label not found
 	LD	(LIST_SP),BC
 	INC	HL
-	POP	BC		; label start
-	PUSH	BC
+	LD	BC,(MEMBOT+26)	; label start
 NXBC:	LD	A,(BC)
 	INC	BC
 	CP	$0E
@@ -1640,7 +1641,7 @@ L_DIG:	LD	E,A
 NXHL:	LD	A,(HL)
 	INC	HL
 	CP	$0E
-	JR	Z,NXHL1
+	CALL	Z,NXHL1
 	CP	" " + 1
 	JR	C,NXHL
 	RST	$28
@@ -1656,12 +1657,14 @@ NXLBL:	LD	HL,(LIST_SP)
 	JR	F_LBLL
 
 NXHL1:	LD	(MEMBOT+28),HL
-	LD	A,L
-	ADD	A,5
-	LD	L,A
-	JR	NC,NXHL
-	INC	H
-	JR	NXHL
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL
+NXHLR:	LD	A,(HL)
+	INC	HL
+	RET
 
 ERROR_T:CALL	ERROR
 	DEFB	$1C		; T Label not found
@@ -1670,6 +1673,8 @@ E_LBL:	LD	A,(HL)
 	INC	HL
 	CP	$0D
 	JR	Z,E_LBL2
+	CP	$0E
+	CALL	Z,NXHL1
 	CP	" " + 1
 	JR	C,E_LBL
 	RST	$28
@@ -1688,7 +1693,7 @@ E_LBL2:	LD	L,C
 	LD	(HL),E
 	INC	HL
 	LD	(HL),D
-	JP	D_LBLR
+	RET
 
 MAIN_ADD_CONT:
 	BIT	7,(IY+FLAGS2-ERR_NR)

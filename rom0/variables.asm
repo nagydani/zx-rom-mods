@@ -7,6 +7,7 @@
 ; 61..7A simple numeric: 5 bytes
 
 ; 7B REPEAT, 7 bytes: (NXTLIN)-(PROG), (CHADD)-(PROG), (PPC), (SUBPPC)
+; 7C PROC, 7 bytes: (DATADD)-(PROG), (NXTLIN)-(PROG), (PPC), (SUBPPC)
 
 ; 81..9A string reference: 2 bytes of length + symbolic reference
 ; A1..BA numeric reference: 2 bytes of length + symbolic reference
@@ -14,6 +15,7 @@
 
 
 REPEAT_M:	EQU	$7B
+PROC_M:		EQU	$7C
 
 ; Skip all local variables, incl. loops
 SKIP_LL:CALL	SKIP_LC
@@ -45,6 +47,8 @@ LOC_L:	LD	A,$3E + 1
 	RET	Z		; end-of-stack, local variable not found
 	CP	REPEAT_M
 	JR	Z,LOC_REP	; REPEAT entry
+	CP	PROC_M
+	JR	Z,LOC_PRC
 	BIT	7,A
 	JR	Z,LOC_SA	; simple variables and arrays
 	SUB	$E0
@@ -55,6 +59,7 @@ LOC_SA:	CP	C
 	JR	NZ,LOC_NX
 	SCF
 	RET			; local variable found
+LOC_PRC:
 LOC_REP:LD	DE,$0008
 	ADD	HL,DE
 	RET			; REPEAT entry, local variable not found
