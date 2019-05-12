@@ -1970,7 +1970,8 @@ PROC:	CALL	SYNTAX_Z
 	LD	BC,$3E00 + PROC_M
 	PUSH	BC		; stack marker
 	PUSH	HL		; stack error address
-	LD	(ERR_SP),SP
+; tail call entry point
+T_PROC:	LD	(ERR_SP),SP
 	PUSH	DE		; stack return address
 	RST	$18
 	LD	(MEMBOT+26),HL	; label start
@@ -2079,7 +2080,7 @@ ENDPROC:CALL	SKIP_LL
 	JR	Z,ENDPROC
 	CP	PROC_M
 	JR	NZ,ERROR_X
-	PUSH	HL		; new marker address
+RETPROC:PUSH	HL		; new marker address
 	DEC	HL
 	LD	DE,SUBPPC
 	LDD
@@ -2120,3 +2121,49 @@ ENDP_C:	LD	(CH_ADD),HL
 	RST	$20		; advance
 	DEC	(IY+$0D)	; adjust SUBPPC
 ENDP_SW:JP	SWAP
+
+; Discard local variables before RETURN
+RETURN_CONT:
+	PUSH	HL
+	PUSH	BC
+RET_L:	CALL	SKIP_LL
+	OR	A
+	JR	Z,ENDP_SW	; 7 RETURN without GOSUB
+	CP	$3F
+	JR	Z,RETURN_GS
+	CP	REPEAT_M
+	JR	Z,RET_L
+	CP	PROC_M
+	JR	NZ,ENDP_SW		; TODO: consider other contexts
+; returning from a PROC
+	PUSH	HL
+	RST	$18			; fetch character after RETURN
+	POP	HL
+	CP	":"
+	JR	NZ,RETPROC		; just return from PROC
+	PUSH	HL
+	RST	$20			; fetch instruction token after RETURN :
+	POP	HL
+	CP	PROC_T
+	JR	NZ,RETPROC		; not a tail call
+; tail call
+	LD	DE,-9
+	ADD	HL,DE			; HL pointing to PROC frame marker
+	POP	DE			; return address
+	POP	BC			; error address
+	LD	SP,HL			; clear local variables and loops
+	RST	$20			; advance past PROC
+	PUSH	BC			; stack error address
+	JP	T_PROC
+
+RETURN_GS:
+	POP	BC
+	POP	DE
+	DEC	HL
+	DEC	HL
+	DEC	HL
+	LD	SP,HL
+	EX	DE,HL
+	LD	DE,L1F23 + 2	; RETURN + 2
+	PUSH	DE
+	JR	ENDP_SW		; RETURN again
