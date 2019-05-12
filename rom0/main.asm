@@ -739,8 +739,8 @@ TOKENS0:DEFB	$80+"P"
 	DEFB	$80+" "
 	DEFM	"REF"		; E sR, $D6
 	DEFB	$80+" "
-	DEFM	"_Es"		; E sZ, $D7
-	DEFB	$80+"Z"
+	DEFM	"ITE"		; E sZ, $D7
+	DEFB	$80+"M"
 	DEFM	"HEX"		; E sH, $D8
 	DEFB	$80+" "
 	DEFM	"INK"		; E sX, $D9
@@ -826,6 +826,7 @@ LABEL_T:EQU	$AB
 LOCAL_T:EQU	$B8
 REPEAT_T:EQU	$BA
 STOP_T:	EQU	$E2
+DATA_T:	EQU	$E4
 FOR_T:	EQU	$EB
 GOSUB_T:EQU	$ED
 NEXT_T:	EQU	$F3
@@ -877,6 +878,11 @@ STEPBACK:
 	EX	DE,HL
 	RET
 
+; Put 0 on the calculator stack
+STACK0:	RST	$28
+	DEFW	L35BF		; STK-PNTRS
+	RST	$28
+	DEFW	L33A9		; TEST-5-SP
 ; Put 0 on the calculator stack, without testing available space
 STACK_ZERO:
 	LD	L,E
