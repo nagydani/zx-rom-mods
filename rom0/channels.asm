@@ -384,14 +384,12 @@ KS_OUT:	BIT	0,(HL)		; direct output
 	BIT	2,(IY+$30)	; inside quotes
 	JR	NZ,PR_NQ
 	CP	":"
-	JR	C,PR_NQ
+	JR	NZ,PR_NQ	; pr-able except colon leaves mode unchanged
 	EX	DE,HL
-	SET	3,(HL)		; pr-able outside of quotes sets oprt. mode
-	JR	NZ,PR_NO
 	RES	3,(HL)		; colon outside of quotes sets instr. mode
 	LD	HL,C_SPCC
 	INC	(HL)
-PR_NO:	EX	DE,HL
+	EX	DE,HL
 PR_NQ:	RST	$28
 	DEFW	L0B65	; PO-CHAR
 	JR	TSTORE2
