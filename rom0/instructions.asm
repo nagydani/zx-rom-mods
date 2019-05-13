@@ -49,7 +49,7 @@
 	DEFB	P_PLUG - $	; EJ
 	DEFB	P_PLUG - $	; EK
 	DEFB	P_PLUG - $	; EQ
-	DEFB	P_PLUG - $	; EW
+	DEFB	P_ENDWHILE - $	; END WHILE
 	DEFB	P_PLUG - $	; EE
 	DEFB	P_PLUG - $	; EsQ
 	DEFB	P_PLUG - $	; EsW
@@ -71,7 +71,7 @@
 	DEFB	P_PLUG - $	; sY
 	DEFB	P_PALETTE - $	; PALETTE
 	DEFB	P_PLUG - $	; sE
-	DEFB	P_PLUG - $	; sW
+	DEFB	P_WHILE - $	; WHILE
 	DEFB	P_ENDPROC - $	; END PROC
 	DEFB	P_ELSE - $	; ELSE
 	DEFB	P_PROC - $	; PROC
@@ -140,6 +140,13 @@ P_STEP:	DEFB	$05
 P_DELETE:
 	DEFB	$05
 	DEFW	DELETE
+
+P_WHILE:DEFB	$05
+	DEFW	WHILE
+
+P_ENDWHILE:
+	DEFB	$00
+	DEFW	ENDWHILE
 
 P_PLAY:
 ; unimplemented instruction, accepted w/o parameters, but not executed
@@ -233,7 +240,7 @@ NEXT_1NUM:
 
 CLASS2_06:
 	RST	$28
-	DEFW	L24FB
+	DEFW	L24FB		; SCANNING
 	BIT	6,(IY+$01)
 	RET	NZ
 
@@ -523,7 +530,43 @@ REPEAT:	POP	DE		; DE = return address
 	LD	BC,$0014	; why this much? see $1F02 in ROM1
 	LD	HL,L1F05	; TEST-ROOM
 	PUSH	HL
-	JP	SWAP
+REPSW:	JP	SWAP
+
+WHILE:	LD	HL,(CH_ADD)
+	LD	(DEST),HL
+	CALL	CLASS2_06	; single numeric expression
+	CALL	SYNTAX_Z
+	JR	Z,REPSW
+	CALL	TEST_ZERO
+	JR	Z,WHILE0
+	POP	DE		; DE = return address
+	LD	HL,(SUBPPC - 1)
+	INC	H
+	EX	(SP),HL		; HL = error address
+	INC	SP		; stack SUBPPC (1 byte)
+	LD	BC,(PPC)
+	PUSH	BC		; stack PPC (2 bytes)
+	PUSH	HL
+	LD	HL,(DEST)
+	AND	A
+	LD	BC,(PROG)
+	SBC	HL,BC
+	EX	(SP),HL		; stack old CH_ADD - PROG (2 bytes)
+	PUSH	HL
+	LD	HL,(NXTLIN)
+	SBC	HL,BC
+	EX	(SP),HL		; stack NXTLIN - PROG (2 bytes)
+	LD	BC,$3E00 + WHILE_M
+	PUSH	BC		; stack marker
+	PUSH	HL		; stack error address
+	LD	(ERR_SP),SP
+	PUSH	DE		; stack return address
+	LD	BC,$0014	; why this much? see $1F02 in ROM1
+	LD	HL,L1F05	; TEST-ROOM
+	PUSH	HL
+WHILESW:JR	REPSW
+WHILE0:	LD	DE,T_WHILE
+	JP	SKIPEND
 
 TEST_ZERO:
 	LD	HL,(STKEND)
@@ -539,9 +582,53 @@ TEST_ZERO:
 	RET
 
 ASSERT:	CALL	TEST_ZERO
-	JP	NZ,SWAP
-	CALL	ERROR
+	JR	NZ,WHILESW
+ERROR_V:CALL	ERROR
 	DEFB	$1E		; V ASSERT failed
+
+ERROR_W:CALL	ERROR
+	DEFB	$1F		; W END WHILE without WHILE
+
+ENDWHILE:
+	CALL	SKIPLL
+	CP	WHILE_M
+	JR	NZ,ERROR_W	; wrong context
+	PUSH	HL		; context
+	LD	DE,(CH_ADD)	; execution pointer
+	PUSH	DE
+	DEC	HL
+	DEC	HL		; skip SUBPPC
+	DEC	HL
+	DEC	HL		; skip PPC
+	LD	D,(HL)
+	DEC	HL
+	LD	E,(HL)
+	LD	HL,(PROG)
+	ADD	HL,DE
+	LD	(CH_ADD),HL
+	RST	$28
+	DEFW	L24FB		; SCANNING
+	CALL	TEST_ZERO
+	POP	HL		; old execution pointer
+	JR	Z,WEND
+	POP	HL		; context
+	DEC	HL
+	LD	DE,SUBPPC
+	LDD
+	LDD
+	LDD			; copy PPC and SUBPPC from context
+	DEC	HL
+	DEC	HL		; skip CH_ADD in context
+	LD	DE,NXTLIN+1
+	LDD
+	LDD			; copy NXTLIN from context
+	JP	SWAP
+WEND:	LD	(CH_ADD),HL
+	POP	HL		; context
+	POP	BC		; return address
+	POP	DE		; error address
+	LD	SP,HL		; reclaim locals
+	JR	UNT_ER
 
 UNTIL:	CALL	TEST_ZERO
 	EX	AF,AF'
@@ -603,7 +690,7 @@ UNT_C:	LD	BC,(PROG)
 	LD	DE,PPC
 	LD	BC,$0003
 	LDIR
-REPSW:	JP	SWAP
+UNTSW:	JP	SWAP
 END_REP:EX	DE,HL
 	LD	HL,$0007
 	ADD	HL,SP
@@ -611,7 +698,7 @@ END_REP:EX	DE,HL
 UNT_ER:	PUSH	DE
 UNT_E:	LD	(ERR_SP),SP
 	PUSH	BC
-	JR	REPSW
+	JR	UNTSW
 
 ERROR_U:PUSH	DE
 ERROR2U:PUSH	HL
@@ -671,7 +758,7 @@ UPD_X:	PUSH	HL
         LD      BC,$01F2        ; mod with priority 1
 U_NEXT:	LD      HL,L2790        ; S-NEXT
 	PUSH    HL
-REPSW1:	JR      REPSW
+REPSW1:	JR      UNTSW
 
 UPDNUM:	LD	HL,UPDTABN
 	CALL	INDEXER
@@ -737,7 +824,7 @@ ERRC_NZ:JR	NZ,ERROR_C_J
 	CALL	SYNTAX_Z
 	JR	Z,SW_LOC
 	LD	DE,T_DP
-	CALL	LOOK_PROG2
+SKIPEND:CALL	LOOK_PROG2
 	INC	BC
 	LD	(NXTLIN),BC
 	JP	C,ERROR_S	; S Missing END (PROC)
@@ -1026,6 +1113,13 @@ PLAY:
 PLUG:	JP	ERROR_C
 
 
+; WHILE structure table
+T_WHILE:DEFB	ENDWHILE_T
+	DEFB	F_ENDWHILE - $
+	DEFB	WHILE_T
+	DEFB	F_WHILE - $
+	DEFB	0
+
 ; DEF PROC structure table
 T_DP:	DEFB	ENDPROC_T
 	DEFB	F_ENDPROC - $
@@ -1069,6 +1163,7 @@ F_NEXT:	RST	$20
 	JR	NZ,EACH_COMEBACK
 	INC	(IY+$0A)		; increment NSPPC to skip update
 	JR	F_ELSER			; for backwards compatibility
+F_ENDWHILE:
 F_ENDPROC:
 F_ENDIF:DEC	(IY+NESTING-ERR_NR)
 	JR	NZ,EACH_COMEBACK
@@ -1129,6 +1224,7 @@ EACH_1:	INC	(IY+NSPPC-ERR_NR)
 	LD	C,(HL)
 	ADD	HL,BC
 	JP	(HL)		; jump to appropriate routine
+F_WHILE:
 F_DEFPROC:
 F_FOR:
 F_IF:	INC	(IY+NESTING-ERR_NR)

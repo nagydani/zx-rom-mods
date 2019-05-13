@@ -153,6 +153,8 @@
 | ... |
 | AD | PLAY
 | ... |
+| B3 | END WHILE
+| ... |
 | B8 | LOCAL
 | B9 | DELETE
 | BA | REPEAT
@@ -168,6 +170,7 @@
 | ... |
 | C7 | PALETTE
 | ... |
+| C9 | WHILE
 | CA | END PROC
 | CB | ELSE
 | CC | PROC
