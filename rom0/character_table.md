@@ -136,9 +136,9 @@
 | DF | OCT
 | ... |
 | E2 | ><
-| E3 | READ #
-| E4 | >>
-| E5 | <<
+| E3 | <<
+| E4 | DATA
+| E5 | >>
 
 ## Instruction tokens
 

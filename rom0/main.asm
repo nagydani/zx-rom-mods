@@ -762,12 +762,12 @@ TOKENS0:DEFB	$80+"P"
 	DEFB	$80+"V"
 	DEFM	">"		; sA, $E2
 	DEFB	$80+"<"
-	DEFM	"READ "		; E A, $E3
-	DEFB	$80+"#"
-	DEFM	">"		; E D, $E4
-	DEFB	$80+">"
-	DEFM	"<"		; E S, $E5
-REPORTS:DEFB	$80+"<"
+	DEFM	"<"		; E A, $E3
+	DEFB	$80+"<"
+	DEFM	" DATA"		; E D, $E4
+	DEFB	$80+" "
+	DEFM	">"		; E S, $E5
+REPORTS:DEFB	$80+">"
 	DEFM	"Missing EN"
 	DEFB	$80+"D"		; S
 	DEFM	"Label not foun"
@@ -802,9 +802,8 @@ INVERSE_T:EQU	$DD
 OVER_T:	EQU	$DE
 OCT_T:	EQU	$DF
 XOR_T:	EQU	$E2
-READ_T:	EQU	$E3
-RR_T:	EQU	$E4
-RL_T:	EQU	$E5
+RL_T:	EQU	$E3
+RR_T:	EQU	$E5
 
 EFN_T:	EQU	$E6
 
@@ -1703,9 +1702,14 @@ E_LBL2:	LD	L,C
 	RET
 
 MAIN_ADD_CONT:
-	BIT	7,(IY+FLAGS2-ERR_NR)
-	CALL	NZ,RSTLBLS
+	PUSH	BC
+;; TODO: find out why it gets reset
+;;	BIT	7,(IY+FLAGS2-ERR_NR)
+;;	CALL	NZ,RSTLBLS
+
+	CALL	RSTLBLS
 	RES	7,(IY+FLAGS2-ERR_NR)
+	POP	BC
 	JP	SWAP
 
 RSTLBLS:LD	HL,(PROG)
@@ -1715,17 +1719,28 @@ NX_LIN:	LD	A,(HL)
 	RET	NZ
 	ADD	HL,DE
 	DEC	HL
+NX_INS:	LD	A,(HL)
+	INC	HL
+	CP	PROC_T
+	JR	Z,RST_PR
+	CP	ELSE_T
+	JR	Z,NX_INS
+	DEFB	$01		; LD	BC, skip two bytes
 NX_CHR:	LD	A,(HL)
 	INC	HL
 	CP	$0D
 	JR	Z,NX_LIN
+	CP	":"
+	JR	Z,NX_INS
+	CP	THEN_T
+	JR	Z,NX_INS
 	CP	"\""
 	JR	Z,SKQUOT
 	CP	$0E
 	JR	Z,SKNUM
 	CP	"@"
 	JR	NZ,NX_CHR
-	LD	A,$0E
+RST_PR:	LD	A,$0E
 SK_LBL:	CP	(HL)
 	INC	HL
 	JR	NZ,SK_LBL
