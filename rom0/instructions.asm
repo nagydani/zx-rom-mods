@@ -532,42 +532,6 @@ REPEAT:	POP	DE		; DE = return address
 	PUSH	HL
 REPSW:	JP	SWAP
 
-WHILE:	LD	HL,(CH_ADD)
-	LD	(DEST),HL
-	CALL	CLASS2_06	; single numeric expression
-	CALL	SYNTAX_Z
-	JR	Z,REPSW
-	CALL	TEST_ZERO
-	JR	Z,WHILE0
-	POP	DE		; DE = return address
-	LD	HL,(SUBPPC - 1)
-	INC	H
-	EX	(SP),HL		; HL = error address
-	INC	SP		; stack SUBPPC (1 byte)
-	LD	BC,(PPC)
-	PUSH	BC		; stack PPC (2 bytes)
-	PUSH	HL
-	LD	HL,(DEST)
-	AND	A
-	LD	BC,(PROG)
-	SBC	HL,BC
-	EX	(SP),HL		; stack old CH_ADD - PROG (2 bytes)
-	PUSH	HL
-	LD	HL,(NXTLIN)
-	SBC	HL,BC
-	EX	(SP),HL		; stack NXTLIN - PROG (2 bytes)
-	LD	BC,$3E00 + WHILE_M
-	PUSH	BC		; stack marker
-	PUSH	HL		; stack error address
-	LD	(ERR_SP),SP
-	PUSH	DE		; stack return address
-	LD	BC,$0014	; why this much? see $1F02 in ROM1
-	LD	HL,L1F05	; TEST-ROOM
-	PUSH	HL
-WHILESW:JR	REPSW
-WHILE0:	LD	DE,T_WHILE
-	JP	SKIPEND
-
 TEST_ZERO:
 	LD	HL,(STKEND)
 	DEC	HL
@@ -582,7 +546,7 @@ TEST_ZERO:
 	RET
 
 ASSERT:	CALL	TEST_ZERO
-	JR	NZ,WHILESW
+	JR	NZ,REPSW
 ERROR_V:CALL	ERROR
 	DEFB	$1E		; V ASSERT failed
 
@@ -2177,6 +2141,44 @@ PROC_X:	LD	B,$3E
 	JR	Z,PROC_L
 PROC_E:	RST	$20		; skip closing bracket Of DEF PROC
 PROC_EE:JP	END05
+
+
+WHILE:	LD	HL,(CH_ADD)
+	LD	(DEST),HL
+	CALL	CLASS2_06	; single numeric expression
+	CALL	SYNTAX_Z
+	JR	Z,PROC_EE
+	CALL	TEST_ZERO
+	JR	Z,WHILE0
+	POP	DE		; DE = return address
+	LD	HL,(SUBPPC - 1)
+	INC	H
+	EX	(SP),HL		; HL = error address
+	INC	SP		; stack SUBPPC (1 byte)
+	LD	BC,(PPC)
+	PUSH	BC		; stack PPC (2 bytes)
+	PUSH	HL
+	LD	HL,(DEST)
+	AND	A
+	LD	BC,(PROG)
+	SBC	HL,BC
+	EX	(SP),HL		; stack old CH_ADD - PROG (2 bytes)
+	PUSH	HL
+	LD	HL,(NXTLIN)
+	SBC	HL,BC
+	EX	(SP),HL		; stack NXTLIN - PROG (2 bytes)
+	LD	BC,$3E00 + WHILE_M
+	PUSH	BC		; stack marker
+	PUSH	HL		; stack error address
+	LD	(ERR_SP),SP
+	PUSH	DE		; stack return address
+	LD	BC,$0014	; why this much? see $1F02 in ROM1
+	LD	HL,L1F05	; TEST-ROOM
+	PUSH	HL
+WHILE_E:JP	SWAP
+
+WHILE0:	LD	DE,T_WHILE
+	JP	SKIPEND
 
 ERROR_X:CALL	ERROR
 	DEFB	$20		; X END PROC without DEF
