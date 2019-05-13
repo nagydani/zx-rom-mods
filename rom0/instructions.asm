@@ -176,7 +176,7 @@ LINE_END:
 	BIT	7,(IY+$01)
 	JP	Z,SWAP
 	LD	HL,(NXTLIN)
-	LD	A,$0C
+	LD	A,$C0
 	AND	(HL)
 	JP	NZ,SWAP		; program finished
 	PUSH	HL
