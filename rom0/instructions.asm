@@ -590,7 +590,7 @@ ERROR_W:CALL	ERROR
 	DEFB	$1F		; W END WHILE without WHILE
 
 ENDWHILE:
-	CALL	SKIPLL
+	CALL	SKIP_LL
 	CP	WHILE_M
 	JR	NZ,ERROR_W	; wrong context
 	PUSH	HL		; context
@@ -602,7 +602,7 @@ ENDWHILE:
 	DEC	HL		; skip PPC
 	LD	D,(HL)
 	DEC	HL
-	LD	E,(HL)
+	LD	E,(HL)		; condition in DE; TODO: check no caching
 	LD	HL,(PROG)
 	ADD	HL,DE
 	LD	(CH_ADD),HL
@@ -619,9 +619,12 @@ ENDWHILE:
 	LDD			; copy PPC and SUBPPC from context
 	DEC	HL
 	DEC	HL		; skip CH_ADD in context
-	LD	DE,NXTLIN+1
-	LDD
-	LDD			; copy NXTLIN from context
+	LD	D,(HL)
+	DEC	HL
+	LD	E,(HL)
+	LD	HL,(PROG)
+	ADD	HL,DE
+	LD	(NXTLIN),HL	; copy NXTLIN from context
 	JP	SWAP
 WEND:	LD	(CH_ADD),HL
 	POP	HL		; context
@@ -996,12 +999,19 @@ STACKE:	LD	A,$0D
 	RST	$10
 	JR	STACKL
 
+
+ST_REP:	LD	A,REPEAT_T
+	JR	ST_CTX
+ST_WHL:	LD	A,WHILE_T
+	JR	ST_CTX
+
 ST_NFOR:CP	REPEAT_M * 2
 	JR	C,ST_VAR
-	LD	A,REPEAT_T	; TODO: other contexts
 	JR	Z,ST_REP
+	CP	WHILE_M * 2
+	JR	Z,ST_WHL
 	LD	A,PROC_T
-ST_REP:	RST	$10
+ST_CTX:	RST	$10
 	INC	HL
 	INC	HL
 	INC	HL
@@ -1311,7 +1321,7 @@ NEXT:	POP	BC
 NEXT_SW:POP	BC		; discard one more return address
 	JP	SWAP
 
-ERROR_1:RST	$08
+ERROR_1:RST	$28
 	DEFW	REPORT1 + 3	; 1 NEXT without FOR
 
 PALETTE:CP	INK_T
