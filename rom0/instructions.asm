@@ -2142,7 +2142,6 @@ PROC_NX:PUSH	BC
 PROC_X:	LD	B,$3E
 	PUSH	BC		; marker
 	PUSH	HL		; error address
-	LD	(ERR_SP),SP
 	PUSH	DE		; return address
 	RST	$18		; separator of PROC arguments
 	LD	(DATADD),HL
@@ -2152,6 +2151,9 @@ PROC_X:	LD	B,$3E
 	RST	$18		; separator in DEF PROC
 	CP	","
 	JR	Z,PROC_L
+	POP	DE		; return address
+	LD	(ERR_SP),SP
+	PUSH	DE
 PROC_E:	RST	$20		; skip closing bracket Of DEF PROC
 PROC_EE:JP	END05
 
