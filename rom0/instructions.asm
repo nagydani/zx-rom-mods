@@ -798,6 +798,7 @@ SKIPEND:CALL	LOOK_PROG2
 	INC	(IY+$0A)	; advance NSPPC past END PROC
 	JR	SW_LOC
 
+LOCAL_R:RST	$20		; advance past the comma
 LOCAL_S:RST	$28
 	DEFW	L2C8D		; ALPHA
 	JR	NC,ERROR_C_J
@@ -811,10 +812,14 @@ LOCAL_N:CP	"("
 	JR	NZ,LOCAL_I
 	LD	C,$A1
 	RST	$28
-	DEFW	L2996
-LOCAL_E:LD	HL,L1BEE + 5	; CHECK_END + 5; TODO: array initializer?
+	DEFW	L2996		; STK-VAR
+LOCAL_E:RST	$18		; TODO: ???
+	CP	","
+	JR	Z,LOCAL_R
+	LD	HL,L1BEE + 5	; CHECK_END + 5; TODO: array initializer?
 	PUSH	HL
 SW_LOC:	JP	SWAP
+
 LOCAL_I:CP	"="
 	JR	NZ,LOCAL_E
 	RST	$20
@@ -830,7 +835,7 @@ LOCAL_I:CP	"="
 
 LOCAL:	CALL	SYNTAX_Z
 	JR	Z,LOCAL_S
-	AND	$1F
+LOCAL_L:AND	$1F
 	OR	$60		; assume simple numeric
 	LD	C,A
 	RST	$20
@@ -842,7 +847,7 @@ LCL_N:	CP	"("
 	JR	Z,LCL_A
 	CALL	LOOK_LC
 	JR	C,LCL_F
-	RST	$18
+LCL_L:	RST	$18
 	CP	"="
 	JR	NZ,LCL_E
 	PUSH	BC
@@ -890,16 +895,24 @@ LCL_EXX:EXX
 	PUSH	HL		; error address
 	LD	(ERR_SP),SP
 	PUSH	DE		; return address
-LCL_SW:	JP	SWAP
+LCL_CM:	RST	$18
+	CP	","
+	JP	NZ,SWAP
+	RST	$20
+	JR	LOCAL_L
 
-LCL_F:	RST	$18
+
+LCL_F:	DEC	HL
+	BIT	7,(HL)
+	JR	NZ,LCL_L
+	RST	$18
 	CP	"="
-	JR	NZ,LCL_SW
+	JR	NZ,LCL_CM
 	RST	$20
 	CALL	SKIPEX
 	DEC	HL
 	LD	(CH_ADD),HL
-	JR	LCL_SW
+	JR	LCL_CM
 
 LCL_STR:LD	(STRLEN),BC
 	PUSH	DE
@@ -922,7 +935,7 @@ LCL_STR:LD	(STRLEN),BC
 	RET
 
 STACKQ:	POP	DE		; discard STACKE
-	JR	LCL_SW
+STCK_SW:JP	SWAP
 
 STACK:	LD	HL,(ERR_SP)
 	INC	HL
@@ -2199,6 +2212,7 @@ RETPROC:PUSH	HL		; new marker address
 	LD	C,(HL)
 	EX	DE,HL
 	LD	HL,(PROG)
+	PUSH	HL		; save PROG
 	ADD	HL,BC
 	LD	(NXTLIN),HL
 	EX	DE,HL
@@ -2207,6 +2221,7 @@ RETPROC:PUSH	HL		; new marker address
 	DEC	HL
 	LD	C,(HL)
 	EX	DE,HL
+	POP	HL		; PROG
 	ADD	HL,BC
 	EX	DE,HL
 	LD	HL,(DATADD)
