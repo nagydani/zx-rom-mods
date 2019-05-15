@@ -8,7 +8,7 @@
 
 ; 7B REPEAT, 7 bytes: (NXTLIN)-(PROG), (CHADD)-(PROG), (PPC), (SUBPPC)
 ; 7C WHILE, 7 bytes: (NXTLIN)-(PROG), (CHADD)-(PROG), (PPC), (SUBPPC)
-; 7D PROC, 7 bytes: (DATADD)-(PROG), (NXTLIN)-(PROG), (PPC), (SUBPPC)
+; 7D PROC, 9 bytes: (DATADD)-(PROG), (NXTLIN)-(PROG), (PPC), (SUBPPC), error
 
 ; 81..9A string reference: 2 bytes of length + symbolic reference
 ; A1..BA numeric reference: 2 bytes of length + symbolic reference
@@ -64,6 +64,9 @@ LOC_SA:	CP	C
 	SCF
 	RET			; local variable found
 LOC_PRC:
+	LD	DE,$000A
+	ADD	HL,DE
+	RET
 LOC_WHL:
 LOC_REP:LD	DE,$0008
 	ADD	HL,DE

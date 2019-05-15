@@ -630,6 +630,9 @@ UNT_R:	EXX
 	EX	DE,HL
 	JR	UNT_ER		; continue after UNTIL
 
+UNT_NC:	LD	DE,NEWPPC
+	JR	UNT_PPC
+
 UNT_NL:	EX	AF,AF'
 	JR	NZ,END_REP
 	PUSH	DE		; marker
@@ -650,14 +653,23 @@ UNT_C:	LD	BC,(PROG)
 	INC	HL
 	LD	D,(HL)
 	INC	HL
+	LD	A,D
+	OR	E
+	JR	Z,UNT_NC	; no cache
+	INC	HL
+	LD	A,(HL)
+	DEC	HL
+	INC	A
+	JR	Z,UNT_NC	; swap in command line
 	EX	DE,HL
 	ADD	HL,BC
 	LD	(CH_ADD),HL
 	EX	DE,HL
 	LD	DE,PPC
-	LD	BC,$0003
+UNT_PPC:LD	BC,$0003
 	LDIR
 UNTSW:	JP	SWAP
+
 END_REP:EX	DE,HL
 	LD	HL,$0007
 	ADD	HL,SP
@@ -979,8 +991,6 @@ STACKE:	LD	A,$0D
 
 ST_REP:	LD	A,REPEAT_T
 	JR	ST_CTX
-ST_WHL:	LD	A,WHILE_T
-	JR	ST_CTX
 
 ST_NFOR:CP	REPEAT_M * 2
 	JR	C,ST_VAR
@@ -988,6 +998,12 @@ ST_NFOR:CP	REPEAT_M * 2
 	CP	WHILE_M * 2
 	JR	Z,ST_WHL
 	LD	A,PROC_T
+	CALL	ST_CTX
+	INC	HL
+	INC	HL		; skip duplicated error address
+	RET
+
+ST_WHL:	LD	A,WHILE_T
 ST_CTX:	RST	$10
 	INC	HL
 	INC	HL
@@ -2010,7 +2026,10 @@ DEL_LF:	LD	BC,$0017
 	LD	C,$06
 	JR	DEL_LF0
 
-PROC_S:	CALL	S_LBLI		; insert label with empty cache
+PROC_S:	RST	$28
+	DEFW	L2C8D		; ALPHA
+	LD	B,1
+	CALL	S_LBLI		; insert label with empty cache
 	RST	$18		; TODO: ???
 	CP	"("
 	JR	NZ,ERR_PR
@@ -2030,32 +2049,34 @@ PROC_SE:RST	$20
 
 PROC:	CALL	SYNTAX_Z
 	JR	Z,PROC_S
-	LD	BC,$0014
+	LD	BC,$0016
 	RST	$28
-	DEFW	L1F05
+	DEFW	L1F05		; TEST-ROOM
 	POP	DE		; DE = return address
+	POP	HL		; HL = error address
+	PUSH	HL
+	PUSH	HL		; replicate
 	LD	HL,(SUBPPC - 1)
 	INC	H
 	EX	(SP),HL		; HL = error address
 	INC	SP		; stack SUBPPC (1 byte)
 	LD	BC,(PPC)
 	PUSH	BC		; stack PPC (2 bytes)
+	LD	BC,(PROG)
 	PUSH	HL
 	LD	HL,(NXTLIN)
 	AND	A
-	LD	BC,(PROG)
 	SBC	HL,BC
-	EX	(SP),HL		; stack NXTLIN - PROG (2 bytes)
+	EX	(SP),HL		; stack NXTLIN - PROG
 	PUSH	HL
 	LD	HL,(DATADD)
 	SBC	HL,BC
-	EX	(SP),HL		; stack DATADD - PROG (2 bytes)
+	EX	(SP),HL		; stack DATADD - PROG
 	LD	BC,$3E00 + PROC_M
 	PUSH	BC		; stack marker
 	PUSH	HL		; stack error address
 ; tail call entry point
-T_PROC:	LD	(ERR_SP),SP
-	PUSH	DE		; stack return address
+T_PROC:	PUSH	DE		; stack return address
 	RST	$18
 	LD	(MEMBOT+26),HL	; label start
 L_PROC:	LD	A,(HL)
@@ -2151,10 +2172,10 @@ PROC_X:	LD	B,$3E
 	RST	$18		; separator in DEF PROC
 	CP	","
 	JR	Z,PROC_L
-	POP	DE		; return address
+PROC_E:	POP	DE		; return address
 	LD	(ERR_SP),SP
 	PUSH	DE
-PROC_E:	RST	$20		; skip closing bracket Of DEF PROC
+	RST	$20		; skip closing bracket Of DEF PROC
 PROC_EE:JP	END05
 
 
@@ -2201,15 +2222,29 @@ ERROR_X:CALL	ERROR
 ENDPROC:CALL	SKIP_LL
 	CP	REPEAT_M
 	JR	Z,ENDPROC
+	CP	WHILE_M
+	JR	Z,ENDPROC
 	CP	PROC_M
 	JR	NZ,ERROR_X
 RETPROC:PUSH	HL		; new marker address
 	DEC	HL
+	DEC	HL		; skip saved error address
+	DEC	HL
 	LD	DE,SUBPPC
 	LDD
+	LD	A,(HL)
 	LDD
 	LDD
-	LD	B,(HL)
+	INC	A
+	JR	NZ,RETPR	; not returning to command line
+RETPRN:	INC	HL
+	LD	DE,NEWPPC
+	LDI
+	LDI
+	LDI
+	LD	BC,-4
+	ADD	HL,BC
+RETPR:	LD	B,(HL)
 	DEC	HL
 	LD	C,(HL)
 	EX	DE,HL
@@ -2272,6 +2307,9 @@ RET_L:	CALL	SKIP_LL
 	CP	PROC_T
 	JR	NZ,RETPROC		; not a tail call
 ; tail call
+	DEC	HL
+	DEC	HL
+	LD	(ERR_SP),HL
 	LD	DE,-9
 	ADD	HL,DE			; HL pointing to PROC frame marker
 	POP	DE			; return address
