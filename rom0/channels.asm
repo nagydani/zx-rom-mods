@@ -29,6 +29,9 @@ ED_COPY:SET	6,(HL)
 	POP	HL
 	RET
 
+; tokenize instruction on the fly
+K_TOKI:	jr	K_IN2		; TODO: this is just a placeholder
+
 ; channel K input
 K_IN:	LD	HL,K_STATE
 	BIT	7,(HL)
@@ -65,7 +68,12 @@ NOPIP:	LD	A,(LAST_K)	; pressed keycode
 	RST	$28
 	DEFW	L0D6E		; CLS-LOWER
 	POP	AF
-NOCLSL:	CP	$88
+NOCLSL:	BIT	5,(IY+$30)	; mode K suppressed?
+	JR	Z,K_IN2		; jump, if not
+	LD	HL,K_STATE
+	BIT	3,(HL)		; instruction mode?
+	JR	Z,K_TOKI	; jump, if so
+K_IN2:	CP	$88
 	JR	C,K_INB
 	CP	$90
 	JR	NC,K_INW
@@ -75,6 +83,24 @@ NOCLSL:	CP	$88
 	JR	NZ,K_ING0
 	ADD	A,$100 - $70	; transpose to $18..$1F, set CF
 	JR	K_ING0
+
+K_INNK:	LD	B,(HL)
+	BIT	6,B
+	JP	Z,SWAP
+	LD	A,(FRAMES)
+	XOR	B
+	AND	$10
+	JR	Z,K_INNSW
+	PUSH	BC
+	PUSH	HL
+	CALL	PCURSOR
+	POP	HL
+	POP	BC
+	XOR	$20
+	XOR	B
+	LD	(HL),A
+	XOR	A
+K_INNSW:JP	SWAP
 
 K_INW:	CP	RND_T		; USR "V" +
 	JR	C,K_INB
@@ -91,25 +117,22 @@ K_ING0:	BIT	5,(IY+$30)
 	LD	A,(HL)
 K_ING1:	SCF
 K_ING2:	RES	1,(IY+$07)
-	JP	SWAP
+K_ING3:	BIT	5,(IY+$30)	; mode K suppressed?
+	JR	Z,K_INNSW	; jump, if not
+	LD	HL,K_STATE
+	BIT	3,(HL)
+	JR	NZ,K_INNSW
+	RST	$28
+	DEFW	L2C8D		; ALPHA
+	JR	C,K_INNSW
+	JP	K_INSTT
 
-K_INNK:	LD	B,(HL)
-	BIT	6,B
-	JP	Z,SWAP
-	LD	A,(FRAMES)
-	XOR	B
-	AND	$10
-	JP	Z,SWAP
-	PUSH	BC
-	PUSH	HL
-	CALL	PCURSOR
-	POP	HL
-	POP	BC
-	XOR	$20
-	XOR	B
-	LD	(HL),A
-	XOR	A
-	JP	SWAP
+K_ENT:	LD	HL,K_STATE
+	LD	(IY+DEFADD+1-ERR_NR),1	; TODO: this is an ugly hack
+	RES	6,(HL)		; turn off blinking cursor
+K_ENTP:	RES	4,(IY+$37)	; allow ELSE
+	SCF
+	JR	K_ING3
 
 K_INB:	BIT	3,(IY+$01)	; mode K?
 	JR	NZ,K_MDL	; jump, if not
@@ -121,7 +144,8 @@ K_INB:	BIT	3,(IY+$01)	; mode K?
 	LD	A,(HL)
 K_MDL:	CP	$20
 	JR	Z,KEY_M_K0	; jump, if space
-K_NSP:	CCF
+K_NSP:	LD	(K_DATA),A
+	CCF
 	JR	C,K_ING0	; regular key pressed
 	CP	$0D
 	JR	Z,K_ENT		; ENTER pressed
@@ -146,8 +170,9 @@ KEY_M_K0:
 	BIT	0,(HL)		; mode E?
 	JR	Z,K_NSP		; jump back, if not
 	DEC	(HL)		; leave mode E
-	LD	A,$20		; toggle bit 5
+K_TRAD:	LD	A,$20		; toggle bit 5
 	JR	TFLAGS2
+
 KEY_M_CL0:
 	JR	NZ,KEY_MODE0
 	LD	A,$08
@@ -163,6 +188,33 @@ K_M_SPC:SET	3,(HL)		; turn off K mode
 KEY_MODE0:
 	CP	$0E
 	JP	C,SWAP
+	JR	NZ,KEY_MODE1
+	BIT	5,(IY+$30)	; mode K suppressed?
+	JR	Z,KEY_MODE1	; jump, if not
+; EXT key in K suppressed-mode
+	LD	HL,(E_LINE)
+	LD	DE,(K_CUR)
+	AND	A
+	SBC	HL,DE
+	JR	Z,K_TRAD	; exit K suppressed mode
+	EX	DE,HL
+	DEC	HL
+	LD	B,0
+	LD	A,(HL)
+	SUB	A,RND_T		; is the cursor after a token?
+	JR	C,EXT_NT	; jump, if it is not
+	LD	C,A
+	LD	HL,K_STATE
+	SET	7,(HL)
+	LD	HL,EXTTAB_I	; TODO: operators
+	ADD	HL,BC
+	LD	A,(HL)
+	LD	(K_DATA),A
+	LD	A,$0C
+	SCF
+	JR	K_INR2
+
+KEY_MODE1:
 	SUB	$0D
 	LD	HL,MODE
 	CP	(HL)
@@ -190,25 +242,53 @@ KEY_DATA0:
 	SCF
 	JR	K_INR2
 
-K_ENT:	LD	HL,K_STATE
-	LD	(IY+DEFADD+1-ERR_NR),1	; TODO: this is an ugly hack
-	RES	6,(HL)		; turn off blinking cursor
-	SCF
-	BIT	5,(IY+$30)	; K mode suppressed?
-	JR	Z,K_INR2	; if not, do not attempt tokenization
-;;	BIT	3,(IY+$02)	; Editor mode?
-;;	JR	Z,K_INR2	; if not, do not attempt tokenization
-	BIT	5,(IY+$37)	; Line editing mode?
-	JR	Z,K_ENTP
-	LD	HL,(WORKSP)
-	CALL	TOKINP
-	JR	K_ENTE
-K_ENTP:	RES	4,(IY+$37)	; allow ELSE
-	LD	HL,(E_LINE)
-	CALL	TOKPRG
-K_ENTE:	LD	A,$0D
+K_INSTT:LD	HL,(K_CUR)
+	DEC	HL
+	LD	B,A
+	LD	A,(HL)
+	RST	$28
+	DEFW	L2C8D		; ALPHA
+	LD	A,B
+	CCF
+	JR	C,K_INR2
+	DEC	HL
+	LD	B,0
+EXT_L:	INC	B
+EXT_NT:	LD	A,(HL)
+	DEC	HL
+	RST	$28
+	DEFW	L2C8D		; ALPHA
+	JR	C,EXT_L
+	INC	HL
+	INC	HL
+	CALL	TOK_INS
+	JR	C,K_INSF
+	OR	A
+	JR	Z,K_INR2	; TODO: rasp?
+	EX	AF,AF'
+	LD	A,(LAST_K)
+	CP	$0E
+	JR	Z,K_INST
+	XOR	A
+	JR	K_INR2
+
+K_INSF:	EX	AF,AF'
+	LD	A,(LAST_K)
+	CP	$0E
+	JR	Z,K_INST
+	CP	" "
+	JR	Z,K_INST
+	LD	A,(K_STATE)
+	OR	$80
+	LD	(K_STATE),A
+K_INST:	LD	C,B
+	LD	B,0
+	RST	$28
+	DEFW	L19E8		; RECLAIM-2
+	EX	AF,AF'
 	SCF
 	JR	K_INR2
+
 
 ; K-MODE translation table
 K_MODE:	DEFB	POKE_T,PEEK_T
@@ -734,3 +814,95 @@ GR_TAB:	DEFB	$00, $FF
 	DEFB	$FF, $00
 	DEFB	$F0, $00
 	DEFB	$00, $0F
+
+EXTTAB_I:
+	DEFB	$A5		; no change
+	DEFB	$A6		; no change
+	DEFB	$BA		; RENUM followed by REPEAT
+	DEFB	$B9		; DEF PROC followed by DELETE
+	DEFB	$A9		; no change
+	DEFB	$AA		; no change
+	DEFB	$AB		; @ followed by @
+	DEFB	$AC		; no change
+	DEFB	$F6		; PLAY followed by PLOT
+	DEFB	$AE		; no change
+	DEFB	$AF		; no change
+	DEFB	$B0		; no change
+	DEFB	$B1		; no change
+	DEFB	$B2		; no change
+	DEFB	$D2		; END WHILE followed by ERASE
+	DEFB	$B4		; no change
+	DEFB	$B5		; no change
+	DEFB	$B6		; no change
+	DEFB	$B7		; no change
+	DEFB	$E0		; LOCAL followed by LPRINT
+	DEFB	$E9		; DELETE followed by DIM
+	DEFB	$E5		; REPEAT followed by RESTORE
+	DEFB	$BB		; no change
+	DEFB	$BC		; no change
+	DEFB	$BD		; no change
+	DEFB	$F5		; POKE followed by PRINT
+	DEFB	$BF		; no change
+	DEFB	$C2		; USR followed by UNTIL
+	DEFB	$C1		; no change
+	DEFB	$C0		; UNTIL followed by USR
+	DEFB	$C3		; ASSERT followed by ASSERT
+	DEFB	$C4		; no change
+	DEFB	$CA		; END IF followed by END PROC
+	DEFB	$C6		; no change
+	DEFB	$DA		; PALETTE followed by PAPER
+	DEFB	$C8		; no change
+	DEFB	$C9		; no change
+	DEFB	$B3		; END PROC followed by END WHILE
+	DEFB	$C5		; ELSE followed by END IF
+	DEFB	$AD		; PROC followed by PLAY
+	DEFB	$E2		; STEP followed by STOP
+	DEFB	$A8		; DEF FN followed by DEF PROC
+	DEFB	$D8		; CAT followed by CIRCLE
+	DEFB	$DB		; FORMAT followed by FLASH
+	DEFB	$D5		; MOVE followed by MERGE
+	DEFB	$CB		; ERASE followed by ELSE
+	DEFB	$DF		; OPEN # followed by OUT
+	DEFB	$FB		; CLOSE # followed by CLS
+	DEFB	$D1		; MERGE followed by MOVE
+	DEFB	$D6		; VERIFY followed by VERIFY
+	DEFB	$E7		; BEEP followed by BORDER
+	DEFB	$FD		; CIRCLE followed by CLEAR
+	DEFB	$EE		; INK followed by INPUT
+	DEFB	$F2		; PAPER followed by PAUSE
+	DEFB	$EB		; FLASH followed by FOR
+	DEFB	$D7		; BRIGHT followed by BEEP
+	DEFB	$FA		; INVERSE followed by IF
+	DEFB	$D3		; OVER followed by OPEN #
+	DEFB	$DE		; OUT followed by OVER
+	DEFB	$F1		; LPRINT followed by LET
+	DEFB	$EF		; LLIST followed by LOAD
+	DEFB	$F8		; STOP followed by SAVE
+	DEFB	$EA		; READ followed by REM
+	DEFB	$CE		; DATA followed by DEF FN
+	DEFB	$FE		; RESTORE followed by RETURN
+	DEFB	$F3		; NEW followed by NEXT
+	DEFB	$DC		; BORDER followed by BRIGHT
+	DEFB	$FF		; CONTINUE followed by COPY
+	DEFB	$FC		; DIM followed by DRAW
+	DEFB	$A7		; REM followed by RENUM
+	DEFB	$D0		; FOR followed by FORMAT
+	DEFB	$ED		; GO TO followed by GO SUB
+	DEFB	$EC		; GO SUB followed by GO TO
+	DEFB	$DD		; INPUT followed by INVERSE
+	DEFB	$E0		; LOAD followed by LPRINT
+	DEFB	$E1		; LIST followed by LLIST
+	DEFB	$F0		; LET followed by LIST
+	DEFB	$AD		; PAUSE followed by PLAY
+	DEFB	$E6		; NEXT followed by NEW
+	DEFB	$F5		; POKE followed by PRINT
+	DEFB	$C7		; PRINT followed by PALETTE
+	DEFB	$BE		; PLOT followed by POKE
+	DEFB	$F9		; RUN followed by RANDOMIZE
+	DEFB	$D9		; IF followed by INK
+	DEFB	$E8		; CLS followed by CONTINUE
+	DEFB	$CE		; DRAW followed by DEF FN
+	DEFB	$D4		; CLEAR followed by CLOSE #
+	DEFB	$F7		; RETURN followed by RUN
+	DEFB	$CF		; COPY followed by CAT
+

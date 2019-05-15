@@ -19929,23 +19929,48 @@ CH_DEST:LD	HL,(DEST)
 SK_DEST:EX	DE,HL
 	JP	L1664
 
-; Find token in this ROM (64 bytes)
-; Input: HL text to match, DE token table, B number of tokens in the table, C = 0
-; Output: A remaining tokens in the table at longest full match, C length of match
+; Find token in this ROM (128 bytes)
+; Input: HL text to match, B length of text, DE token table, C number of tokens in the table
+; Output: A remaining tokens in the table at full match, CF token matched fully
 FTOKEN_R1:
-	PUSH	AF
+	XOR	A
+	EX	AF,AF'		; clear A' and CF'
 FTOKENL_R1:
 	PUSH	BC
 	PUSH	HL
-	LD	BC,$A000
+	LD	C,0
+	CALL	TESTKW_R1
+	RR	H
+	EX	AF,AF'
+	RL	H
+	EX	AF,AF'		; move CF to CF'
+	POP	HL
+	LD	A,C
+	POP	BC
+	CP	B
+	JR	NZ,FTOK_N_R1	; no full match
+	EX	AF,AF'
+	BIT	0,A
+	JR	NZ,FTOK_F_R1	; do not overwrite full matches
+	LD	A,C
+	ADC	A,A
+FTOK_F_R1:
+	EX	AF,AF'
+FTOK_N_R1:
+	DEC	C
+	JR	NZ,FTOKENL_R1
+	EX	AF,AF'
+	SRL	A
+	RET
+
 ; Test one keyword
-; Input: HL text to match, DE keyword to check, BC=$A000
+; Input: HL text to match, B length of text, DE keyword to check, C=0
 ; Output: CF set iff keyword matches fully, C length of match, DE next keyword
 TESTKW_R1:
 	LD	A,(DE)
-	CP	B		; final space is not matched
+	CP	$A0		; final space is not matched
 	JR	Z,TESTKW1_R1
-	AND	$7F
+	AND	$7F		; remove end marker
 	CALL	L2C8D		; ALPHA
 	ADC	A,A
 	RRCA
@@ -19960,37 +19985,25 @@ TESTKW0_R1:
 TESTKW1_R1:
 	INC	DE
 	ADD	A
-	JR	C,FTOKEN1_R1	; token found
+	RET	C		; full match
 	INC	HL
-	JR	TESTKW_R1
+	DJNZ	TESTKW_R1
+TESTKW2_R1:
+	LD	A,(DE)
+	INC	DE
+	ADD	A
+	JR	NC,TESTKW2_R1
+	AND	A		; partial match
+	RET
+
 SPACEKW_R1:
 	LD	A,(DE)
 	INC	DE
 	CP	" "		; spaces inside keywords are optional
 	JR	Z,TESTKW_R1
 	DEC	DE
-NEXTKW_R1:
-	LD	A,(DE)
-	INC	DE
-	ADD	A,A
-	JR	NC,NEXTKW_R1
-	POP	HL
-	POP	BC
-FTOKEN0_R1:
-	DJNZ	FTOKENL_R1
-	POP	AF
-	RET
-FTOKEN1_R1:
-	LD	A,C
-	POP	HL
-	POP	BC
-	CP	C
-	JR	C,FTOKEN0_R1
-	LD	C,A
-	POP	AF
-	LD	A,B
-	DJNZ	FTOKEN_R1
-	RET
+	JR	TESTKW2_R1
+
 
 ; Find closing NEXT (6 bytes)
 LOOK_PROG_FOR:
@@ -20072,9 +20085,9 @@ LOOK_READ:
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 	DEFB    $FF, $FF, $FF, $FF, $FF;	, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
