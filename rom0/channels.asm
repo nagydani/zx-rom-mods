@@ -855,7 +855,7 @@ EXTTAB_I:
 	DEFB	$C9		; no change
 	DEFB	$B3		; END PROC followed by END WHILE
 	DEFB	$C5		; ELSE followed by END IF
-	DEFB	$AD		; PROC followed by PLAY
+	DEFB	$C7		; PROC followed by PALETTE
 	DEFB	$E2		; STEP followed by STOP
 	DEFB	$A8		; DEF FN followed by DEF PROC
 	DEFB	$D8		; CAT followed by CIRCLE
@@ -896,9 +896,11 @@ EXTTAB_I:
 	DEFB	$AD		; PAUSE followed by PLAY
 	DEFB	$E6		; NEXT followed by NEW
 	DEFB	$F5		; POKE followed by PRINT
-	DEFB	$C7		; PRINT followed by PALETTE
+	DEFB	$CC		; PRINT followed by PROC
 	DEFB	$BE		; PLOT followed by POKE
 	DEFB	$F9		; RUN followed by RANDOMIZE
+	DEFB	$CD		; SAVE followed by STEP
+	DEFB	$E3		; RANDOMIZE followed by READ
 	DEFB	$D9		; IF followed by INK
 	DEFB	$E8		; CLS followed by CONTINUE
 	DEFB	$CE		; DRAW followed by DEF FN
