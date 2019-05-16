@@ -29,17 +29,37 @@ ED_COPY:SET	6,(HL)
 	POP	HL
 	RET
 
-; tokenize instruction on the fly
-K_TOKI:	jr	K_IN2		; TODO: this is just a placeholder
-
 ; channel K input
 K_IN:	LD	HL,K_STATE
 	BIT	7,(HL)
 	JR	Z,K_IN0
 	LD	A,(K_DATA)
 	RES	7,(HL)
+	CP	$80		; potential token ending signal
 	SCF
-	JP	SWAP
+	JR	NZ,K_INNSW
+	LD	A,$0E
+	LD	(LAST_K),A
+	JR	NOPIP
+
+K_INNK:	LD	B,(HL)
+	BIT	6,B
+	JP	Z,SWAP
+	LD	A,(FRAMES)
+	XOR	B
+	AND	$10
+	JR	Z,K_INNSW
+	PUSH	BC
+	PUSH	HL
+	CALL	PCURSOR
+	POP	HL
+	POP	BC
+	XOR	$20
+	XOR	B
+	LD	(HL),A
+	XOR	A
+K_INNSW:JP	SWAP
+
 
 ; regular input
 K_IN0:	BIT	3,(IY+$02)
@@ -68,12 +88,7 @@ NOPIP:	LD	A,(LAST_K)	; pressed keycode
 	RST	$28
 	DEFW	L0D6E		; CLS-LOWER
 	POP	AF
-NOCLSL:	BIT	5,(IY+$30)	; mode K suppressed?
-	JR	Z,K_IN2		; jump, if not
-	LD	HL,K_STATE
-	BIT	3,(HL)		; instruction mode?
-	JR	Z,K_TOKI	; jump, if so
-K_IN2:	CP	$88
+NOCLSL:	CP	$88
 	JR	C,K_INB
 	CP	$90
 	JR	NC,K_INW
@@ -83,24 +98,6 @@ K_IN2:	CP	$88
 	JR	NZ,K_ING0
 	ADD	A,$100 - $70	; transpose to $18..$1F, set CF
 	JR	K_ING0
-
-K_INNK:	LD	B,(HL)
-	BIT	6,B
-	JP	Z,SWAP
-	LD	A,(FRAMES)
-	XOR	B
-	AND	$10
-	JR	Z,K_INNSW
-	PUSH	BC
-	PUSH	HL
-	CALL	PCURSOR
-	POP	HL
-	POP	BC
-	XOR	$20
-	XOR	B
-	LD	(HL),A
-	XOR	A
-K_INNSW:JP	SWAP
 
 K_INW:	CP	RND_T		; USR "V" +
 	JR	C,K_INB
@@ -120,12 +117,20 @@ K_ING2:	RES	1,(IY+$07)
 K_ING3:	BIT	5,(IY+$30)	; mode K suppressed?
 	JR	Z,K_INNSW	; jump, if not
 	LD	HL,K_STATE
-	BIT	3,(HL)
-	JR	NZ,K_INNSW
+	BIT	2,(IY+$30)	; inside quotes?
+	JR	NZ,K_INSW	; jump, if so
 	RST	$28
 	DEFW	L2C8D		; ALPHA
-	JR	C,K_INNSW
-	JP	K_INSTT
+	JR	C,K_INSW	; jump, if so
+	CP	"$"
+	JR	Z,K_TKE
+	CP	"#"
+	JP	NZ,K_INSTT
+K_TKE:	LD	(IY-$2D),$80	; signal potential token end
+	LD	HL,K_STATE
+	SET	7,(HL)
+	SCF
+K_INSW:	JP	SWAP
 
 K_ENT:	LD	HL,K_STATE
 	LD	(IY+DEFADD+1-ERR_NR),1	; TODO: this is an ugly hack
@@ -206,26 +211,16 @@ KEY_MODE0:
 	LD	C,A
 	LD	HL,K_STATE
 	SET	7,(HL)
-	LD	HL,EXTTAB_I	; TODO: operators
-	ADD	HL,BC
+	BIT	3,(IY+$37)	; FLAGX, token type before cursor
+	LD	HL,EXTTAB_I
+	JR	Z,EXT_TS
+	LD	HL,EXTTAB_O
+EXT_TS:	ADD	HL,BC
 	LD	A,(HL)
 	LD	(K_DATA),A
 	LD	A,$0C
 	SCF
 	JR	K_INR2
-
-KEY_MODE1:
-	SUB	$0D
-	LD	HL,MODE
-	CP	(HL)
-	LD	(HL),A
-	JR	NZ,KEY_FLAG0
-	LD	(HL),$00
-
-KEY_FLAG0:
-	SET	3,(IY+2)
-	CP	A
-K_INR2:	JP	SWAP
 
 KEY_CONTR0:
 	LD	B,A
@@ -242,6 +237,38 @@ KEY_DATA0:
 	SCF
 	JR	K_INR2
 
+KEY_MODE1:
+	SUB	$0D
+	LD	HL,MODE
+	CP	(HL)
+	LD	(HL),A
+	JR	NZ,KEY_FLAG0
+	LD	(HL),$00
+
+KEY_FLAG0:
+	SET	3,(IY+2)
+K_INR3:	CP	A
+K_INR2:	JP	SWAP
+
+
+EXT_NT:	LD	A,(HL)
+	CP	"$"
+	JR	Z,EXT_N
+	CP	"#"
+	JR	Z,EXT_NS
+	RST	$28
+	DEFW	L2C8D		; ALPHA
+	JR	C,EXT_N
+	JR	K_INR3
+
+EXT_NS:	LD	B,1
+	DEC	HL
+	LD	A,(HL)
+	DEC	HL
+	CP	" "
+	JR	Z,EXT_L
+	JR	EXT_LS
+
 K_INSTT:LD	HL,(K_CUR)
 	DEC	HL
 	LD	B,A
@@ -251,24 +278,37 @@ K_INSTT:LD	HL,(K_CUR)
 	LD	A,B
 	CCF
 	JR	C,K_INR2
+EXT_N:	LD	B,0
 	DEC	HL
-	LD	B,0
 EXT_L:	INC	B
-EXT_NT:	LD	A,(HL)
+	LD	A,(HL)
 	DEC	HL
-	RST	$28
+EXT_LS:	RST	$28
 	DEFW	L2C8D		; ALPHA
 	JR	C,EXT_L
 	INC	HL
 	INC	HL
+	LD	A,(K_STATE)
+	AND	$08		; instruction mode?
+	JR	NZ,EXT_OPR	; jump, if not
 	CALL	TOK_INS
-	JR	C,K_INSF
+	JR	EXT_CNT
+
+EXT_OPR:CALL	TOK_OPR
+EXT_CNT:JR	C,K_INSF
 	OR	A
-	JR	Z,K_INR2	; TODO: rasp?
+	JR	Z,EXT_NF
 	EX	AF,AF'
 	LD	A,(LAST_K)
 	CP	$0E
 	JR	Z,K_INST
+	SCF
+	JR	K_INR2
+
+EXT_NF:	LD	A,(LAST_K)
+	CP	$0E
+	SCF
+	JR	NZ,K_INR2
 	XOR	A
 	JR	K_INR2
 
@@ -514,7 +554,9 @@ PR_TK:	EX	DE,HL
 	LD	BC,SWAP
 	PUSH	BC
 	BIT	3,(HL)
+	RES	2,(IY+$37)	; FLAGX, signal instruction token
 	JR	Z,PR_INST
+	SET	2,(IY+$37)	; FLAGX, signal operator token
 	CP	ELSE_T - RND_T
 	JR	NZ,PR_TK0
 	RES	3,(HL)
@@ -769,6 +811,12 @@ TUP:	INC	B
 
 TBLINK:	EX	DE,HL
 	SET	2,(HL)
+	LD	HL,FLAGX
+	LD	A,(HL)
+	RES	3,(HL)
+	AND	$04
+	JR	Z,TNOP2
+	SET	3,(HL)
 	JR	TNOP2
 
 T1CTR:	EX	DE,HL
@@ -908,3 +956,69 @@ EXTTAB_I:
 	DEFB	$F7		; RETURN followed by RUN
 	DEFB	$CF		; COPY followed by CAT
 
+EXTTAB_O:
+	DEFB	$D6		; RND followed by REF
+	DEFB	$BA		; INKEY$ followed by INK
+	DEFB	$A9		; PI followed by POINT
+	DEFB	$CE		; FN followed by FREE
+	DEFB	$DA		; POINT followed by PAPER
+	DEFB	$BC		; SCREEN$  SGN
+	DEFB	$BD		; ATTR  ABS
+	DEFB	$B7		; AT  ATN
+	DEFB	$B4		; TAB  TAN
+	DEFB	$B0		; VAL$  VAL
+	DEFB	$B3		; CODE  COS
+	DEFB	$AE		; VAL  VAL$
+	DEFB	$CA		; LEN  LINE
+	DEFB	$BB		; SIN  SQR
+	DEFB	$C2		; COS  CHR$
+	DEFB	$CB		; TAN  THEN
+	DEFB	$AC		; ASN  AT
+	DEFB	$C6		; ACS  AND
+	DEFB	$AB		; ATN  ATTR
+	DEFB	$B1		; LN  LEN
+	DEFB	$D4		; EXP  EOF #
+	DEFB	$DD		; INT  INVERSE
+	DEFB	$CD		; SQR  STEP
+	DEFB	$B2		; SGN  SIN
+	DEFB	$B6		; ABS  ACS
+	DEFB	$A7		; PEEK  PI
+	DEFB	$D9		; IN  INK
+	DEFB	$C0		; USR  USR
+	DEFB	$AA		; STR$  SCREEN$
+	DEFB	$AF		; CHR$  CODE
+	DEFB	$C3		; NOT  NOT
+	DEFB	$DC		; BIN  BRIGHT
+	DEFB	$DE		; OR  OVER
+	DEFB	$B5		; AND  ASN
+	DEFB	$C8		; <=  >=
+	DEFB	$C9		; >=  <>
+	DEFB	$C7		; <>  <=
+	DEFB	$B8		; LINE  LN
+	DEFB	$D0		; THEN  TIME
+	DEFB	$AD		; TO  TAB
+	DEFB	$D1		; STEP  STICK
+	DEFB	$DB		; FREE  FLASH
+	DEFB	$CF		; MEM$  MEM$
+	DEFB	$D5		; TIME  TIME$
+	DEFB	$C1		; STICK  STR$
+	DEFB	$E4		; DPEEK  DATA
+	DEFB	$C5		; OPEN #  OR
+	DEFB	$B9		; EOF #  EXP
+	DEFB	$D0		; TIME$  TIME
+	DEFB	$A5		; REF  RND
+	DEFB	$D7		; unchanged
+	DEFB	$D8		; HEX  HEX
+	DEFB	$A6		; INK  INKEY$
+	DEFB	$BE		; PAPER  PEEK
+	DEFB	$A8		; FLASH  FN
+	DEFB	$C4		; BRIGHT  BIN
+	DEFB	$BF		; INVERSE  IN
+	DEFB	$DF		; OVER  OCT
+	DEFB	$D3		; OCT  OPEN #
+	DEFB	$E0		; unchanged
+	DEFB	$E1		; unchanged
+	DEFB	$E3		; ><  <<
+	DEFB	$E5		; <<  >>
+	DEFB	$D2		; DATA  DPEEK
+	DEFB	$E2		; >>  ><

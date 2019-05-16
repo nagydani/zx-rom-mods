@@ -123,7 +123,7 @@
 | D2 | DPEEK
 | D3 | OPEN #
 | D4 | EOF #
-| ... |
+| D5 | TIME$
 | D6 | REF
 | ... |
 | D8 | HEX

@@ -4,7 +4,7 @@
 TOK_INS:LD	DE,TOKENS1 + 1
 	LD	C,41		; 41 new instruction tokens
 	CALL	FTOKEN
-	JR	C,TOK_IF	; full instruction token found
+	JR	C,TOK_TF	; full instruction token found
 	LD	C,50		; 50 old instruction tokens
 	OR	A
 	JR	Z,TOK_IN	; no new instruction token found
@@ -19,12 +19,36 @@ TOK_IN:	EX	AF,AF'
 	CPL
 	RL	D
 	RET
-TOK_IF:	ADD	A,49
+TOK_TF:	ADD	A,49
 	CPL
 	SCF
 	RET
 
-; Find token
+; Find operator token
+; Input	B: length of text to match
+; Output: A token code matched or zero, if none; CF token matched fully
+TOK_OPR:LD	DE,L0095 + 1
+	LD	C,41		; 41 old operator tokens
+	RST	$28
+	DEFW	FTOKEN_R1
+	JR	C,TOK_TF	; full operator token found
+	LD	C,24		; 24 new operator tokens
+	OR	A
+	JR	Z,TOK_ON	; no old operator token found
+	ADD	A,C
+	ADD	A,A
+TOK_ON:	EX	AF,AF'
+	LD	DE,TOKENS0 + 1	; FREE token
+	CALL	FTOKENL
+	OR	A
+	RET	Z
+	RR	D
+	ADD	A,25		; 26 unreachable operator tokens
+	CPL
+	RL	D
+	RET
+
+;Find token
 ; Input: HL text to match, B length of text, DE token table, C number of tokens in the table
 ; Output: A remaining tokens in the table at full match, CF token matched fully
 FTOKEN:	XOR	A

@@ -2,6 +2,8 @@
 ; 4 - 128k mode
 
 ; FLAGX unused bits
+; 2 - last printed token's type
+; 3 - token type before the cursor
 ; 4 - last IF's outcome is false
 
 ; FLAGS2 unused bits
