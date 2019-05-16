@@ -22,6 +22,10 @@
 	td {
 		padding-right: 2em;
 	}
+	div.figure {
+		font-style: italic;
+		text-align: center;
+	}
 	</style>
 </head>
 <body>
@@ -153,14 +157,17 @@ CONTINUE
 COPY
 DATA
 DEF FN
+DEF PROC
 DIM
 DRAW
-ELSE
 </pre>
 </td>
 <td>
 <pre>
+ELSE
 END IF
+END PROC
+END WHILE
 ERASE
 FLASH
 FOR
@@ -173,13 +180,13 @@ INPUT
 INVERSE
 LET
 LIST
-LLIST
-LOAD
-LPRINT
 </pre>
 </td>
 <td>
 <pre>
+LLIST
+LOAD
+LPRINT
 MERGE
 MOVE
 NEW
@@ -193,13 +200,14 @@ PAUSE
 PLAY
 PLOT
 POKE
-PRINT
-RANDOMIZE
-READ
 </pre>
 </td>
 <td>
 <pre>
+PRINT
+PROC
+RANDOMIZE
+READ
 REM
 RENUM
 REPEAT
@@ -212,6 +220,22 @@ STOP
 UNTIL
 USR
 VERIFY
+</pre>
+</td>
+<td>
+<pre>
+WHILE
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -221,11 +245,12 @@ VERIFY
 </tr>
 </table>
 
-<p>If you type <code>Draw.</code> and hit ENTER, you will notice that 
-all the letters of the word <code>DRAW</code> are turned to capitals, an 
-extra space is inserted before the period and the cursor is flashing 
-after the period. The computer does still not understand what this is 
-supposed to mean, though it understands a bit more than last time. </p>
+<p>If you type <code>Draw.</code> and hit ENTER, you will notice that as 
+soon as you type the period, all the letters of the word 
+<code>DRAW</code> are turned to capitals, an extra space is inserted 
+before the period and the cursor is flashing after the period. The 
+computer does still not understand what this is supposed to mean, though 
+it understands a bit more than last time.</p>
 
 <p><strong>Note:</strong> Even though the keywords of BASIC are mostly 
 English words, <em>BASIC is not English</em>. For the computer to 
@@ -244,6 +269,14 @@ reason for this is historical: computers got consoles before they became
 able to display anything on screens. In those days, the console's output 
 was a roll of paper on which things were literally PRINTed. While this 
 has no longer been the case for many decades now, the keyword stuck.</p>
+
+<div class=figure>
+<img src="https://timedotcom.files.wordpress.com/2014/04/kemenyteaches1.jpg"
+width="600px" height="448px" alt="John Kemeny teaches BASIC">
+<figcaption>John Kemeny, the inventor of BASIC teaches it to students at
+Dartmouth College back when consoles were teletype machines and Dartmouth
+was not yet a co-ed institution.</figcaption>
+</div>
 
 <p>So let's try this: type <code>PRINT 2+2</code> and hit ENTER. The 
 computer dutifully writes <code>4</code> on the canvas and reports
