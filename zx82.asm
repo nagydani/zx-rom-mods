@@ -9975,7 +9975,7 @@ L1F54:  LD      A,$7F           ; Input address: $7FFE
         RRA                     ; rotate bit 0 - SPACE
         RET     C               ; return if not reset
 
-        LD      A,$FE           ; Input address: $FEFE
+X1F5A:	LD      A,$FE           ; Input address: $FEFE
         IN      A,($FE)         ; read lower left keys
         RRA                     ; rotate bit 0 - SHIFT
         RET                     ; carry will be set if not pressed.
