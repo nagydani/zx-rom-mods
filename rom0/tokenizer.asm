@@ -1,7 +1,14 @@
 ; Find instruction token
 ; Input	B: length of text to match
 ; Output: A token code matched or zero, if none; CF token matched fully
-TOK_INS:LD	DE,TOKENS1 + 1
+TOK_INS:LD	A,(HL)
+	CP	" "
+	JR	NZ,TOK_IN0
+	INC	HL
+	DJNZ	TOK_INS
+	RET
+
+TOK_IN0:LD	DE,TOKENS1 + 1
 	LD	C,41		; 41 new instruction tokens
 	CALL	FTOKEN
 	JR	C,TOK_TF	; full instruction token found

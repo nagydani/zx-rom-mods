@@ -293,13 +293,20 @@ EXT_L:	INC	B
 EXT_LS:	RST	$28
 	DEFW	L2C8D		; ALPHA
 	JR	C,EXT_L
-	INC	HL
+	CP	" "
+	JR	NZ,EXT_SP
+	LD	A,(K_STATE)
+	AND	$08		; instruction mode?
+	LD	A," "
+	JR	Z,EXT_L		; instruction tokens might have spaces
+EXT_SP:	INC	HL
 	INC	HL
 	LD	A,(K_STATE)
 	AND	$08		; instruction mode?
 	JR	NZ,EXT_OPR	; jump, if not
 	CALL	TOK_INS
 	JR	EXT_CNT
+
 
 EXT_OPR:CALL	TOK_OPR
 EXT_CNT:JR	C,K_INSF
@@ -317,7 +324,7 @@ EXT_NF:	LD	A,(LAST_K)
 	SCF
 	JR	NZ,K_INR2
 	XOR	A
-	JR	K_INR2
+K_INR4:	JR	K_INR2
 
 K_INSF:	EX	AF,AF'
 	LD	A,(LAST_K)
@@ -334,8 +341,7 @@ K_INST:	LD	C,B
 	DEFW	L19E8		; RECLAIM-2
 	EX	AF,AF'
 	SCF
-	JR	K_INR2
-
+	JR	K_INR4
 
 ; K-MODE translation table
 K_MODE:	DEFB	POKE_T,PEEK_T
