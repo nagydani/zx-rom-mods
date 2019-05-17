@@ -613,6 +613,21 @@ tries to guess it.</p>
  200 PRINT "This cannot be."'low;" is too low, but ";high;" is too high."
 </pre>
 
+<p>You may have noted that the initial high number is 1024, rather than 1001.
+The reason for this is to make sure that the division in line <code>40</code>
+always results in a whole number, since
+1024 = 2 × 2 × 2 × 2 × 2 × 2 × 2 × 2 × 2 × 2
+that is two multiplied by itself ten times or, as wizards say:
+&quot;two to the power of ten&quot;. It is written like 2<sup>10</sup>.
+Thus, 1024 can be divided by 2 ten times, which is, not entirely by lucky 
+coincidence, the maximum number of guesses the computer needs to guess a 
+whole number between 1 and 1000.</p>
+
+<p>The operation of multiplying a number by itself (or <em>taking 
+powers</em> in wizard-speak) is denoted by the upwards-pointing arrow 
+(<code>^</code>, SYM+H) in ZX BASIC. Try <code>PRINT 2^10</code>.
+</p>
+
 </body>
 </html>
 
