@@ -6,18 +6,18 @@
 	<style type="text/css">
 	@font-face {
 		font-family: 'ZX';
-		src: url('font/ZXSpectrumNext.ttf') format('truetype')
+		src: url('font/ZXSpectrumNext.ttf') format('truetype');
 	}
 	body {
 		margin: 5em;
 		padding: 1em;
-		font-family: Helvetica, Geneva, Arial, sans-serif
+		font-family: Helvetica, Geneva, Arial, sans-serif;
 	}
 	code {
-		font-family: ZX
+		font-family: ZX;
 	}
 	pre {
-		font-family: ZX
+		font-family: ZX;
 	}
 	td {
 		padding-right: 2em;
@@ -25,6 +25,13 @@
 	div.figure {
 		font-style: italic;
 		text-align: center;
+		padding: 1em;
+	}
+	div.frame {
+		border-style: solid;
+		border-width: 1px;
+		padding-left: 1.5em;
+		padding-right: 1.5em;
 	}
 	</style>
 </head>
@@ -117,6 +124,7 @@ will repeat its function. To type the symbols on either number or letter
 keys, you should press the SYM key (also called <em>Symbol Shift</em>) 
 similarly to how you type capital-case letters with SHIFT.</p>
 
+<div class="frame">
 <p><strong>Note:</strong> On many <em>other</em> computers, the symbols 
 on number keys are typed with the SHIFT key, while the symbols on letter 
 keys are typed with some other shift-like key (typically ALT GR). 
@@ -125,6 +133,7 @@ consistently typed with Symbol Shift, while SHIFT'ed numbers are
 performing the functions of control keys (for example, SHIFT+1 is the 
 same as EDIT, which will undo everything you have typed so far). Be 
 careful with those.</p>
+</div>
 
 <p>Now you know enough to start chatting with the ZX85.</p>
 
@@ -252,23 +261,27 @@ before the period and the cursor is flashing after the period. The
 computer does still not understand what this is supposed to mean, though 
 it understands a bit more than last time.</p>
 
+<div class="frame">
 <p><strong>Note:</strong> Even though the keywords of BASIC are mostly 
 English words, <em>BASIC is not English</em>. For the computer to 
 understand what you type, it needs to be correct BASIC, not correct 
 English. For instance, in BASIC, you do not end statements with a 
 period.</p>
+</div>
 
 <p>If you move the cursor around, the computer won't let you move it 
 inside the (now capitalized) keyword anymore; it jumps from one side, to 
 the other. That is because it has recognized the keyword and now treats 
 it as a single unit, a so-called <em>token</em>.</p>
 
-<p><strong>Trivia:</strong> Statements instructing the computer to 
-answer us in writing begin with the <code>PRINT</code> keyword. The 
-reason for this is historical: computers got consoles before they became 
-able to display anything on screens. In those days, the console's output 
-was a roll of paper on which things were literally PRINTed. While this 
-has no longer been the case for many decades now, the keyword stuck.</p>
+<div class="frame">
+<p><strong>Trivia:</strong> Statements instructing the 
+computer to answer us in writing begin with the <code>PRINT</code> 
+keyword. The reason for this is historical: computers got consoles 
+before they became able to display anything on screens. In those days, 
+the console's output was a roll of paper on which things were literally 
+PRINTed. While this has no longer been the case for many decades now, 
+the keyword stuck.</p>
 
 <div class=figure>
 <img src="https://timedotcom.files.wordpress.com/2014/04/kemenyteaches1.jpg"
@@ -276,6 +289,7 @@ width="600px" height="448px" alt="John Kemeny teaches BASIC">
 <figcaption>John Kemeny, the inventor of BASIC teaches it to students at
 Dartmouth College back when consoles were teletype machines and Dartmouth
 was not yet a co-ed institution.</figcaption>
+</div>
 </div>
 
 <p>So let's try this: type <code>PRINT 2+2</code> and hit ENTER. The 
@@ -319,6 +333,7 @@ we mean a specific text, in BASIC, we must put it inside double quotes.
 <code>PRINT &quot;Hello&quot;</code> actually does write 
 <code>Hello</code> on the canvas.</p>
 
+<div class="frame">
 <p><strong>Note:</strong> Computers are very fussy that you should 
 distinguish between the digit zero and the letter O. To make it 
 absolutely clear, zero appears on the screen as <code>0</code>, with a 
@@ -327,6 +342,7 @@ slash through it. You also need to distinguish between the digit one
 letter L (<code>l</code>). All ten digits are on the top row of the 
 keyboard. Furthermore, you must use the star (<code>*</code>) for 
 multiplication, <em>not</em> the letter x.</p>
+</div>
 
 <p>Instructions given on the console are called <em>commands</em>.  
 However, one can also assemble sequences of instructions, which are 
@@ -341,10 +357,12 @@ World!</code> on the canvas, the entire command gets &quot;moved&quot; up
 to the canvas. Something very important has happened: you have just written 
 your first computer program. Congratulations!</p>
 
+<div class="frame">
 <p><strong>Trivia:</strong> ZX BASIC is a programming language in which 
 the instructions for programs and the instructions for commands are 
 exactly the same. Such languages are called <em>scripting 
 languages</em>, because programs are like scripted commands.</p>
+</div>
 
 <p>To <em>run</em> the program, just type the <code>RUN</code> command. 
 It does write <code>Hello World!</code> on the canvas, just like in the 
@@ -426,18 +444,22 @@ and then enter the <code>RUN</code> command to play a game.</p>
 By now, you know what that means. You can always play another round by 
 entering <code>RUN</code> again.</p>
 
+<div class="frame">
 <p><strong>Note:</strong> When the game asks you to guess a number, the 
 separator stripe between the canvas and the console says 
 <code>NUMERIC</code> instead of <code>BASIC</code> which means that it
 expects a number or a <em>numeric expression</em>; a formula that, 
 when evaluated, results in a number. So, if you type <code>100+200</code>, 
 it qualifies as a guess of <code>300</code>. Try it!</p>
-
+</div>
+<p></p>
+<div class="frame">
 <p><strong>Challenge:</strong> This behavior actually allows the player 
 to &quot;cheat&quot; and always guess the number picked by the computer 
 correctly upon first attempt. Wizards that are good at noticing and 
 exploiting such opportunities are called <em>hackers</em>. Can you think 
 like a hacker and win the game in one guess every time?</p>
+</div>
 
 <p>Now, let's see what it actually does. In the first two lines 
 (numbered <code>10</code> and <code>20</code>, respectively), the 
@@ -453,12 +475,14 @@ output <code>0</code>. If you enter <code>LET five=2+2</code> and then
 when a wizard uses a name, it means just what the wizard chooses it to 
 mean &mdash; neither more nor less.</p>
 
+<div class="frame">
 <p><strong>Note:</strong> In ZX BASIC, anywhere where you can enter a 
 number, you can also enter numeric expressions. There is only one 
 exception from this rule: the line number before statements. Thus 
 <code>2+2 PRINT</code> is not correct BASIC, but anywhere else where 
 <code>4</code> is accepted, <code>2+2</code> or <code>2*(1+1)</code> is 
 also accepted and means the same.</p>
+</div>
 
 <p>Line <code>10</code> has two keywords that are not even on the list 
 of the previous chapter: <code>INT</code> and <code>RND</code>. This is 
@@ -546,6 +570,7 @@ little arrows from each statement to possible next statements, your
 arrows are going to form a loop; a sequence of statements to be 
 (possibly) repeated.</p>
 
+<div class="frame">
 <p><strong>Trivia:</strong> Loops that read the console and depending on 
 what has been entered print something are called <em>REPL</em> by 
 wizards, which stands for 
@@ -553,6 +578,7 @@ wizards, which stands for
 <strong>E</strong>valuate -
 <strong>P</strong>rint -
 <strong>L</strong>oop. If you think about it, ZX BASIC itself is a REPL.</p>
+</div>
 
 <p>Lines <code>90</code> and <code>100</code> are just regular 
 <code>PRINT</code> statements. Just like in <code>INPUT</code> the 
