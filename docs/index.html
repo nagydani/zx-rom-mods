@@ -543,14 +543,14 @@ assigns values to variables, but, unlike <code>LET</code>, it reads the
 value from the console. The keyword <code>INPUT</code> is followed by a 
 list consisting of things to write to the console and variable names 
 which are to be assigned the values read from the console. These can be 
-separated by comma (<code>,</code>), semicolon (<code>;</code>), or 
-apostrophe (<code>'</code>). The difference is where the next item is 
-going to appear on the console: in case of a comma, it is going to be 
-neatly tabulated to either the middle of the line, or, if there is no 
-space for that, to the beginning of the next line, in case of a 
-semicolon, it is going to appear right after the end of the previous 
-item, while in case of an apostrophe, it is going to appear at the 
-beginning of the next line. Try changing the separator between 
+separated by comma (<code>,</code>, SYM+N), semicolon (<code>;</code>, 
+SYM+O), or apostrophe (<code>'</code>, SYM+7). The difference is where 
+the next item is going to appear on the console: in case of a comma, it 
+is going to be neatly tabulated to either the middle of the line, or, if 
+there is no space for that, to the beginning of the next line, in case 
+of a semicolon, it is going to appear right after the end of the 
+previous item, while in case of an apostrophe, it is going to appear at 
+the beginning of the next line. Try changing the separator between 
 <code>"Your guess?"</code> and <code>guess</code> in line 
 <code>40</code> to see all this in action.</p>
 
@@ -645,7 +645,8 @@ modify the game a little bit. Change the following lines:</p>
 <p>Then delete lines <code>130</code> through <code>150</code>. You can
 accomplish this by the command <code>DELETE 130 TO 150</code>. The new
 keyword <code>TAB</code> in line <code>50</code> is similar to the 
-comma, but it can tabulate to any position (22, in our case)</p>
+comma, but it can tabulate to any position (22, in our case), not just
+the middle of the line, which would be <code>TAB 16</code>.</p>
 
 <p>Now you can <code>RUN</code> this &quot;new game&quot;. It is now more 
 similar to <em>Twenty Questions</em> in that every question is answered 
