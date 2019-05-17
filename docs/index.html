@@ -49,6 +49,7 @@ Spectrum computer.</em>
 	<li><a href="#console">Meet the Console</a>
 	<li><a href="#basics">The Basics of BASIC</a>
 	<li><a href="#first">Guess the Number</a>
+	<li><a href="#second">2048</a>
 </ol>
 
 <h2><a id="intro" />Introduction</h2>
@@ -607,7 +608,7 @@ tries to guess it.</p>
  140   PRINT "2: It is ";guess;"."
  150   STOP
  160  ELSE
- 170   PRINT
+ 170   PRINT "I do not understand ";answer;"."
  180  END IF
  190 UNTIL high-low<2
  200 PRINT "This cannot be."'low;" is too low, but ";high;" is too high."
@@ -627,6 +628,165 @@ whole number between 1 and 1000.</p>
 powers</em> in wizard-speak) is denoted by the upwards-pointing arrow 
 (<code>^</code>, SYM+H) in ZX BASIC. Try <code>PRINT 2^10</code>.
 </p>
+
+<p>Play this game a few times and note the sequences of answers you give 
+to ZX85. It will always guess the number in no more than 10 questions and
+for any given number, the sequence of questions and answers will be the
+same. In fact, if you know that the number is somewhere between 1 and 1000,
+the answers you give already uniquely identify the number. Now let us
+modify the game a little bit. Change the following lines:</p>
+<pre>
+  50 PRINT "Is it at least ";guess;"?";TAB 22;
+  60 INPUT "0: No, it is not."'"1: Yes, it is."'answer
+  90 PRINT "0: No."
+ 120 PRINT "1: Yes."
+ 200 PRINT "The number is ";low;"."
+</pre>
+<p>Then delete lines <code>130</code> through <code>150</code>. You can
+accomplish this by the command <code>DELETE 130 TO 150</code>. The new
+keyword <code>TAB</code> in line <code>50</code> is similar to the 
+comma, but it can tabulate to any position (22, in our case)</p>
+
+<p>Now you can <code>RUN</code> this &quot;new game&quot;. It is now more 
+similar to <em>Twenty Questions</em> in that every question is answered 
+by either &quot;yes&quot; or &quot;no&quot;. However, the computer will
+always guess the number in exactly 10 questions. For example, 500 would be
+guessed like this:
+<pre>
+Is it at least 512?   0: No.
+Is it at least 256?   1: Yes.
+Is it at least 384?   1: Yes.
+Is it at least 448?   1: Yes.
+Is it at least 480?   1: Yes.
+Is it at least 496?   1: Yes.
+Is it at least 504?   0: No.
+Is it at least 500?   1: Yes.
+Is it at least 502?   0: No.
+Is it at least 501?   0: No.
+The number is 500.
+</pre>
+If you change
+the <code>1000</code> in line <code>10</code> to <code>1000000</code>
+(one <em>million</em>) and also <code>high</code> in line <code>20</code>
+from <code>1024</code> to <code>2^20</code> it will ask 20 questions before 
+guessing the number. Any integer up to a million in just 20 yes/no
+questions!</p>
+
+<div class="frame">
+<p><strong>Trivia:</strong> The strategy of picking the middle element in
+some ordering, comparing it to what you are looking for and based on whether
+or not it is greater, continuing either with the lower or the upper half
+of the ordering is called <em>binary search</em> and it is the wizard's way
+of quickly finding needles in haystacks. It is a simple, yet very powerful
+strategy (or <em>algorithm</em> in wizard-speak) from a broader class of
+<em>divide and conquer</em> algorithms. You are going to learn many of those
+and maybe invent some of your own.
+</p>
+<p>Our word &quot;algorithm&quot; is honoring an outstanding medieval wizard,
+<em>Muhammad al-Khwarizmi</em>, who invented or rigorously described several
+algorithms that we regulary use to this day.</p>
+<div class="figure">
+<img src="https://upload.wikimedia.org/wikipedia/commons/f/fd/Khiva.jpg"
+width="600" height="400" alt="Muhammad_ibn_Musa_al-Khwarizmi statue, Khiva">
+<figcaption>The statue of Muhammad al-Khwarizmi in his native Khiva (in
+today's Uzbekistan)</figcaption>
+</div>
+</div>
+
+<p>The answers in <em>this</em> game <em>do</em> uniquely identify the 
+integer and you do not even need to know how large it can be, as that 
+can be learned from the <em>number</em> of answers. It is called 
+<em>binary representation</em> and this is how computers represent 
+numbers internally. In ZX Basic, you can use this representation using 
+the <code>BIN</code> keyword. For example, you can write <code>BIN 
+0111110100</code> instead of <code>500</code>. Moreover, you can omit 
+the leading zeroes, so <code>BIN 111110100</code> also means 500.</p>
+
+<p>In general, <em>everything</em> is a sequence of zeroes 
+and ones for the computer. Just like in the game above, it is common 
+practice to represent &quot;yes&quot; by <code>1</code> and 
+&quot;no&quot; by <code>0</code>. ZX85 actually does it all the time. 
+For example, ask it whether two is less than one by typing <code>PRINT 
+2&lt;1</code>. It will answer <code>0</code> by which it means 
+&quot;No.&quot;. But to <code>PRINT 2&gt;1</code> or to 
+<code>PRINT 2+2=4</code> it will answer <code>1</code> by which it means 
+&quot;Yes.&quot;. Anywhere where you can write answers to yes/no questions,
+you can also write numeric expressions, where those evaluating to zero
+will be taken as a &quot;no&quot;, everything else as a &quot;yes&quot;.
+For example, <code>IF 0 THEN PRINT "zero"</code> will not output anything,
+but <code>IF 1 THEN PRINT "one"</code> will output <code>one</code> to
+the canvas, and so will <code>IF 5 THEN PRINT "one"</code>.</p>
+
+<p>Binary numbers are very important in wizardry, or as wizards call it, 
+<em>computer science</em>. Those wishing to become wizards better learn 
+to use them as second nature. For example, you should get into the habit 
+of counting on your fingers in binary. Thus, instead of just 5, you will 
+be able to count up to 31 on one hand (be careful with showing number 4 
+to other people; muggles might misunderstand you). Each <em>digit</em> 
+(which is just Latin for &quot;finger&quot;) in a binary number 
+corresponds to a power of 2. Your thumb corresponds to 1 (which is 
+2<sup>0</sup>), your index finger corresponds to 2 (2<sup>1</sup>), your 
+middle finger to 4 (2<sup>2</sup>), your ring finger to 8 
+(2<sup>3</sup>) and your pinky to 16 (2<sup>4</sup>). For example, if 
+you want to show 7, you only extend your thumb, your index finger and 
+your middle finger, becase 1 + 2 + 4 = 7 (try <code>PRINT BIN 
+00111</code>). An extended thumb, index finger and pinky means 19 (which 
+is 1 + 2 + 16, <code>BIN 10011</code>). In general, if you want to find 
+out the binary representation of a number, you can either play the game 
+above, or use another keyword, <code>STR$</code>. For example, 
+<code>PRINT STR$ (30,2)</code> will be answered with <code>11110</code> 
+(try it!), meaning all except your thumb extended. <code>STR$</code> is 
+used to obtain various representations of numbers, with <code>2</code> 
+meaning binary. The brackets are needed, because otherwise 
+<code>STR$</code> will only concern itself with <code>30</code>, the 
+comma would mean tabulation to the middle of the line and <code>2</code> 
+would mean 2. Try!</p>
+
+<div class="frame">
+
+<p><strong>Trivia:</strong> While all actual computers used today by 
+humans are binary, it is not the only reasonable choice for digital 
+computers. The reason humanity ended up using binary computers 
+exclusively is that there are tremendous benefits in all computers being 
+based on the same logic so that many things only need to be done once 
+and used everywhere. The other reasonable choice for digital computers 
+is <em>ternary</em>, which is based around the powers of 3 rather than 
+two. The three kinds of digits there are -1, 0 and +1, meaning 
+&quot;no&quot;, &quot;unknown&quot; and &quot;yes&quot;. Alien computers 
+may very well be ternary. In fact, humanity has also explored ternary 
+computing, an effort culminating in the serial production of a ternary 
+computer named Setun' after a creek flowing through the campus of 
+Lomonosov University in Moscow, Russia. But by the time the details were 
+worked out to the point of practicality, binary computers were so 
+widespread that it did not make much sense to continue. </p>
+
+<p>However, this choice does not matter all that much. All digital 
+computers can &quot;pretend to be&quot; (wizards say <em>emulate</em>) 
+any other digital computer, so the (amazingly broad and to this day 
+largely unexplored) set of problems that can be solved by digital 
+computers does not depend on this choice. This universality (called 
+<em>Turing-completeness</em> in his honor) was discovered and proven by an 
+outstanding British wizard in the middle of the twentieth century, a 
+pioneer of electronic computing, <em>Alan Turing</em>.</p>
+
+<div class="figure">
+<img 
+src="https://upload.wikimedia.org/wikipedia/commons/a/a1/Alan_Turing_Aged_16.jpg" 
+width="405" height="551" alt="Young Alan Turing">
+<figcaption>Alan Turing, aged 16, before his great 
+discoveries</figcaption>
+</div>
+</div>
+
+<h2><a id="second"/>2048</h2>
+
+<p>Now is the time to write the first game that is actually a lot of fun 
+to play, to the point of being mildly addictive. The author readily 
+admits to spending most of a twelve-hour trans-pacific flight playing 
+this game on the onboard entertainment system. Playing this game will 
+also help you memorize the powers of two. This game called 
+<strong>2048</strong> was designed by an Italian wizard, Gabriele 
+Cirulli in 2014.</p>
 
 </body>
 </html>
