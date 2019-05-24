@@ -828,7 +828,7 @@ LOCAL_N:CP	"("
 LOCAL_E:RST	$18		; TODO: ???
 	CP	","
 	JR	Z,LOCAL_R
-	LD	HL,L1BEE + 5	; CHECK_END + 5; TODO: array initializer?
+	LD	HL,L1BEE + 5	; CHECK-END + 5; TODO: array initializer?
 	PUSH	HL
 SW_LOC:	JP	SWAP
 
@@ -1689,7 +1689,7 @@ STEP_CONT:
 	AND	A
 	SBC	HL,SP		; Handling an error?
 	JP	NZ,STEP_E	; jump, if so
-	BIT	7,(IY+$0A)	; Jump to be made?
+	BIT	7,(IY+$0A)	; Jump to be made? NSPPC
 	JR	NZ,STEP_NX	; forward, if not
 	LD	HL,(NEWPPC)
 	BIT	7,H
@@ -1719,7 +1719,9 @@ STEP_LN:RST	$28
 	DEC	HL
 STEP_LE:INC	HL
 	LD	A,1
-STEP_LC:LD	D,(HL)
+STEP_LC:CP	$01
+	ADC	A,$00
+	LD	D,(HL)
 	BIT	7,D
 	JR	NZ,RENUME	; Program finished
 	BIT	6,D
@@ -1739,9 +1741,9 @@ STEP_NL:LD	(NXTLIN),HL
 	LD	(CH_ADD),HL
 	LD	D,A
 	LD	E,$00
-	LD	(IY+$0A),$FF
+	LD	(IY+$0A),$FF	; NSPPC
 	DEC	D
-	LD	(IY+$0D),D
+	LD	(IY+$0D),D	; SUBPPC
 	JR	Z,STEP_N
 	INC	D
 	RST	$28
@@ -2176,7 +2178,7 @@ PROC_E:	POP	DE		; return address
 	LD	(ERR_SP),SP
 	PUSH	DE
 	RST	$20		; skip closing bracket Of DEF PROC
-PROC_EE:JP	END05
+PROC_EE:JP	SWAP
 
 
 WHILE:	LD	HL,(CH_ADD)
