@@ -19841,11 +19841,12 @@ REP_CLEAR:
         JP	L1097           ; routine CLEAR-SP clears editing area which
                                 ; probably contained 'RUN'.
 
-; Add cursor, if in automatic listing mode (8 bytes)
+; Add cursor, if in automatic listing mode (9 bytes)
 LIST_CURSOR:
 	BIT	4,(IY+$02)
 	RET	Z
 	LD	D,">"
+	SCF
 	RET
 
 ; PAUSE loop (21 bytes)
@@ -20087,7 +20088,7 @@ LOOK_READ:
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-	DEFB    $FF, $FF, $FF, $FF, $FF;	, $FF, $FF, $FF;
+	DEFB    $FF, $FF, $FF, $FF;	, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
