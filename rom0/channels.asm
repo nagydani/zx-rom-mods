@@ -124,6 +124,8 @@ K_ING3:	BIT	5,(IY+$30)	; mode K suppressed?
 	JR	C,K_INSW	; jump, if so
 	CP	"$"
 	JR	Z,K_TKE
+	CP	"@"
+	JR	Z,K_TKE
 	CP	"#"
 	JP	NZ,K_INSTT
 K_TKE:	LD	(IY-$2D),$80	; signal potential token end
@@ -263,6 +265,8 @@ EXT_NT:	LD	A,(HL)
 	JR	Z,EXT_N
 	CP	"#"
 	JR	Z,EXT_NS
+	CP	"@"
+	JR	Z,EXT_LB
 	RST	$28
 	DEFW	L2C8D		; ALPHA
 	JR	C,EXT_N
@@ -301,12 +305,14 @@ EXT_LS:	RST	$28
 	JR	Z,EXT_L		; instruction tokens might have spaces
 EXT_SP:	INC	HL
 	INC	HL
-	LD	A,(K_STATE)
+EXT_TT:	LD	A,(K_STATE)
 	AND	$08		; instruction mode?
 	JR	NZ,EXT_OPR	; jump, if not
 	CALL	TOK_INS
 	JR	EXT_CNT
 
+EXT_LB:	LD	B,1
+	JR	EXT_TT
 
 EXT_OPR:CALL	TOK_OPR
 EXT_CNT:JR	C,K_INSF
