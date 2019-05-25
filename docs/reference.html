@@ -1,0 +1,253 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html>
+<head>
+	<title>Reference</title>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8" />
+	<style type="text/css">
+	@font-face {
+		font-family: 'ZX';
+		src: url('font/ZXSpectrumNext.ttf') format('truetype')
+	}
+	body {
+		margin: 5em;
+		padding: 1em;
+		font-family: Helvetica, Geneva, Arial, sans-serif
+	}
+	code {
+		font-family: ZX
+	}
+	pre {
+		font-family: ZX
+	}
+	td {
+		padding-right: 2em;
+	}
+	</style>
+</head>
+<body>
+
+<h1>Reference</h1>
+
+<h2>Instructions</h2>
+
+<dl>
+<dt><code>ASSERT</code> <em>condition</em></dt>
+<dd>Evaluates numeric expression <em>condition</em> and stops, if it equals
+zero, reporting
+&quot;<code>V ASSERT failed</code>&quot;
+If the expression does not equal zero, it has no effects beyond those of
+evaluating the expression. Useful for debugging, asserting invariant
+conditions to find out when they do not hold.
+</dd>
+
+<dt><code>BEEP</code> <em>duration</em><code>,</code><em>pitch</em></dt>
+<dd>...</dd>
+
+<dt><code>BORDER</code> <em>color</em></dt>
+<dd>...</dd>
+
+<dt><code>BRIGHT</code> <em>attribute_bit</em></dt>
+<dd>...</dd>
+
+<dt><code>CAT</code></dt>
+<dd>...</dd>
+
+<dt><code>CIRCLE</code> <em>x_coordinate</em><code>,</code><em>y_coordinate</em><code>,</code><em>radius</em></dt>
+<dd>...</dd>
+
+<dt><code>CLEAR</code> [<em>RAMTOP_value</em>]</dt>
+<dd>...</dd>
+
+<dt><code>CLOSE #</code><em>stream_number</em></dt>
+<dd>...</dd>
+
+<dt><code>CLS</code></dt>
+<dd>...</dd>
+
+<dt><code>CONTINUE</code></dt>
+<dd>...</dd>
+
+<dt><code>COPY</code></dt>
+<dd>...</dd>
+
+<dt><code>DATA</code> <em>item</em>[<code>,</code>...]</dt>
+<dd>...</dd>
+
+<dt><code>DEF FN</code> <em>name</em><code>(</code>[<em>argument</em>[<code>,</code>...]]<code>)=</code><em>expression</em></dt>
+<dd>...</dd>
+
+<dt><code>DEF PROC</code> <em>name</em><code>(</code>[[<code>REF </code>]<em>argument</em>[<code>,</code>...]]<code>)</code></dt>
+<dd>...</dd>
+
+<dt><code>DELETE</code> <em>variable</em></dt>
+<dd>...</dd>
+
+<dt><code>DELETE</code> [<em>line_number</em>][<code> TO </code>[<em>line_number</em>]]</dt>
+<dd>...</dd>
+
+<dt><code>DIM</code> <em>name</em><code>(</code><em>dimension</em>[<code>,</code>...]<code>)</code></dt>
+<dd>...</dd>
+
+<dt><code>DRAW</code> <em>x_coordinate</em><code>,</code><em>y_coordinate</em>[<code>,</code><em>arc</em>]</dt>
+<dd>...</dd>
+
+<dt><code>ELSE</code> [<em>statement</em>[<code>:</code>...]]</dt>
+<dd>...</dd>
+
+<dt><code>END IF</code></dt>
+<dd>...</dd>
+
+<dt><code>END PROC</code></dt>
+<dd>...</dd>
+
+<dt><code>END WHILE</code></dt>
+<dd>...</dd>
+
+<dt><code>ERASE</code></dt>
+<dd>...</dd>
+
+<dt><code>FLASH</code> <em>attribute_bit</em></dt>
+<dd>...</dd>
+
+<dt><code>FOR</code> <em>name</em><code>=</code><em>start</em> <code>TO</code> <em>end</em> [<code>STEP</code> <em>step</em>]</dt>
+<dd>...</dd>
+
+<dt><code>FORMAT</code></dt>
+<dd>...</dd>
+
+<dt><code>GO SUB</code> <em>destination</em></dt>
+<dd>...</dd>
+
+<dt><code>GO TO</code> <em>destination</em></dt>
+<dd>...</dd>
+
+<dt><code>IF</code> <em>condition</em> [<code>THEN</code> statement[<code>:</code>...]]</dt>
+<dd>...</dd>
+
+<dt><code>INK</code> <em>color</em></dt>
+<dd>...</dd>
+
+<dt><code>INPUT</code> [<em>print_items</em>] <em>variable_reference</em> [...]</dt>
+<dd>...</dd>
+
+<dt><code>INVERSE</code> <em>attribute_bit</em></dt>
+<dd>...</dd>
+
+<dt><code>@</code><em>label</em></dt>
+<dd>...</dd>
+
+<dt><code>LET</code> <em>variable_reference</em>[<em>operator</em>]<code>=</code>value</dt>
+<dd>...</dd>
+
+<dt><code>LIST</code> [<em>line_number</em>][<code> TO </code>[<em>line_number</em>]]</dt>
+<dd>...</dd>
+
+<dt><code>LLIST</code> [<em>line_number</em>][<code> TO </code>[<em>line_number</em>]]</dt>
+<dd>...</dd>
+
+<dt><code>LOAD</code></dt>
+<dd>...</dd>
+
+<dt><code>LOCAL</code> <em>variable_name</em> [<code>=</code><em>initial_value</em>][<code>,</code>...]</dt>
+<dd>...</dd>
+
+<dt><code>LPRINT</code> <em>print_items</em></dt>
+<dd>...</dd>
+
+<dt><code>MERGE</code></dt>
+<dd>...</dd>
+
+<dt><code>MOVE</code></dt>
+<dd>...</dd>
+
+<dt><code>NEW</code></dt>
+<dd>...</dd>
+
+<dt><code>NEXT</code> [<em>variable_name</em>]</dt>
+<dd>...</dd>
+
+<dt><code>OPEN #</code><em>stream_number</em><code>,</code><em>stream_definition</em></dt>
+<dd>...</dd>
+
+<dt><code>OUT</code> <em>port</em><code>,</code><em>value</em></dt>
+<dd>...</dd>
+
+<dt><code>OVER</code> <em>attribute_bit</em></dt>
+<dd>...</dd>
+
+<dt><code>PALETTE</code> <em>mode</em></dt>
+<dd>...</dd>
+
+<dt><code>PALETTE</code> <em>color</em><code>;</code><em>red</em><code>,</code><em>green</em><code>,</code><em>blue</em></dt>
+<dd>...</dd>
+
+<dt><code>PAPER</code> <em>color</em></dt>
+<dd>...</dd>
+
+<dt><code>PAUSE</code> <em>delay</em></dt>
+<dd>...</dd>
+
+<dt><code>PLAY</code></dt>
+<dd>...</dd>
+
+<dt><code>PLOT</code> <em>x_coordinate</em><code>,</code><em>y_coordinate</em></dt>
+<dd>...</dd>
+
+<dt><code>POKE</code> <em>address</em><code>,</code><em>value</em> [<code>,</code><em>value</em>...]</dt>
+<dd>...</dd>
+
+<dt><code>PRINT</code> <em>print_items</em></dt>
+<dd>...</dd>
+
+<dt><code>PROC</code> <em>name</em><code>(</code>[<em>argument</em> [<code>,</code>...]]<code>)</code></dt>
+<dd>...</dd>
+
+<dt><code>RANDOMIZE</code> [<em>seed</em>]</dt>
+<dd>...</dd>
+
+<dt><code>READ</code> <em>variable_reference</em> [<code>,</code>...]</dt>
+<dd>...</dd>
+
+<dt><code>REM</code> <em>remark</em></dt>
+<dd>...</dd>
+
+<dt><code>RENUM</code></dt>
+<dd>...</dd>
+
+<dt><code>REPEAT</code></dt>
+<dd>...</dd>
+
+<dt><code>RESTORE</code> <em>source</em></dt>
+<dd>...</dd>
+
+<dt><code>RETURN</code> [<code>:</code> <em>tail_call</em>]</dt>
+<dd>...</dd>
+
+<dt><code>RUN</code> [<em>destination</em>]</dt>
+<dd>...</dd>
+
+<dt><code>SAVE</code></dt>
+<dd>...</dd>
+
+<dt><code>STEP</code> [<em>print_items</em>]</dt>
+<dd>...</dd>
+
+<dt><code>STOP</code></dt>
+<dd>...</dd>
+
+<dt><code>UNTIL</code> <em>condition</em></dt>
+<dd>...</dd>
+
+<dt><code>USR</code> <em>address</em></dt>
+<dd>...</dd>
+
+<dt><code>VERIFY</code></dt>
+<dd>...</dd>
+
+<dt><code>WHILE</code> <em>condition</em></dt>
+<dd>...</dd>
+</dl>
+
+</body>
+</html>
+
