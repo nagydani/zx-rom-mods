@@ -266,7 +266,7 @@ EXT_NT:	LD	A,(HL)
 	CP	"#"
 	JR	Z,EXT_NS
 	CP	"@"
-	JR	Z,EXT_LB
+	JR	Z,EXT_N
 	RST	$28
 	DEFW	L2C8D		; ALPHA
 	JR	C,EXT_N
@@ -305,14 +305,11 @@ EXT_LS:	RST	$28
 	JR	Z,EXT_L		; instruction tokens might have spaces
 EXT_SP:	INC	HL
 	INC	HL
-EXT_TT:	LD	A,(K_STATE)
+	LD	A,(K_STATE)
 	AND	$08		; instruction mode?
 	JR	NZ,EXT_OPR	; jump, if not
 	CALL	TOK_INS
 	JR	EXT_CNT
-
-EXT_LB:	LD	B,1
-	JR	EXT_TT
 
 EXT_OPR:CALL	TOK_OPR
 EXT_CNT:JR	C,K_INSF
