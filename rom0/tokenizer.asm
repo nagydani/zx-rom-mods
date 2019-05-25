@@ -47,9 +47,9 @@ TOK_OPR:LD	DE,L0095 + 1
 TOK_ON:	EX	AF,AF'
 	LD	DE,TOKENS0 + 1	; FREE token
 	CALL	FTOKENL
+	RR	D		; save CF
 	OR	A
 	RET	Z
-	RR	D
 	ADD	A,25		; 26 unreachable operator tokens
 	CPL
 	RL	D
@@ -108,9 +108,17 @@ TESTKW1:INC	DE
 	RET	C		; full match
 	INC	HL
 	DJNZ	TESTKW
+	LD	A,(DE)
+	INC	DE
+	CP	$80 + " "
+	CCF
+	RET	Z
+	ADD	A,A
+	CCF
+	RET	NC
 TESTKW2:LD	A,(DE)
 	INC	DE
-	ADD	A
+	ADD	A,A
 	JR	NC,TESTKW2
 	AND	A		; partial match
 	RET
