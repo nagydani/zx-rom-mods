@@ -789,6 +789,183 @@ also help you memorize the powers of two. This game called
 <strong>2048</strong> was designed by an Italian wizard, Gabriele 
 Cirulli in 2014.</p>
 
+<p>The game is played on a 4×4 grid, starting out empty. Every turn, a 
+new tile with a value 2 or 4 will appear in one of the empty spots. The 
+player can slide the tiles with the arrow keys. Each tile slides until 
+it hits another tile or the edge of the grid. When two tiles with the same 
+number collide, they will merge into a tile carrying their total value.
+The resulting tile will not merge in the same move. The game is won when
+a tile with a value of 2048 appears.</p>
+
+<p>We will add score- and time-keeping, colorful graphics and music to 
+our game later, first we write the most important parts of the game so 
+that it can be played. Let's begin with drawing the grid:</p>
+
+<pre>
+  10 LET b$="+----"*4+"+"+CHR$ 13
+  20 PRINT (b$+("|    "*4+"|"+CHR$ 13)*4)*4+b$
+</pre>
+
+<p>There are several new things here. The variable name <code>b$</code> 
+ends with <code>$</code> pronounced as <em>string</em>, making 
+<code>b$</code> a <em>string variable</em>. The value it holds is a 
+string, rather than a number. Strings are sequences of 
+<em>characters</em>, which can be letters, digits, symbols, 
+<em>tokens</em> or <em>control characters</em>. In fact, the quoted 
+texts in previous examples are all strings. In the assignment of 
+<code>b$</code> in line <code>10</code>, there is a <em>string 
+expression</em>. The <code>+</code> between two strings results in a new 
+string, consisting of the lefthand string immediately followed by the 
+righthand string. For example <code>"Hello"+"World!"</code> would 
+result in <code>HelloWorld!</code>. Try it! If there is a 
+<code>*</code> between a string and a number (or a string expression and 
+a numeric expression), it repeats the lefthand string the righthand number of
+times. For example, <code>"!"*3</code> results in <code>!!!</code>.</p>
+
+<p>There is also a new keyword, <code>CHR$</code>. Keywords ending with 
+<code>$</code> are <em>string valued functions</em> that turn their 
+arguments into strings. In particular <code>CHR$</code> turns the number 
+following it into one character with that particular <em>character 
+code</em>, if that number is between 0 and 255. Character codes between 
+0 and 23 are <em>control characters</em>. Among them, <code>CHR$ 
+13</code> is known under a number of names: <em>Carriage Return, CR, 
+Enter, New Line, Return</em>, but they all mean the same thing. It 
+indicates the end of a line and a beginnig of a new line.</p>
+
+<p>Thus, line <code>10</code> assings the following string to <code>b$</code>:
+<pre>
++----+----+----+----+
+</pre>
+You can verify this by entering <code>PRINT b$</code>. Moreover, the program
+would work exactly the same, if we changed line <code>10</code> to this:
+<pre>
+  10 LET b$="+----+----+----+----+"+CHR$ 13
+</pre>
+However, that would take more time to type and would take up more memory of the 
+computer. By typing a long and repetitive line like that the wizard does 
+something that a computer can do better and faster. Why not let the computer
+do all this tedious work?</p>
+
+<p>Line <code>20</code> uses <code>b$</code> to draw the grid using similar 
+techniques. By now, you know enough to understand every detail of it. Of 
+course, both lines can be replaced by a sequence of <code>PRINT</code>
+statements:
+<pre>
+   1 PRINT "+----+----+----+----+"
+   2 PRINT "|    |    |    |    |"
+   3 PRINT "|    |    |    |    |"
+   4 PRINT "|    |    |    |    |"
+   5 PRINT "|    |    |    |    |"
+   6 PRINT "+----+----+----+----+"
+   7 PRINT "|    |    |    |    |"
+   8 PRINT "|    |    |    |    |"
+   9 PRINT "|    |    |    |    |"
+  10 PRINT "|    |    |    |    |"
+  11 PRINT "+----+----+----+----+"
+  12 PRINT "|    |    |    |    |"
+  13 PRINT "|    |    |    |    |"
+  14 PRINT "|    |    |    |    |"
+  15 PRINT "|    |    |    |    |"
+  16 PRINT "+----+----+----+----+"
+  17 PRINT "|    |    |    |    |"
+  18 PRINT "|    |    |    |    |"
+  19 PRINT "|    |    |    |    |"
+  20 PRINT "|    |    |    |    |"
+  21 PRINT "+----+----+----+----+" </pre>
+But typing all that would be a huge waste of the wizard's time and the 
+computer's memory. There are computer programs having such repetitive 
+patterns in them and there are legitimate justifications for writing 
+software like this, but these are typically written by another computer 
+program. In a later chapter, we shall see how to write computer programs 
+writing computer programs. Now it is time to go back writing our 
+little game.</p>
+
+<pre>
+  30 DIM b(4,4)
+</pre>
+
+
+
+<pre>
+  40 REPEAT 
+  50  PROC drop()
+  60  REPEAT 
+  70   LET action=0: LOCAL k
+  80   REPEAT 
+  90    LET k=CODE INKEY$
+ 100   UNTIL k>=8 AND k<=11
+ 110   IF k=8 THEN PROC move(1,1,0,1)
+ 120   ELSE IF k=9 THEN PROC move(4,4,0,-1)
+ 130   ELSE IF k=10 THEN PROC move(4,1,-1,0)
+ 140   ELSE IF k=11 THEN PROC move(1,4,1,0)
+ 150  UNTIL action
+ 160  PROC board()
+ 170 UNTIL board full
+ 180 STOP
+</pre>
+<pre>
+ 190 DEF PROC drop()
+ 200  LOCAL x,y,k
+ 210  FOR i=1 TO 4: FOR j=1 TO 4
+ 220   IF NOT b(i,j)
+ 230    LET k+=1
+ 240    IF RND<1/k THEN LET x=i: LET y=j
+ 250   END IF 
+ 260  NEXT : NEXT 
+ 270  LET board full=NOT x
+ 280  IF x
+ 290   LET k=1+(RND<.5)
+ 300   LET b(x,y)=k
+ 310   PROC tile(x,y,k)
+ 320  END IF 
+ 330 END PROC 
+</pre>
+<pre>
+ 340 DEF PROC move(i,j,x,y)
+ 350  FOR n=1 TO 4
+ 360   PROC row(i,j,x,y)
+ 370   LET i+=y: LET j-=x
+ 380  NEXT 
+ 390 END PROC 
+</pre>
+<pre>
+ 400 DEF PROC row(i,j,x,y)
+ 410  LOCAL k=i,l=j
+ 420  FOR n=1 TO 3
+ 430   LET i+=x: LET j+=y
+ 440   IF b(i,j)
+ 450    WHILE b(k,l) AND b(k,l)<>b(i,j)
+ 460     LET k+=x: LET l+=y
+ 470    END WHILE 
+ 480    IF NOT b(k,l)
+ 490     LET b(k,l)=b(i,j)
+ 500     LET b(i,j)=0
+ 510     LET action=1
+ 520    ELSE IF b(k,l)=b(i,j) AND (i<>k OR j<>l)
+ 530     LET b(k,l)+=1
+ 540     LET b(i,j)=0
+ 550     LET action=1
+ 560    END IF 
+ 570   END IF 
+ 580  NEXT 
+ 590 END PROC 
+</pre>
+<pre>
+ 600 DEF PROC tile(x,y,k)
+ 610  LOCAL k$=k?("",STR$ (2^k))
+ 620  LET k$=" "*(4-LEN k$)+k$
+ 630  PRINT AT x*5-2,y*5-4;k$
+ 640 END PROC 
+</pre>
+<pre>
+ 650 DEF PROC board()
+ 660  FOR i=1 TO 4: FOR j=1 TO 4
+ 670   PROC tile(i,j,b(i,j))
+ 680  NEXT : NEXT 
+ 690 END PROC 
+</pre>
+
+
 </body>
 </html>
 
