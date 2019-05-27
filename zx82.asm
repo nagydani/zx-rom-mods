@@ -4991,7 +4991,8 @@ L0FA9:  LD      HL,(E_PPC)      ; fetch E_PPC the last line number entered.
 ;;;
         CALL    L1855           ; routine OUT-LINE outputs the BASIC line
                                 ; to the editing area.
-        INC     (IY+$0F)        ; restore E_PPC_lo to the previous value.
+;;; BUGFIX: no need for restoring, if not corrupted
+;;;	INC     (IY+$0F)        ; restore E_PPC_lo to the previous value.
         LD      HL,(E_LINE)      ; address E_LINE in editing area.
         INC     HL              ; advance
         INC     HL              ; past space
@@ -5002,6 +5003,7 @@ L0FA9:  LD      HL,(E_PPC)      ; fetch E_PPC the last line number entered.
         POP     HL              ; restore the address of CURCHL.
 ;;; BUFGIX: tail call, baby!
 	JP	L1615
+	DEFS	3		; spare 3 bytes
 ;;;     CALL    L1615           ; routine CHAN-FLAG sets flags for it.
 ;;;     RET                     ; RETURN to ED-LOOP.
 
