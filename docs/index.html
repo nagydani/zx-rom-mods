@@ -54,13 +54,14 @@ Spectrum computer.</em>
 
 <h2><a id="intro" />Introduction</h2>
 
-<p><em>Yet to be written</em></p>
+<p><em><strong>Yet to be written</strong></em></p>
 
 <h2><a id="console" />Meet the Console</h2>
 
-<p>The <em>console</em> is how wizards talk to computers, in their own 
-language. Unlike the <em>desktop</em>, which is what muggles use to get 
-the computer do what they need, the console allows you, in principle, to 
+<p>The <em><strong>console</strong></em> is how wizards talk to 
+computers, in their own language. Unlike the 
+<em><strong>desktop</strong></em>, which is what muggles use to get the 
+computer do what they need, the console allows you, in principle, to 
 make the computer do <em>anything</em> that the computer is capable of 
 doing at all. It might seem less fancy, but it is far more powerful and 
 expressive than the desktop. Different computers might speak different 
@@ -76,8 +77,9 @@ which stands for
 
 There are many dialects of BASIC; ours is an evolution of <em>ZX 
 BASIC</em>, developed for Sinclair's ZX line of computers in the early 
-1980's. In particular, it is to a large extent backwards compatible 
-with that of the <em>ZX Spectrum</em>, upon which ZX85 is based.</p>
+1980's. In particular, it is to a large extent backwards compatible with 
+that of the <em><strong>ZX Spectrum</strong></em>, upon which ZX85 is 
+based.</p>
 
 <p>When you turn on your ZX85, it performs a quick self-test and greets
 you with the following message near the bottom of the screen:
@@ -98,32 +100,34 @@ is divided into two parts by a black stripe with a rainbow: </p>
 <img src="stripe.png" alt="BASIC:1 L ////" height="16" width="512"/>
 
 <p>In fact, the part <em>below</em> the stripe is the console, the part 
-<em>above</em> it is the <em>canvas</em>. Inside the stripe, you find 
-the following information: <code>BASIC</code> stands for the kind of 
-input the console expects from you. In this case, it expects a sequence 
-of </em>statements</em> in BASIC. Then you have <code>:1</code>, which 
-just indicates that you are about to type the <em>first</em> statement. 
-Near the middle of the stripe, you see an <code>L</code> character, 
-which is the current <em>input mode</em>. It tells you that if you press 
-a letter key, it will produce a <em>lower-case</em> letter (try it!).
-The rest is just decoration.</p>
+<em>above</em> it is the <em><strong>canvas</strong></em>. Inside the 
+stripe, you find the following information: <code>BASIC</code> stands 
+for the kind of input the console expects from you. In this case, it 
+expects a sequence of </em>statements</em> in BASIC. Then you have 
+<code>:1</code>, which just indicates that you are about to type the 
+<em>first</em> statement. Near the middle of the stripe, you see an 
+<code>L</code> character, which is the current <em><strong>input 
+mode</strong></em>. It tells you that if you press a letter key, it will 
+produce a <em><strong>lower-case</strong></em> letter (try it!). The 
+rest is just decoration.</p>
 
-<p>The blinking square is the so-called <em>cursor</em> which shows you 
-where what you type is going to appear. If you have already typed in 
-anything, you can move the cursor using the arrow keys. You can also 
-delete what is before the cursor (which is normally what you have typed 
-last) by hitting the DELETE key.</p>
+<p>The blinking square is the so-called <em><strong>cursor</strong></em> 
+which shows you where what you type is going to appear. If you have 
+already typed in anything, you can move the cursor using the arrow keys. 
+You can also delete what is before the cursor (which is normally what 
+you have typed last) by hitting the DELETE key.</p>
 
 <p>If you press CAPS LOCK, the mode changes to <code>C</code> which 
-stands for <em>capital-case</em> letters (try!). You can change back to 
-<code>L</code> mode by hitting CAPS LOCK again. You can also type 
-capital-case letters in <code>L</code> mode by pressing and holding the 
-SHIFT key <em>before</em> hitting the letter key. The SHIFT key needs to 
-be pressed while you are hitting the letter key in order for it to 
-produce a capital letter. If you keep any key pressed long enough, it 
-will repeat its function. To type the symbols on either number or letter 
-keys, you should press the SYM key (also called <em>Symbol Shift</em>) 
-similarly to how you type capital-case letters with SHIFT.</p>
+stands for <em><strong>capital-case</strong></em> letters (try!). You 
+can change back to <code>L</code> mode by hitting CAPS LOCK again. You 
+can also type capital-case letters in <code>L</code> mode by pressing 
+and holding the SHIFT key <em>before</em> hitting the letter key. The 
+SHIFT key needs to be pressed while you are hitting the letter key in 
+order for it to produce a capital letter. If you keep any key pressed 
+long enough, it will repeat its function. To type the symbols on either 
+number or letter keys, you should press the SYM key (also called 
+<em><strong>Symbol Shift</strong></em>) similarly to how you type 
+capital-case letters with SHIFT.</p>
 
 <div class="frame">
 <p><strong>Note:</strong> On many <em>other</em> computers, the symbols 
@@ -148,8 +152,9 @@ you're saying. In fact, the cursor is moved to after the first character
 that the computer did not understand; the very first one, in this case.</p>
  
 <p>Any valid statement in ZX BASIC must begin with a so-called 
-<em>instruction keyword</em>. They are, in alphabetical order, the 
-following:</p>
+<em><strong>instruction keyword</strong></em>. They are, in alphabetical 
+order, the following:</p>
+
 <table>
 <tr>
 <td>
@@ -273,7 +278,7 @@ period.</p>
 <p>If you move the cursor around, the computer won't let you move it 
 inside the (now capitalized) keyword anymore; it jumps from one side, to 
 the other. That is because it has recognized the keyword and now treats 
-it as a single unit, a so-called <em>token</em>.</p>
+it as a single unit, a so-called <em><strong>token</strong></em>.</p>
 
 <div class="frame">
 <p><strong>Trivia:</strong> Statements instructing the 
@@ -303,12 +308,12 @@ are capitalized in the <code>PRINT</code> keyword; <code>pRiNt 2+2</code>
 would work just the same.</p>
 
 <p>What happened here? The <code>4</code> is, as you might have guessed, 
-the <em>evaluation</em> of <code>2+2</code>. <code>OK</code> means what 
-you'd think it means: that there was no error in <em>executing</em> this 
+the <em><strong>evaluation</strong></em> of <code>2+2</code>. <code>OK</code> means what 
+you'd think it means: that there was no error in <em><strong>executing</strong></em> this 
 statement. The <code>0:1</code> after the comma tells us that this was 
 the first statement (<code>:1</code>, same as in the black stripe) of a 
 sequence entered from the console. The very first <code>0</code> in the 
-report is the <em>report code</em> identifiying the report. 
+report is the <em><strong>report code</strong></em> identifiying the report. 
 <code>0</code> stands for <code>OK</code>. While we need to talk to the 
 ZX85 in BASIC, it reports to us in English. However, it can be changed 
 to report in other human languages as well, in which case the text of 
@@ -328,9 +333,10 @@ canvas, we get an error report:</p>
 2 Variable not found, 0:1
 </pre>
 
-<p>This is because <code>Hello</code> is treated as a <em>name</em> of a 
-<em>variable</em> (more on this a bit later), not as a text to print. If 
-we mean a specific text, in BASIC, we must put it inside double quotes. 
+<p>This is because <code>Hello</code> is treated as a 
+<em><strong>name</strong></em> of a <em><strong>variable</strong></em> 
+(more on this a bit later), not as a text to print. If we mean a 
+specific text, in BASIC, we must put it inside double quotes.
 <code>PRINT &quot;Hello&quot;</code> actually does write 
 <code>Hello</code> on the canvas.</p>
 
@@ -345,9 +351,10 @@ keyboard. Furthermore, you must use the star (<code>*</code>) for
 multiplication, <em>not</em> the letter x.</p>
 </div>
 
-<p>Instructions given on the console are called <em>commands</em>.  
-However, one can also assemble sequences of instructions, which are 
-called <em>programs</em> and execute them together. Type
+<p>Instructions given on the console are called 
+<em><strong>commands</strong></em>.  However, one can also assemble 
+sequences of instructions, which are called 
+<em><strong>programs</strong></em> and execute them together. Type
 
 <pre>
 1 PRINT "Hello World!"
@@ -365,9 +372,11 @@ exactly the same. Such languages are called <em>scripting
 languages</em>, because programs are like scripted commands.</p>
 </div>
 
-<p>To <em>run</em> the program, just type the <code>RUN</code> command. 
-It does write <code>Hello World!</code> on the canvas, just like in the 
-previous example, but the report is slightly different:</p>
+<p>To <em><strong>run</strong></em> the program, just type the 
+<code>RUN</code> command. It does write <code>Hello World!</code> on the 
+canvas, just like in the previous example, but the report is slightly 
+different:</p>
+
 <pre>
 0 OK, 1:1
 </pre>
@@ -389,12 +398,13 @@ the canvas area:</p>
 </pre>
 
 <p>That little <code>&gt</code> sign after line number <code>2</code> is 
-the so-called <em>program cursor</em>. You can move it up and down with 
-the arrow keys and bring the pointed program line back down to the console 
-by pressing the EDIT key for further EDITing. Now try giving your ZX85 a
-personal name by EDITing line 2. If you wish to delete a program line, just
-enter its number without any instructions. Thus, for example, entering 
-<code>1</code> would remove the greeting from before the self-introduction.</p>
+the so-called <em><strong>program cursor</strong></em>. You can move it 
+up and down with the arrow keys and bring the pointed program line back 
+down to the console by pressing the EDIT key for further EDITing. Now 
+try giving your ZX85 a personal name by EDITing line 2. If you wish to 
+delete a program line, just enter its number without any instructions. 
+Thus, for example, entering <code>1</code> would remove the greeting 
+from before the self-introduction.</p>
 
 <p>In order to make it easier to insert new program lines in between 
 existing ones, there is a convention to number program lines by the 
@@ -418,11 +428,11 @@ modify them, make them better and, eventually, write your own games</p>
 
 <h2><a id="first"/>Guess the Number</h2>
 
-<p>The following ten-line program is a simple number guessing game. 
-The computer picks a random number between 1 and 1000 and you need to 
-guess it. After each guess, the computer would tell you whether your 
-guess was correct, too high or too low. Based on this information, you can 
-close in on the number picked by the computer. Type in the following program 
+<p>The following ten-line program is a simple number guessing game. The 
+computer picks a random number between 1 and 1000 and you need to guess 
+it. After each guess, the computer would tell you whether your guess was 
+correct, too high or too low. Based on this information, you can close 
+in on the number picked by the computer. Type in the following program 
 and then enter the <code>RUN</code> command to play a game.</p>
 
 <pre>
@@ -448,31 +458,33 @@ entering <code>RUN</code> again.</p>
 <div class="frame">
 <p><strong>Note:</strong> When the game asks you to guess a number, the 
 separator stripe between the canvas and the console says 
-<code>NUMERIC</code> instead of <code>BASIC</code> which means that it
-expects a number or a <em>numeric expression</em>; a formula that, 
-when evaluated, results in a number. So, if you type <code>100+200</code>, 
-it qualifies as a guess of <code>300</code>. Try it!</p>
+<code>NUMERIC</code> instead of <code>BASIC</code> which means that it 
+expects a number or a <em><strong>numeric expression</strong></em>; a 
+formula that, when evaluated, results in a number. So, if you type 
+<code>100+200</code>, it qualifies as a guess of <code>300</code>. Try 
+it!</p>
 </div>
 <p></p>
 <div class="frame">
 <p><strong>Challenge:</strong> This behavior actually allows the player 
 to &quot;cheat&quot; and always guess the number picked by the computer 
 correctly upon first attempt. Wizards that are good at noticing and 
-exploiting such opportunities are called <em>hackers</em>. Can you think 
-like a hacker and win the game in one guess every time?</p>
+exploiting such opportunities are called <em><strong>hackers</strong></em>.
+Can you think like a hacker and win the game in one guess every time?</p>
 </div>
 
 <p>Now, let's see what it actually does. In the first two lines 
 (numbered <code>10</code> and <code>20</code>, respectively), the 
-instruction keyword is <code>LET</code>. It <em>assigns</em> 
-<em>values</em> to <em>variable names</em>. That is, it LETs the name 
-mean a particular number, until further assignments. For example, in 
-line <code>20</code>, the variable name <code>guesses</code> is made to 
-stand for zero. You can try it separately. If you enter that line 
-without the line number and then type <code>PRINT guesses</code> it will 
-output <code>0</code>. If you enter <code>LET five=2+2</code> and then
-<code>PRINT five</code>, it will output <code>4</code>. This is perfectly
-<code>OK</code>, because <code>five</code> is just a name, and 
+instruction keyword is <code>LET</code>. It 
+<em><strong>assigns</strong></em> <em><strong>values</strong></em> to 
+<em><strong>variable names</strong></em>. That is, it LETs the name mean 
+a particular number, until further assignments. For example, in line 
+<code>20</code>, the variable name <code>guesses</code> is made to stand 
+for zero. You can try it separately. If you enter that line without the 
+line number and then type <code>PRINT guesses</code> it will output 
+<code>0</code>. If you enter <code>LET five=2+2</code> and then 
+<code>PRINT five</code>, it will output <code>4</code>. This is 
+perfectly <code>OK</code>, because <code>five</code> is just a name, and 
 when a wizard uses a name, it means just what the wizard chooses it to 
 mean &mdash; neither more nor less.</p>
 
@@ -501,9 +513,10 @@ output <code>1</code>, though it can get pretty close.</p>
 <p>Thus, <code>1000*RND</code> is a number that is at least zero and 
 always less than 1000. Try <code>PRINT 1000*RND</code> a few times. Most 
 of these numbers have a fractional part after a decimal point. This is 
-what <code>INT</code> removes. <code>INT</code> is a <em>function</em> 
-that does something to the number that follows it. In particular, it 
-turns it into an <em>integer</em> (which is just wizard-speak for whole 
+what <code>INT</code> removes. <code>INT</code> is a 
+<em><strong>function</strong></em> that does something to the number 
+that follows it. In particular, it turns it into an 
+<em><strong>integer</strong></em> (which is just wizard-speak for whole 
 numbers), removing the fractional part of numbers greater than zero.</p>
  
 <p>However, <code>PRINT INT 1000*RND</code> does exactly the same as 
@@ -517,15 +530,16 @@ fractional part, <code>INT RND</code> is always zero. If you multiply
 that by 1000, it is still zero.</p>
 
 <p>To exactly determine the order of operations, you need to use 
-<code>(</code> and <code>)</code>, the so-called <em>parentheses</em>. 
-What is between these is evaluated before what is outside of them. 
-Hence, <code>INT (1000*RND)</code>. This results in a random whole number 
-that is at least zero and less than 1000, that is at most 999. But since 
-we want a random number between 1 and 1000, 1 needs to be added to it.
-Actually, <code>INT (RND*1000)+1</code> would work just the same. This is 
-because the results of multiplication and addition do not change if 
-we switch the order of the numbers to multiply or to add. Wizards call 
-such operations <em>commutative</em>.</p>
+<code>(</code> and <code>)</code>, the so-called 
+<em><strong>parentheses</strong></em>. What is between these is 
+evaluated before what is outside of them. Hence, <code>INT 
+(1000*RND)</code>. This results in a random whole number that is at 
+least zero and less than 1000, that is at most 999. But since we want a 
+random number between 1 and 1000, 1 needs to be added to it. Actually, 
+<code>INT (RND*1000)+1</code> would work just the same. This is because 
+the results of multiplication and addition do not change if we switch 
+the order of the numbers to multiply or to add. Wizards call such 
+operations <em><strong>commutative</strong></em>.</p>
 
 <p>Line <code>30</code> contains a single keyword <code>REPEAT</code>. 
 It means that what follows until the keyword <code>UNTIL</code> (see 
@@ -561,19 +575,20 @@ the part after <code>THEN</code> only IF the condition following
 <code>IF</code> holds true.</p>
 
 <p>Line <code>70</code> contains an unusual <code>LET</code> statement, 
-a so-called <em>update</em>. It is, essentially, a shorthand for
-<code>LET guesses=guesses+1</code>. It requires less typing on the wizard's
-part and less interpreting on the computer's part.</p>
+a so-called <em><strong>update</strong></em>. It is, essentially, a 
+shorthand for <code>LET guesses=guesses+1</code>. It requires less 
+typing on the wizard's part and less interpreting on the computer's 
+part.</p>
 
-<p>Line <code>80</code> closes the <em>loop</em> started in line 
-<code>30</code>. It is called a loop, because if you draw 
-little arrows from each statement to possible next statements, your 
+<p>Line <code>80</code> closes the <em><strong>loop</strong></em> 
+started in line <code>30</code>. It is called a loop, because if you 
+draw little arrows from each statement to possible next statements, your 
 arrows are going to form a loop; a sequence of statements to be 
 (possibly) repeated.</p>
 
 <div class="frame">
 <p><strong>Trivia:</strong> Loops that read the console and depending on 
-what has been entered print something are called <em>REPL</em> by 
+what has been entered print something are called <em><strong>REPL</strong></em> by 
 wizards, which stands for 
 <strong>R</strong>ead -
 <strong>E</strong>valuate -
@@ -674,15 +689,16 @@ guessing the number. Any integer up to a million in just 20 yes/no
 questions!</p>
 
 <div class="frame">
-<p><strong>Trivia:</strong> The strategy of picking the middle element in
-some ordering, comparing it to what you are looking for and based on whether
-or not it is greater, continuing either with the lower or the upper half
-of the ordering is called <em>binary search</em> and it is the wizard's way
-of quickly finding needles in haystacks. It is a simple, yet very powerful
-strategy (or <em>algorithm</em> in wizard-speak) from a broader class of
-<em>divide and conquer</em> algorithms. You are going to learn many of those
-and maybe invent some of your own.
-</p>
+<p><strong>Trivia:</strong> The strategy of picking the middle element 
+in some ordering, comparing it to what you are looking for and based on 
+whether or not it is greater, continuing either with the lower or the 
+upper half of the ordering is called <em><strong>binary 
+search</strong></em> and it is the wizard's way of quickly finding 
+needles in haystacks. It is a simple, yet very powerful strategy (or 
+<em><strong>algorithm</strong></em> in wizard-speak) from a broader 
+class of <em><strong>divide and conquer</strong></em> algorithms. You 
+are going to learn many of those and maybe invent some of your own. </p>
+
 <p>Our word &quot;algorithm&quot; is honoring an outstanding medieval wizard,
 <em>Muhammad al-Khwarizmi</em>, who invented or rigorously described several
 algorithms that we regulary use to this day.</p>
@@ -697,11 +713,12 @@ today's Uzbekistan)</figcaption>
 <p>The answers in <em>this</em> game <em>do</em> uniquely identify the 
 integer and you do not even need to know how large it can be, as that 
 can be learned from the <em>number</em> of answers. It is called 
-<em>binary representation</em> and this is how computers represent 
-numbers internally. In ZX Basic, you can use this representation using 
-the <code>BIN</code> keyword. For example, you can write <code>BIN 
-0111110100</code> instead of <code>500</code>. Moreover, you can omit 
-the leading zeroes, so <code>BIN 111110100</code> also means 500.</p>
+<em><strong>binary representation</strong></em> and this is how 
+computers represent numbers internally. In ZX Basic, you can use this 
+representation using the <code>BIN</code> keyword. For example, you can 
+write <code>BIN 0111110100</code> instead of <code>500</code>. Moreover, 
+you can omit the leading zeroes, so <code>BIN 111110100</code> also 
+means 500.</p>
 
 <p>In general, <em>everything</em> is a sequence of zeroes 
 and ones for the computer. Just like in the game above, it is common 
@@ -719,29 +736,29 @@ but <code>IF 1 THEN PRINT "one"</code> will output <code>one</code> to
 the canvas, and so will <code>IF 5 THEN PRINT "one"</code>.</p>
 
 <p>Binary numbers are very important in wizardry, or as wizards call it, 
-<em>computer science</em>. Those wishing to become wizards better learn 
-to use them as second nature. For example, you should get into the habit 
-of counting on your fingers in binary. Thus, instead of just 5, you will 
-be able to count up to 31 on the fingers of one hand (be careful with 
-showing number 4 to other people; muggles might misunderstand you). Each 
-<em>digit</em> (which is just Latin for &quot;finger&quot;) in a binary 
-number corresponds to a power of 2. Your thumb corresponds to 1 (which 
-is 2<sup>0</sup>), your index finger corresponds to 2 (2<sup>1</sup>), 
-your middle finger to 4 (2<sup>2</sup>), your ring finger to 8 
-(2<sup>3</sup>) and your pinky to 16 (2<sup>4</sup>). For example, if 
-you want to show 7, you only extend your thumb, your index finger and 
-your middle finger, becase 1 + 2 + 4 = 7 (try <code>PRINT BIN 
-00111</code>). An extended thumb, index finger and pinky means 19 (which 
-is 1 + 2 + 16, <code>BIN 10011</code>). In general, if you want to find 
-out the binary representation of a number, you can either play the game 
-above, or use another keyword, <code>STR$</code>. For example, 
-<code>PRINT STR$ (30,2)</code> will be answered with <code>11110</code> 
-(try it!), meaning all except your thumb extended. <code>STR$</code> is 
-used to obtain various representations of numbers, with <code>2</code> 
-meaning binary. The parentheses are needed, because otherwise 
-<code>STR$</code> will only concern itself with <code>30</code>, the 
-comma would mean tabulation to the middle of the line and <code>2</code> 
-would mean 2. Try!</p>
+<em><strong>computer science</strong></em>. Those wishing to become 
+wizards better learn to use them as second nature. For example, you 
+should get into the habit of counting on your fingers in binary. Thus, 
+instead of just 5, you will be able to count up to 31 on the fingers of 
+one hand (be careful with showing number 4 to other people; muggles 
+might misunderstand you). Each <em><strong>digit</strong></em> (which is 
+just Latin for &quot;finger&quot;) in a binary number corresponds to a 
+power of 2. Your thumb corresponds to 1 (which is 2<sup>0</sup>), your 
+index finger corresponds to 2 (2<sup>1</sup>), your middle finger to 4 
+(2<sup>2</sup>), your ring finger to 8 (2<sup>3</sup>) and your pinky to 
+16 (2<sup>4</sup>). For example, if you want to show 7, you only extend 
+your thumb, your index finger and your middle finger, becase 1 + 2 + 4 = 
+7 (try <code>PRINT BIN 00111</code>). An extended thumb, index finger 
+and pinky means 19 (which is 1 + 2 + 16, <code>BIN 10011</code>). In 
+general, if you want to find out the binary representation of a number, 
+you can either play the game above, or use another keyword, 
+<code>STR$</code>. For example, <code>PRINT STR$ (30,2)</code> will be 
+answered with <code>11110</code> (try it!), meaning all except your 
+thumb extended. <code>STR$</code> is used to obtain various 
+representations of numbers, with <code>2</code> meaning binary. The 
+parentheses are needed, because otherwise <code>STR$</code> will only 
+concern itself with <code>30</code>, the comma would mean tabulation to 
+the middle of the line and <code>2</code> would mean 2. Try!</p>
 
 <div class="frame">
 
@@ -751,7 +768,7 @@ computers. The reason humanity ended up using binary computers
 exclusively is that there are tremendous benefits in all computers being 
 based on the same logic so that many things only need to be done once 
 and used everywhere. The other reasonable choice for digital computers 
-is <em>ternary</em>, which is based around the powers of 3 rather than 
+is <em><strong>ternary</strong></em>, which is based around the powers of 3 rather than 
 two. The three kinds of digits there are -1, 0 and +1, meaning 
 &quot;no&quot;, &quot;unknown&quot; and &quot;yes&quot;. Alien computers 
 may very well be ternary. In fact, humanity has also explored ternary 
@@ -762,13 +779,14 @@ worked out to the point of practicality, binary computers were so
 widespread that it did not make much sense to continue. </p>
 
 <p>However, this choice does not matter all that much. All digital 
-computers can &quot;pretend to be&quot; (wizards say <em>emulate</em>) 
-any other digital computer, so the (amazingly broad and to this day 
-largely unexplored) set of problems that can be solved by digital 
-computers does not depend on this choice. This universality (called 
-<em>Turing-completeness</em> in his honor) was discovered and proven by an 
-outstanding British wizard in the middle of the twentieth century, a 
-pioneer of electronic computing, <em>Alan Turing</em>.</p>
+computers can &quot;pretend to be&quot; (wizards say 
+<em><strong>emulate</strong></em>) any other digital computer, so the 
+(amazingly broad and to this day largely unexplored) set of problems 
+that can be solved by digital computers does not depend on this choice. 
+This universality (called <em><strong>Turing-completeness</strong></em> 
+in his honor) was discovered and proven by an outstanding British wizard 
+in the middle of the twentieth century, a pioneer of electronic 
+computing, <em>Alan Turing</em>.</p>
 
 <div class="figure">
 <img 
@@ -795,7 +813,8 @@ player can slide the tiles with the arrow keys. Each tile slides until
 it hits another tile or the edge of the grid. When two tiles with the same 
 number collide, they will merge into a tile carrying their total value.
 The resulting tile will not merge in the same move. The game is won when
-a tile with a value of 2048 appears.</p>
+a tile with a value of 2048 appears. We can clear the board and restart
+the game any time pressing the DELETE key.</p>
 
 <p>We will add score- and time-keeping, colorful graphics and music to 
 our game later, first we write the most important parts of the game so 
@@ -807,37 +826,43 @@ that it can be played. Let's begin with drawing the grid:</p>
 </pre>
 
 <p>There are several new things here. The variable name <code>b$</code> 
-ends with <code>$</code> pronounced as <em>string</em>, making 
-<code>b$</code> a <em>string variable</em>. The value it holds is a 
-string, rather than a number. Strings are sequences of 
-<em>characters</em>, which can be letters, digits, symbols, 
-<em>tokens</em> or <em>control characters</em>. In fact, the quoted 
-texts in previous examples are all strings. In the assignment of 
-<code>b$</code> in line <code>10</code>, there is a <em>string 
-expression</em>. The <code>+</code> between two strings results in a new 
-string, consisting of the lefthand string immediately followed by the 
-righthand string. For example <code>"Hello"+"World!"</code> would 
-result in <code>HelloWorld!</code>. Try it! If there is a 
-<code>*</code> between a string and a number (or a string expression and 
-a numeric expression), it repeats the lefthand string the righthand number of
-times. For example, <code>"!"*3</code> results in <code>!!!</code>.</p>
+ends with <code>$</code> pronounced as <em><strong>string</strong></em>, 
+making <code>b$</code> a <em><strong>string variable</strong></em>. The 
+value it holds is a string, rather than a number. Strings are sequences 
+of <em><strong>characters</strong></em>, which can be letters, digits, 
+symbols, <em><strong>tokens</strong></em> or <em><strong>control 
+characters</strong></em>. In fact, the quoted texts in previous examples 
+are all strings. In the assignment of <code>b$</code> in line 
+<code>10</code>, there is a <em>string expression</em>. The 
+<code>+</code> between two strings results in a new string, consisting 
+of the lefthand string immediately followed by the righthand string. For 
+example <code>"Hello"+"World!"</code> would result in 
+<code>HelloWorld!</code>. Try it! If there is a <code>*</code> between a 
+string and a number (or a string expression and a numeric expression), 
+it repeats the lefthand string the righthand number of times. For 
+example, <code>"!"*3</code> results in <code>!!!</code>.</p>
 
 <p>There is also a new keyword, <code>CHR$</code>. Keywords ending with 
-<code>$</code> are <em>string valued functions</em> that turn their 
-arguments into strings. In particular <code>CHR$</code> turns the number 
-following it into one character with that particular <em>character 
-code</em>, if that number is between 0 and 255. Character codes between 
-0 and 23 are <em>control characters</em>. Among them, <code>CHR$ 
-13</code> is known under a number of names: <em>Carriage Return, CR, 
-Enter, New Line, Return</em>, but they all mean the same thing. It 
-indicates the end of a line and a beginnig of a new line.</p>
+<code>$</code> are <em><strong>string valued functions</strong></em> 
+that turn their arguments into strings. In particular <code>CHR$</code> 
+turns the number following it into one character with that particular 
+<em>character code</em>, if that number is between 0 and 255. Character 
+codes between 0 and 23 are <em><strong>control characters</strong></em>. 
+Among them, <code>CHR$ 13</code> is known under a number of names: 
+<em>Carriage Return, CR, Enter, New Line, Return</em>, but they all mean 
+the same thing. It indicates the end of a line and a beginnig of a new 
+line.</p>
 
 <p>Thus, line <code>10</code> assings the following string to <code>b$</code>:
 <pre>
 +----+----+----+----+
 </pre>
-You can verify this by entering <code>PRINT b$</code>. Moreover, the program
-would work exactly the same, if we changed line <code>10</code> to this:
+You can verify this by entering <code>PRINT b$</code>.</p>
+
+<div class="frame">
+
+<p><strong>Note:</strong> The program would work exactly the same, if we 
+changed line <code>10</code> to this:
 <pre>
   10 LET b$="+----+----+----+----+"+CHR$ 13
 </pre>
@@ -848,8 +873,8 @@ do all this tedious work?</p>
 
 <p>Line <code>20</code> uses <code>b$</code> to draw the grid using similar 
 techniques. By now, you know enough to understand every detail of it. Of 
-course, both lines can be replaced by a sequence of <code>PRINT</code>
-statements:
+course, instead of those two lines, one could naively write a sequence of 
+<code>PRINT</code> statements:
 <pre>
    1 PRINT "+----+----+----+----+"
    2 PRINT "|    |    |    |    |"
@@ -877,32 +902,170 @@ computer's memory. There are computer programs having such repetitive
 patterns in them and there are legitimate justifications for writing 
 software like this, but these are typically written by another computer 
 program. In a later chapter, we shall see how to write computer programs 
-writing computer programs. Now it is time to go back writing our 
-little game.</p>
+writing computer programs.</p>
+</div>
 
 <pre>
   30 DIM b(4,4)
 </pre>
 
+<p>The <code>DIM</code> keyword <em><strong>allocates</strong></em> an 
+<em><strong>array</strong></em>. In this case, <code>b</code> is a 
+<em><strong>numeric array</strong></em>, a collection of numeric 
+variables. The numbers between parentheses following the array's name 
+are called <em><strong>dimensions</strong></em>. Each element in the 
+array is a variable that can be assigned a value. Initially, all of them 
+are zero. One way to think about <code>DIM</code> is that it creates as 
+many variables as the <em><strong>product</strong></em> (which is just 
+wizard-speak for multiplication) of all its dimensions, in our case 16. 
+Each variable's name is the name of the array, followed by a list of 
+<em><strong>subscripts</strong></em> in parentheses, separated by 
+commas. Each subscript is a number between 1 and the corresponding 
+dimension. So, for example, <code>b(3,2)</code> is one of these 
+variables, but <code>b(1,1,1)</code> or <code>b(5,2)</code> are not, if 
+<code>b</code> was allocated according to line <code>30</code>. Try it! 
+If you use wrong subscripts, ZX85 will report
+<code>3 Subscript wrong</code>, an error.</p>
 
+<p>The benefit of arrays compared to just naming variables, say, 
+<code>b11</code> or <code>b32</code> is that subscripts can be numeric
+expressions. That is the choice of which one to access or assign can
+depend on other variables. A typical example when arrays are useful is when
+the same operation needs to be performed with many variables. Without arrays,
+one needs to write out the same operation for every variable. This is tedious
+work not worth a wizard's time. Instead, you can (and should) use an array
+and write a loop in the computer performs the same operation to various
+elements in the array. The wizard only needs to spell it out once. You will
+see many examples of this in the game.</p>
+
+<p>After drawing the board on the screen and allocating it in the 
+computer's memory (as array <code>b</code> will hold the 
+<em><strong>state</strong></em> of the board). we are ready to write the 
+<em><strong>main loop</strong></em> of the game. Just like in the 
+previous number guessing games, the main loop describes what happens in 
+each turn of the game. Unlike the previous games, the main loop here is 
+not a REPL, as the game only uses the canvas, not the console.<p>
 
 <pre>
   40 REPEAT 
   50  PROC drop()
   60  REPEAT 
-  70   LET action=0: LOCAL k
+  70   LET action=0
   80   REPEAT 
   90    LET k=CODE INKEY$
- 100   UNTIL k>=8 AND k<=11
+ 100   UNTIL k>=8 AND k<=12
  110   IF k=8 THEN PROC move(1,1,0,1)
  120   ELSE IF k=9 THEN PROC move(4,4,0,-1)
  130   ELSE IF k=10 THEN PROC move(4,1,-1,0)
  140   ELSE IF k=11 THEN PROC move(1,4,1,0)
- 150  UNTIL action
+ 150  UNTIL action OR k=12
  160  PROC board()
- 170 UNTIL board full
- 180 STOP
+ 170 UNTIL k=12
+ 180 RUN
 </pre>
+
+<p>In line <code>50</code>, there is a new and very important keyword: 
+<code>PROC</code>. It <em><strong>calls</strong></em> (or <em><strong>invokes</strong></em>) a 
+<em><strong>procedure</strong></em>. A procedure is a program that has a name and can be
+executed from another program (or itself). In this case, the name is
+<code>drop</code> and the empty parentheses after the name indicate 
+that it has no <em><strong>parameters</strong></em>. As its name might suggest, it drops a
+tile with 2 or 4 on it onto a random empty cell of the grid. <em>How</em>
+it does it is described later in the program.</p>
+
+<p>The most important role of procedures is that it allows the wizard 
+not to write the same sequence of statements in multiple places in the 
+program. As you might have noticed, this kind of laziness is a cherished 
+trait of wizards.</p>
+
+<p>But <code>drop</code> is not called from anywhere else in our game. 
+In line <code>50</code> we use a procedure for a different purpose. It 
+has to do with making the code more understandable for other wizards, 
+which very much includes ourselves some time later. A wise wizard 
+acknowledges and works around the limitations of the human mind, 
+including ones own. One such limitation is that we have a difficulty 
+thinking on different levels of detail at the same time and even more 
+difficulty following someone else's thoughts if they are doing that. It 
+is important to keep in mind that even a mere two weeks from now you 
+will be a different person. A very typical source of frustration with 
+poor wizardry is trying to understand our own code written a long time 
+ago. In the main loop of our game, we spell out the rules of the game 
+and should not get into the minute details of placing a tile at a random 
+empty location. There are no strict rules about what parts of code to 
+place in separate procedures; it is an art, mastered with practice. 
+However, if you find that it took you too much effort understading part 
+of a program <em>because</em> it worked on a lower level of detail than 
+its surrounding, do not hesitate to move it out into a procedure and 
+give it a name that describes <em>what</em> it does, not getting into 
+the details of <em>how</em> it is done. Such re-arranging of the code is 
+called <em><strong>refactoring</strong></em> and even though it takes 
+some effort, it saves a lot of time and nerves down the road. Avoiding 
+it is the <em>wrong</em> kind of laziness.</p>
+
+<p>The loop between lines <code>60</code> and <code>150</code> keeps 
+running until something actually happens on the board. This is captured 
+in the variable <code>action</code> assigned in line <code>70</code> 
+meaning <em>no action</em> and perhaps changed in one of the 
+<code>move</code>s in lines <code>110</code> through <code>140</code>. 
+This is a loop within a loop, or as wizards call it, a 
+<em><strong>nested loop</strong></em>.</p>
+
+<p>In turn, it has another loop nested in it between lines 
+<code>80</code> and <code>100</code>. In its 
+<em><strong>body</strong></em>, it has a single <code>LET</code> 
+statement with two new keywords. <code>CODE</code> is the reverse of 
+<code>CHR$</code>. It takes a string and, if it is a single character, 
+turns it into its character code, which is a number. The 
+<code>CODE</code> of an <em><strong>empty string</strong></em> is zero. 
+Try <code>PRINT CODE &quot;&quot;</code>. The keyword 
+<code>INKEY$</code> means the key pressed, or an empty string, if no key 
+is pressed. As the <code>$</code> at its end suggests, it is a string. 
+Together, <code>CODE INKEY$</code> means the character code of the key 
+that is pressed, or zero if there is none. You can try <code>REPEAT: 
+PRINT AT 0,0;CODE INKEY$,:UNTIL 0</code> to see what code corresponds to 
+which key on the keyboard. Character codes 8 through 11 correspond to 
+the arrow keys, code 12 corresponds to DELETE. Hence, line 
+<code>100</code> repeats the loop <code>UNTIL</code> one of them is 
+pressed. If it is DELETE, the outer loops also quit.</p>
+
+<p>Lines <code>110</code> through <code>140</code> are there to 
+<code>move</code> the tiles in the direction of the arrow key pressed.</p>
+
+<div class="frame">
+<p><strong>Note:</strong> If you felt a bit of tedium while typing them in, 
+it is a good sign, as this is somewhat unwizardly code, worthy of 
+refactoring. It works correctly, but the parameters of <code>move</code> 
+have to do with <em>how</em> to move the tiles in different directions, 
+even though at this level we are supposed to be thinking about 
+<em>what</em> needs to be done, not preoccupied with the minute details 
+of <em>how</em>. So let's refactor it! These four lines express that the 
+tiles need to be moved in the direction determined by the key pressed. 
+We can replace it with a statement that expresses it more clearly:</p>
+
+<pre>
+DELETE 110 TO 140
+110 IF k<>12 THEN PROC move(k-8)
+</pre> 
+
+<p>The <code>&lt;&gt;</code> sign means <em><strong>not 
+equal</strong></em>. This change will require further changes in the 
+<em><strong>definition</strong></em> of <code>PROC move</code> beginning 
+with line <code>310</code>, which are discussed below it.</p>
+</div>
+
+<p>Line <code>160</code> redraws the board with all the tiles moved. The 
+reason why redrawing is not part of <code>PROC move</code> is that we 
+only want to redraw the board if some tiles have actually moved. Since the 
+loop above this line keeps repeating until it happens, at this point we 
+can be certain that at least one tile moved. The main loop continues until
+the DELETE key is pressed, at which point the entire program is 
+<code>RUN</code> again.</p>
+
+<p>Now it is time to flesh out the procedures called from the main loop. The 
+definitions of procedures begin with the <code>DEF PROC</code> keyword,
+followed by the name of the procedure and its parameters. The definition
+ends with the <code>END PROC</code> keyword.</p>
+
 <pre>
  190 DEF PROC drop()
  200  LOCAL x,y,k
@@ -912,58 +1075,118 @@ little game.</p>
  240    IF RND<1/k THEN LET x=i: LET y=j
  250   END IF 
  260  NEXT : NEXT 
- 270  LET board full=NOT x
- 280  IF x
- 290   LET k=1+(RND<.5)
- 300   LET b(x,y)=k
- 310   PROC tile(x,y,k)
- 320  END IF 
- 330 END PROC 
+ 270  LET k=1+(RND<.5)
+ 280  LET b(x,y)=k
+ 290  PROC tile(x,y,k)
+ 300 END PROC 
+</pre>
+
+<p>The <code>drop</code> procedure has no parameters. In line 
+<code>200</code> we declare <em><strong>local variables</strong></em>. 
+These variable names are used by the procedure but we do not want the 
+procedure to interfere with the rest of the program, if it happens to 
+use the same variable names for different purposes. For example, in the 
+main loop we use <code>k</code> for the code of the key pressed, but 
+inside <code>drop</code> we use it as a counter of empty cells in the 
+grid and as the random value of the tile dropped. It is always a good 
+idea to <em><strong>declare</strong></em> every variable that we intend 
+to use inside a procedure as <code>LOCAL</code>, as it will reduce the 
+possibility of unintended <em><strong>side effects</strong></em> of
+our procedure. Also, since local variables are considered first when 
+looking up a variable by name, this practice actually speeds up
+the execution of our programs. Unless stated otherwise in the declaration,
+local numeric variables are initialized to zero and local string variables
+to the empty string.</p>
+
+<p>Lines <code>210</code> through <code>260</code> describe two
+nested <code>FOR</code> loops. These are loops that need to be executed
+a given number of times (4, in our case). The <code>FOR</code> keyword 
+is followed by the name of the <em><strong>loop variable</strong></em>,
+that is going to take a different value during each execution (or
+<em><strong>iteration</strong></em>) of the loop. These values are
+determined by what follows the <code>=</code> sign: <code>1 TO 4</code>
+means that it will be first assigned 1, then 2 and so on until the last
+iteration in which it will be assigned 4. Thus, variables <code>i</code>
+and <code>j</code> will be assigned all 16 possible combinations.
+Try <code>FOR i=1 TO 4:FOR j=1 TO 4:PRINT "i=";i,"j=";j:NEXT:NEXT</code>
+to get a better understanding of what goes on here.</p>
+
+<div class="frame">
+<p><strong>Note:</strong> The loop variable is always local to the loop.
+The following command prints numbers from 1 to 5:</p>
+<pre>
+FOR i=1 TO 5: PRINT i: NEXT
+</pre>
+<p>Afterwards, however, <code>PRINT i</code> results in a
+<pre>
+2 Variable not found, 0:1
+</pre>
+report, because <code>i</code> is accessible only inside the loop.</p>
+
+<p>There are no side effects even when nesting two loops with the same
+loop variable name. Try this:
+<pre>
+FOR i=1 TO 10: FOR i=1 TO 10: PRINT "*";: NEXT: PRINT: NEXT
+</pre>
+<p>It will output a grid of 100 stars to the console:</p>
+<pre>
+**********
+**********
+**********
+**********
+**********
+**********
+**********
+**********
+**********
+**********
+</pre>
+</div>
+
+<pre>
+ 310 DEF PROC move(i,j,x,y)
+ 320  FOR n=1 TO 4
+ 330   PROC row(i,j,x,y)
+ 340   LET i+=y: LET j-=x
+ 350  NEXT 
+ 360 END PROC 
 </pre>
 <pre>
- 340 DEF PROC move(i,j,x,y)
- 350  FOR n=1 TO 4
- 360   PROC row(i,j,x,y)
- 370   LET i+=y: LET j-=x
- 380  NEXT 
- 390 END PROC 
+ 370 DEF PROC row(i,j,x,y)
+ 380  LOCAL k=i,l=j
+ 390  FOR n=1 TO 3
+ 400   LET i+=x: LET j+=y
+ 410   IF b(i,j)
+ 420    WHILE b(k,l) AND b(k,l)<>b(i,j)
+ 430     LET k+=x: LET l+=y
+ 440    END WHILE 
+ 450    IF NOT b(k,l)
+ 460     LET b(k,l)=b(i,j)
+ 470     LET b(i,j)=0
+ 480     LET action=1
+ 490    ELSE IF b(k,l)=b(i,j) AND (i<>k OR j<>l)
+ 500     LET b(k,l)+=1
+ 510     LET k+=x: LET l+=y
+ 520     LET b(i,j)=0
+ 530     LET action=1
+ 540    END IF 
+ 550   END IF 
+ 560  NEXT 
+ 570 END PROC 
 </pre>
 <pre>
- 400 DEF PROC row(i,j,x,y)
- 410  LOCAL k=i,l=j
- 420  FOR n=1 TO 3
- 430   LET i+=x: LET j+=y
- 440   IF b(i,j)
- 450    WHILE b(k,l) AND b(k,l)<>b(i,j)
- 460     LET k+=x: LET l+=y
- 470    END WHILE 
- 480    IF NOT b(k,l)
- 490     LET b(k,l)=b(i,j)
- 500     LET b(i,j)=0
- 510     LET action=1
- 520    ELSE IF b(k,l)=b(i,j) AND (i<>k OR j<>l)
- 530     LET b(k,l)+=1
- 540     LET k+=x: LET l+=y
- 550     LET b(i,j)=0
- 560     LET action=1
- 570    END IF 
- 580   END IF 
- 590  NEXT 
- 600 END PROC 
+ 580 DEF PROC tile(x,y,k)
+ 590  LOCAL k$=k?("",STR$ (2^k))
+ 600  LET k$=" "*(4-LEN k$)+k$
+ 610  PRINT AT x*5-2,y*5-4;k$
+ 620 END PROC 
 </pre>
 <pre>
- 610 DEF PROC tile(x,y,k)
- 620  LOCAL k$=k?("",STR$ (2^k))
- 630  LET k$=" "*(4-LEN k$)+k$
- 640  PRINT AT x*5-2,y*5-4;k$
- 650 END PROC 
-</pre>
-<pre>
- 660 DEF PROC board()
- 670  FOR i=1 TO 4: FOR j=1 TO 4
- 680   PROC tile(i,j,b(i,j))
- 690  NEXT : NEXT 
- 700 END PROC 
+ 630 DEF PROC board()
+ 640  FOR i=1 TO 4: FOR j=1 TO 4
+ 650   PROC tile(i,j,b(i,j))
+ 660  NEXT : NEXT 
+ 670 END PROC 
 </pre>
 
 
