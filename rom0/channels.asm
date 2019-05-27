@@ -115,7 +115,7 @@ K_ING0:	BIT	5,(IY+$30)
 K_ING1:	SCF
 K_ING2:	RES	1,(IY+$07)
 K_ING3:	BIT	5,(IY+$30)	; mode K suppressed?
-	JR	Z,K_INNSW	; jump, if not
+	JR	Z,K_INSW	; jump, if not
 	LD	HL,K_STATE
 	BIT	2,(IY+$30)	; inside quotes?
 	JR	NZ,K_INSW	; jump, if so
@@ -265,13 +265,15 @@ EXT_NT:	LD	A,(HL)
 	JR	Z,EXT_NS
 	CP	"@"
 	JR	Z,EXT_N
+	BIT	4,(IY+$37)	; FLAGX, operator mode
+	JR	Z,NOREL
 	CP	"<"
 	JR	Z,EXT_NR
 	CP	">"
 	JR	Z,EXT_NR
 	CP	"="
 	JR	Z,EXT_NR
-	RST	$28
+NOREL:	RST	$28
 	DEFW	L2C8D		; ALPHA
 	JR	C,EXT_N
 	JR	K_INR3
@@ -303,14 +305,12 @@ EXT_LS:	RST	$28
 	JR	C,EXT_L
 	CP	" "
 	JR	NZ,EXT_SP
-	LD	A,(K_STATE)
-	AND	$08		; instruction mode?
+	BIT	4,(IY+$37)	; instruction mode?
 	LD	A," "
 	JR	Z,EXT_L		; instruction tokens might have spaces
 EXT_SP:	INC	HL
 	INC	HL
-	LD	A,(K_STATE)
-	AND	$08		; instruction mode?
+	BIT	4,(IY+$37)	; instruction mode?
 	JR	NZ,EXT_OPR	; jump, if not
 	CALL	TOK_INS
 	JR	EXT_CNT
@@ -331,7 +331,7 @@ K_INR4:	JR	K_INR2
 EXT_NF:	LD	A,(LAST_K)
 	CP	$0E
 	SCF
-	JR	NZ,K_INR2
+	JR	NZ,K_INR4
 	LD	HL,(K_CUR)
 	DEC	HL
 	LD	A,(HL)
@@ -843,8 +843,12 @@ TUP:	INC	B
 
 TBLINK:	EX	DE,HL
 	SET	2,(HL)
+	BIT	3,(HL)
 	LD	HL,FLAGX
-	LD	A,(HL)
+	RES	4,(HL)
+	JR	Z,TBL_I
+	SET	4,(HL)
+TBL_I:	LD	A,(HL)
 	RES	3,(HL)
 	AND	$04
 	JR	Z,TNOP2
