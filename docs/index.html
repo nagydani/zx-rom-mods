@@ -1143,16 +1143,88 @@ FOR i=1 TO 10: FOR i=1 TO 10: PRINT "*";: NEXT: PRINT: NEXT
 </pre>
 </div>
 
+<p>Lines <code>220</code> and <code>250</code> mean that the entire body 
+of these two nested loops is conditioned on <code>b(i,j)</code> being 
+empty. An <code>IF</code> statement without a <code>THEN</code> keyword 
+after the condition continues with the next statement, if the condition 
+is <em>true</em>. If it is false, absent of an <code>ELSE</code> keyword,
+it continues after the matching <code>END IF</code> keyword. In this case,
+lines <code>230</code> and <code>240</code> are only executed if
+<code>NOT b(i,j)</code> in line <code>220</code> is <em>true</em>, that is
+if <code>b(i,j)</code> equals zero. This also shows the power of arrays,
+as we can test 16 variables in a single loop with a handful of statements.</p>
+
+<p>Line <code>230</code> counts empty cells in the grid in variable 
+<code>k</code>. Line <code>240</code> replaces the values of 
+<code>x</code> and <code>y</code> with the current values of 
+<code>i</code> and <code>j</code> if with a probability 
+<code>1/k</code>. In other words, at random, on average 1 out of 
+<code>k</code> times, those values are replaced. At the first empty 
+cell, when <code>k=1</code>, they are replaced with certainty, as 
+<code>RND</code> is always less than one. When the loops have run their 
+course, <code>x</code> and <code>y</code> contain the subscripts of one 
+of the empty cells chosen randomly and uniformly from among all the empty
+cells.</p>
+
+<p>At this point, <code>k</code> contains the number of empty cells, but 
+we do not want to do anything with that number. So, in line 
+<code>270</code> we reuse <code>k</code> for a different purpose: it 
+becomes either 1 or 2 with equal probability. It means which power of 
+two the new tile will be: 2<sup>1</sup> (2) or 2<sup>2</sup> (4). In 
+lines <code>280</code> and <code>290</code> this value is used to assign 
+the corresponding <em><strong>element</strong></em> of array 
+<code>b</code> and display the corresponding tile on the canvas. 
+<code>PROC tile</code> is defined later, beginning with line 
+<code>580</code>, as the details of drawing clearly do not belong to 
+the procedure of random placement of a new tile.</p>
+
 <pre>
  310 DEF PROC move(i,j,x,y)
  320  FOR n=1 TO 4
- 330   PROC row(i,j,x,y)
+ 330   PROC slide(i,j,x,y)
  340   LET i+=y: LET j-=x
  350  NEXT 
  360 END PROC 
 </pre>
+
+<p>The procedure <code>move</code> takes four parameters: the subscripts 
+of one corner of the board and the numbers by which they are changed in 
+each of the four iterations, as tile sliding and merging is calculated 
+for all four rows or columns. The <em><strong>local</strong></em> 
+variables to which parameter values are assigned are listed in the 
+parentheses after the procedure name in the <code>DEF PROC</code> 
+statement. <em>How</em> tile sliding is done is defined in procedure 
+<code>slide</code>, which is called in line <code>330</code>. Since 
+<em>parameter variables are local to the procedure</em>, there are no side 
+effects from updating <code>i</code> and <code>j</code> in line 
+<code>340</code>.</p>
+
+<div class="frame">
+<p><strong>Note:</strong> As noted in the discussion of the main loop,
+it is better if the job of setting parameters <code>i</code>, <code>j</code>,
+<code>x</code> and <code>j</code> depending on the direction of movement
+would be the job of procedure <code>move</code> rather than the main loop.</p>
+<p>The corresponding refactoring of procedure <code>move</code> would be
+as follows:
+</p>
 <pre>
- 370 DEF PROC row(i,j,x,y)
+ 310 DEF PROC move(k)
+ 315  LOCAL i=k?(1,4,4,1),j=k?(1,4,1,4),x=k?(0,0,-1,1),y=k?(1,-1,0,0)
+</pre>
+<p>Thus, <code>PROC move</code> takes a single parameter, the direction of
+the movement, a number between <code>0</code> and <code>3</code>. In line
+<code>315</code> the former parameters are declared as local variables 
+and initialized with the corresponding value. The question mark <code>?</code>
+operator is called <em><strong>selector</strong></em> and it picks 
+the corresponding value from the list in the following parentheses. In order
+to be able to use conditions before the question mark, the first value is 0.
+For any value greater than the number of expressions in parentheses, the 
+last one is used, though this can never happen in this program.
+</p>
+</div>
+
+<pre>
+ 370 DEF PROC slide(i,j,x,y)
  380  LOCAL k=i,l=j
  390  FOR n=1 TO 3
  400   LET i+=x: LET j+=y
@@ -1174,6 +1246,9 @@ FOR i=1 TO 10: FOR i=1 TO 10: PRINT "*";: NEXT: PRINT: NEXT
  560  NEXT 
  570 END PROC 
 </pre>
+
+
+
 <pre>
  580 DEF PROC tile(x,y,k)
  590  LOCAL k$=k?("",STR$ (2^k))
