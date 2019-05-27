@@ -943,26 +943,27 @@ little game.</p>
  510     LET action=1
  520    ELSE IF b(k,l)=b(i,j) AND (i<>k OR j<>l)
  530     LET b(k,l)+=1
- 540     LET b(i,j)=0
- 550     LET action=1
- 560    END IF 
- 570   END IF 
- 580  NEXT 
- 590 END PROC 
+ 540     LET k+=x: LET l+=y
+ 550     LET b(i,j)=0
+ 560     LET action=1
+ 570    END IF 
+ 580   END IF 
+ 590  NEXT 
+ 600 END PROC 
 </pre>
 <pre>
- 600 DEF PROC tile(x,y,k)
- 610  LOCAL k$=k?("",STR$ (2^k))
- 620  LET k$=" "*(4-LEN k$)+k$
- 630  PRINT AT x*5-2,y*5-4;k$
- 640 END PROC 
+ 610 DEF PROC tile(x,y,k)
+ 620  LOCAL k$=k?("",STR$ (2^k))
+ 630  LET k$=" "*(4-LEN k$)+k$
+ 640  PRINT AT x*5-2,y*5-4;k$
+ 650 END PROC 
 </pre>
 <pre>
- 650 DEF PROC board()
- 660  FOR i=1 TO 4: FOR j=1 TO 4
- 670   PROC tile(i,j,b(i,j))
- 680  NEXT : NEXT 
- 690 END PROC 
+ 660 DEF PROC board()
+ 670  FOR i=1 TO 4: FOR j=1 TO 4
+ 680   PROC tile(i,j,b(i,j))
+ 690  NEXT : NEXT 
+ 700 END PROC 
 </pre>
 
 
