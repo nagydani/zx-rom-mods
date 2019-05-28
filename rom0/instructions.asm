@@ -557,6 +557,9 @@ ENDWHILE:
 	CALL	SKIP_LL
 	CP	WHILE_M
 	JR	NZ,ERROR_W	; wrong context
+	DEC	HL
+	DEC	HL		; skip outer error address
+	LD	(ERR_SP),HL
 	PUSH	HL		; context
 	LD	DE,(CH_ADD)	; execution pointer
 	PUSH	DE
@@ -589,13 +592,16 @@ ENDWHILE:
 	LD	HL,(PROG)
 	ADD	HL,DE
 	LD	(NXTLIN),HL	; copy NXTLIN from context
+	POP	HL
+	LD	(ERR_SP),SP
+	PUSH	HL
 	JP	SWAP
 WEND:	LD	(CH_ADD),HL
 	POP	HL		; context
 	POP	BC		; return address
-	POP	DE		; error address
 	LD	SP,HL		; reclaim locals
-	JR	UNT_ER
+	PUSH	BC
+	JR	UNTSW
 
 UNTIL:	CALL	TEST_ZERO
 	EX	AF,AF'
@@ -989,8 +995,6 @@ STACKE:	LD	A,$0D
 	JR	STACKL
 
 
-ST_REP:	LD	A,REPEAT_T
-	JR	ST_CTX
 
 ST_NFOR:CP	REPEAT_M * 2
 	JR	C,ST_VAR
@@ -998,12 +1002,15 @@ ST_NFOR:CP	REPEAT_M * 2
 	CP	WHILE_M * 2
 	JR	Z,ST_WHL
 	LD	A,PROC_T
-	CALL	ST_CTX
+ST_PRCR:CALL	ST_CTX
 	INC	HL
 	INC	HL		; skip duplicated error address
 	RET
 
 ST_WHL:	LD	A,WHILE_T
+	JR	ST_PRCR
+
+ST_REP:	LD	A,REPEAT_T
 ST_CTX:	RST	$10
 	INC	HL
 	INC	HL
@@ -2185,10 +2192,13 @@ WHILE:	LD	HL,(CH_ADD)
 	LD	(DEST),HL
 	CALL	CLASS2_06	; single numeric expression
 	CALL	SYNTAX_Z
-	JR	Z,PROC_EE
+	JP	Z,END05
 	CALL	TEST_ZERO
 	JR	Z,WHILE0
 	POP	DE		; DE = return address
+	POP	HL		; HL = error address
+	PUSH	HL
+	PUSH	HL		; replicate
 	LD	HL,(SUBPPC - 1)
 	INC	H
 	EX	(SP),HL		; HL = error address
