@@ -1202,7 +1202,7 @@ effects from updating <code>i</code> and <code>j</code> in line
 <div class="frame">
 <p><strong>Note:</strong> As noted in the discussion of the main loop,
 it is better if the job of setting parameters <code>i</code>, <code>j</code>,
-<code>x</code> and <code>j</code> depending on the direction of movement
+<code>x</code> and <code>y</code> depending on the direction of movement
 would be the job of procedure <code>move</code> rather than the main loop.</p>
 <p>The corresponding refactoring of procedure <code>move</code> would be
 as follows:
@@ -1214,7 +1214,7 @@ as follows:
 <p>Thus, <code>PROC move</code> takes a single parameter, the direction of
 the movement, a number between <code>0</code> and <code>3</code>. In line
 <code>315</code> the former parameters are declared as local variables 
-and initialized with the corresponding value. The question mark <code>?</code>
+and initialized with the appropriate values. The question mark <code>?</code>
 operator is called <em><strong>selector</strong></em> and it picks 
 the corresponding value from the list in the following parentheses. In order
 to be able to use conditions before the question mark, the first value is 0.
@@ -1247,22 +1247,69 @@ last one is used, though this can never happen in this program.
  570 END PROC 
 </pre>
 
+<p>The parameters of procedure <code>slide</code> are subscripts 
+<code>i</code> and <code>j</code> of the first cell of the row or column, 
+the one <em>toward</em> which tiles are going to slide. Parameters
+<code>x</code> and <code>y</code> are the values that need to be added to
+<code>i</code> and <code>j</code>, respectively, to point to the next
+cell of the grid (array <code>b</code>).</p>
 
+<p>The procedure also has a new type of loop in it, the <code>WHILE</code> 
+loop between lines <code>420</code> and <code>440</code>. The condition 
+following <code>WHILE</code> is evaluated <em>before</em> each iteration 
+of the loop. If it is <em>false</em> (that is zero), then execution 
+continues <em>after</em> the <code>END WHILE</code> statement. 
+Otherwise, the body of the loop is executed and the condition checked 
+again. </p>
+
+<div class="frame">
+<p><strong>Note:</strong> Both <code>WHILE</code>/<code>END WHILE</code> 
+and <code>REPEAT</code>/<code>UNTIL</code> loops depend on a condition. 
+The main difference is that <code>REPEAT</code>/<code>UNTIL</code> loops 
+execute <em>at least once</em>. <code>WHILE</code> loops are not 
+executed at all, if their condition is <em>false</em> in the beginning. 
+Another difference is that the condition after <code>WHILE</code> must 
+be non-zero but the condition after <code>UNTIL</code> must be zero for
+the loop's body to be executed one more time.</p>
+
+<p>But there is also a subtler difference. The condition after 
+<code>WHILE</code> is evaluated in the <em><strong>enclosing 
+context</strong></em>, meaning that variables local to the loop are not 
+accessible there. By contrast, the condition after <code>UNTIL</code> is 
+evaluated in the <em><strong>local context</strong></em> of the loop 
+itself, allowing for using variables local to the loop.</p>
+</div>
 
 <pre>
- 580 DEF PROC tile(x,y,k)
- 590  LOCAL k$=k?("",STR$ (2^k))
- 600  LET k$=" "*(4-LEN k$)+k$
- 610  PRINT AT x*5-2,y*5-4;k$
+ 580 DEF PROC board()
+ 590  FOR i=1 TO 4: FOR j=1 TO 4
+ 600   PROC tile(i,j,b(i,j))
+ 610  NEXT : NEXT 
  620 END PROC 
 </pre>
+
+<p>The <code>board</code> procedure simply iterates through all the cells of
+the board and calls <code>PROC tile</code> to draw the tiles and empty
+cells, as the case might be.</p>
+
 <pre>
- 630 DEF PROC board()
- 640  FOR i=1 TO 4: FOR j=1 TO 4
- 650   PROC tile(i,j,b(i,j))
- 660  NEXT : NEXT 
+ 630 DEF PROC tile(x,y,k)
+ 640  LOCAL k$=k?("",STR$ (2^k))
+ 650  LET k$=" "*(4-LEN k$)+k$
+ 660  PRINT AT x*5-2,y*5-4;k$
  670 END PROC 
 </pre>
+
+<p>This last procedure is used to draw one empty cell or a tile corresponding
+to subscripts <code>x</code> and <code>y</code>. The keyword <code>LEN</code>
+means the length of the string after it. Line <code>650</code> makes sure
+that <code>k$</code> is always exactly 4 characters, with the number on the 
+tile at the end of the string.</p>
+
+<p>When we are going to change the graphics of the game to look prettier, 
+have colors and so on, most changes go into this procedure. This first version
+is very rudimentary, but it is (barely) enough to make the game playable.</p>
+
 
 
 </body>
