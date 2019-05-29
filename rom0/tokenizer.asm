@@ -1,5 +1,5 @@
 ; Find instruction token
-; Input	B: length of text to match
+; Input: B length of text to match, HL address of text to match
 ; Output: A token code matched or zero, if none; CF token matched fully
 TOK_INS:LD	A,(HL)
 	CP	" "
@@ -32,7 +32,7 @@ TOK_TF:	ADD	A,49
 	RET
 
 ; Find operator token
-; Input	B: length of text to match
+; Input: B length of text to match, HL address of text to match
 ; Output: A token code matched or zero, if none; CF token matched fully
 TOK_OPR:LD	DE,L0095 + 1
 	LD	C,41		; 41 old operator tokens
