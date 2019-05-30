@@ -445,7 +445,7 @@ RUN_CONT:
 	ADD	HL,BC
 	CP	$B2		; TOKEN $80
 	JR	NC,GET_PARAM	; jump for tokens
-	JR	ERROR_C_NZ	; TODO: syntax error for other characters
+	JR	ERRCNZ		; TODO: syntax error for other characters
 SCAN_LOOP:
 	LD	HL,(T_ADDR)
 GET_PARAM:
@@ -476,7 +476,7 @@ INDEX_CONT:
 	JR	Z,IDX_DO
 	LD	HL,OPENSTRM2
 IDX_DO:	CALL	INDEXER
-	JP	NC,SWAP
+SWIDX:	JP	NC,SWAP
 	POP	BC		; discard return address
 	LD	C,(HL)
 	LD	B,0
@@ -508,19 +508,21 @@ SEP_MISM:			; THEN-less IF and operator update in LET
 	JR	Z,C_THEN
 	PUSH	AF
 	LD	A,(T_ADDR)
+	CP	$8B		; EOL in STOP
+	JP	Z,STOP
 	CP	$7C		; = in LET
-	JR	NZ,ERROR_C_NZ
+ERRCNZ:	JR	NZ,ERROR_C_NZ
 	POP	AF
 	JP	UPDATE
 
-C_THEN:	LD	A,$CB		; THEN
+C_THEN:	LD	A,THEN_T	; THEN
 	CP	C
-	JR	NZ,ERROR_C_NZ
+	JR	NZ,ERROLD
 	CALL	SYNTAX_Z	; checking sytax?
 	JP	NZ,THENLESS	; if not, execute THENless IF
 	RES	4,(IY+$37)	; signal that we're NOT after THEN
 	LD	HL,L1B29	; STMT-L-1
-	EX	(SP),HL
+ERROLD:	EX	(SP),HL
 SWERR:	JP	SWAP		; we're done here
 
 SEPARATOR:
@@ -557,7 +559,25 @@ STDERR_MSG:
 	POP	DE
 	JR	MESSAGE
 
-REPORT:	SUB	$1C
+REPORT:	CP	MAX_ERR
+	JR	C,REPORTZ
+	SUB	$81
+	LD	(ERR_NR),A
+	EX	DE,HL
+REPORTL:LD	A,(DE)		; Find end of command line
+	INC	DE
+	CP	$80
+	JR	Z,MESSAGE
+	CP	$0E
+	JR	NZ,REPORTL
+	INC	DE
+	INC	DE
+	INC	DE
+	INC	DE
+	INC	DE
+	JR	REPORTL
+
+REPORTZ:SUB	$1C
 	LD	B,A
 	INC	B
 	ADD	"S"
@@ -672,8 +692,8 @@ TOKENS1:DEFB	$8D
 	DEFB	$80+"Q"
 	DEFM	"END WHIL"
 	DEFB	$80+"E"
-	DEFM	"_E"
-	DEFB	$80+"E"
+	DEFM	"ON ERRO"
+	DEFB	$80+"R"
 	DEFM	"_Es"
 	DEFB	$80+"Q"
 	DEFM	"_Es"
@@ -712,8 +732,8 @@ TOKENS1:DEFB	$8D
 	DEFB	$80+"Y"
 	DEFM	"PALETT"
 	DEFB	$80+"E"
-	DEFM	"_s"
-	DEFB	$80+"E"
+	DEFM	"EXI"
+	DEFB	$80+"T"
 	DEFM	"WHIL"
 	DEFB	$80+"E"
 	DEFM	"END PRO"
@@ -785,6 +805,7 @@ REPORTS:DEFB	$80+">"
 	DEFB	$80+"E"		; W
 	DEFM	"END PROC without DE"
 	DEFB	$80+"F"		; X
+MAX_ERR:EQU	$22
 
 PEEK_T:	EQU	$BE
 THEN_T:	EQU	$CB

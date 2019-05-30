@@ -8202,7 +8202,9 @@ L1A86:  DEFB    $06             ; Class-06 - A numeric expression must follow.
 
 ;; P-STOP
 L1A8A:  DEFB    $00             ; Class-00 - No further operands.
-        DEFW    L1CEE           ; Address: $1CEE; Address: STOP
+;;; BUGFIX: extensible STOP
+	DEFW	ESTOP
+;;;        DEFW    L1CEE           ; Address: $1CEE; Address: STOP
 
 ;; P-RETURN
 L1A8D:  DEFB    $00             ; Class-00 - No further operands.
@@ -8771,7 +8773,9 @@ L1BF4:  RST     18H             ; GET-CHAR - ignoring white space etc.
         JP      Z,L1B28         ; jump back to STMT-LOOP to consider
                                 ; further statements
 
-        JP      L1C8A           ; jump to REPORT-C with any other character
+;;; BUGFIX: allow for extra arguments
+	JP	REPORT_C_EXTRA
+;;;        JP      L1C8A           ; jump to REPORT-C with any other character
                                 ; 'Nonsense in BASIC'.
 
 ; Note. the two-byte sequence 'rst 08; defb $0b' could replace the above jp.
@@ -20023,6 +20027,11 @@ LOOK_READ:
 	RST	$08
 	DEFB	$19		; Q Parameter error
 
+; Extensible STOP (5 bytes)
+ESTOP:	CALL	RUN_HOOK
+	RST	$08
+	DEFB	$08		; 9 STOP statement
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
@@ -20090,8 +20099,8 @@ LOOK_READ:
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-	DEFB    $FF, $FF, $FF, $FF;	, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+	DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF;	, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;

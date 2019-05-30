@@ -154,6 +154,7 @@
 | AD | PLAY
 | ... |
 | B3 | END WHILE
+| B4 | ON ERROR
 | ... |
 | B8 | LOCAL
 | B9 | DELETE
@@ -169,7 +170,7 @@
 | C5 | END IF
 | ... |
 | C7 | PALETTE
-| ... |
+| C8 | EXIT
 | C9 | WHILE
 | CA | END PROC
 | CB | ELSE

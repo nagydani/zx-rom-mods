@@ -484,8 +484,8 @@ K_RST:	LD	(HL),A
 	DEC	B
 	DEC	B
 	JR	Z,K_RST0
-	LD      HL,$5ABF	; attribute at 21,31
-	LD      DE,$5ABE	; attribute at 21,30
+	LD	HL,$5ABF	; attribute at 21,31
+	LD	DE,$5ABE	; attribute at 21,30
 	LD	A,(ATTR_P)
 	LD	(HL),A
 	XOR	A
@@ -499,8 +499,8 @@ K_RST:	LD	(HL),A
 	DEC	BC
 	LDDR
 K_RST0: LD	(IY+$31),$02	; now set DF_SZ lower screen to 2
-        LD      BC,$1721        ; TODO: depends on mode; line 23 for lower screen
-	LD      (RETADDR),BC
+	LD	BC,$1721	; TODO: depends on mode; line 23 for lower screen
+	LD	(RETADDR),BC
 S_IO_E:	RST	$28
 	DEFW	L0DD9		; CL-SET
 KS_NR:	JP	SWAP
@@ -512,16 +512,16 @@ S_OUT:	LD	HL,S_STATE
 	OR	A
 	JR	NZ,KS_NR
 S_RST:	LD	(HL),A
-	LD      H,A
+	LD	H,A
 	LD	L,A		; Initialize plot coordinates.
-	LD      (COORDS),HL	; Set system variable COORDS to 0,0.
-	RES	0,(IY+$30)	; update FLAGS2  - signal main screen is clear.
+	LD	(COORDS),HL	; Set system variable COORDS to 0,0.
+	RES	0,(IY+$30)	; update FLAGS2 - signal main screen is clear.
 	RST	$28
 	DEFW	L0D4D		; TEMPS
 	LD	B,$18		; 24 lines
 	RST	$28
 	DEFW	L0E44		; CL-LINE
-	LD      (IY+$52),$01    ; set SCR_CT - scroll count - to default.
+	LD	(IY+$52),$01	; set SCR_CT - scroll count - to default.
 	LD	BC,$1821	; TODO: depends on mode; line 24 for upper screen
 	JR	S_IO_E
 
@@ -929,7 +929,7 @@ EXTTAB_I:
 	DEFB	$B1		; no change
 	DEFB	$B2		; no change
 	DEFB	$D2		; END WHILE followed by ERASE
-	DEFB	$B4		; no change
+	DEFB	$D3		; ON ERROR followed by OPEN #
 	DEFB	$B5		; no change
 	DEFB	$B6		; no change
 	DEFB	$B7		; no change
@@ -949,8 +949,8 @@ EXTTAB_I:
 	DEFB	$CA		; END IF followed by END PROC
 	DEFB	$C6		; no change
 	DEFB	$DA		; PALETTE followed by PAPER
-	DEFB	$C8		; no change
-	DEFB	$C9		; no change
+	DEFB	$CB		; EXIT followed by ELSE
+	DEFB	$C9		; WHILE followed by WHILE
 	DEFB	$B3		; END PROC followed by END WHILE
 	DEFB	$C5		; ELSE followed by END IF
 	DEFB	$C7		; PROC followed by PALETTE
@@ -959,7 +959,7 @@ EXTTAB_I:
 	DEFB	$D8		; CAT followed by CIRCLE
 	DEFB	$DB		; FORMAT followed by FLASH
 	DEFB	$D5		; MOVE followed by MERGE
-	DEFB	$CB		; ERASE followed by ELSE
+	DEFB	$C8		; ERASE followed by EXIT
 	DEFB	$DF		; OPEN # followed by OUT
 	DEFB	$FB		; CLOSE # followed by CLS
 	DEFB	$D1		; MERGE followed by MOVE
@@ -971,7 +971,7 @@ EXTTAB_I:
 	DEFB	$EB		; FLASH followed by FOR
 	DEFB	$D7		; BRIGHT followed by BEEP
 	DEFB	$FA		; INVERSE followed by IF
-	DEFB	$D3		; OVER followed by OPEN #
+	DEFB	$B4		; OVER followed by ON ERROR
 	DEFB	$DE		; OUT followed by OVER
 	DEFB	$F1		; LPRINT followed by LET
 	DEFB	$EF		; LLIST followed by LOAD
@@ -1012,63 +1012,64 @@ EXTTAB_O:
 	DEFB	$A9		; PI followed by POINT
 	DEFB	$CE		; FN followed by FREE
 	DEFB	$DA		; POINT followed by PAPER
-	DEFB	$BC		; SCREEN$  SGN
-	DEFB	$BD		; ATTR  ABS
-	DEFB	$B7		; AT  ATN
-	DEFB	$B4		; TAB  TAN
-	DEFB	$B0		; VAL$  VAL
-	DEFB	$B3		; CODE  COS
-	DEFB	$AE		; VAL  VAL$
-	DEFB	$CA		; LEN  LINE
-	DEFB	$BB		; SIN  SQR
-	DEFB	$C2		; COS  CHR$
-	DEFB	$CB		; TAN  THEN
-	DEFB	$AC		; ASN  AT
-	DEFB	$C6		; ACS  AND
-	DEFB	$AB		; ATN  ATTR
-	DEFB	$B1		; LN  LEN
-	DEFB	$D4		; EXP  EOF #
-	DEFB	$DD		; INT  INVERSE
-	DEFB	$CD		; SQR  STEP
-	DEFB	$B2		; SGN  SIN
-	DEFB	$B6		; ABS  ACS
-	DEFB	$A7		; PEEK  PI
-	DEFB	$D9		; IN  INK
-	DEFB	$C0		; USR  USR
-	DEFB	$AA		; STR$  SCREEN$
-	DEFB	$AF		; CHR$  CODE
-	DEFB	$C3		; NOT  NOT
-	DEFB	$DC		; BIN  BRIGHT
-	DEFB	$DE		; OR  OVER
-	DEFB	$B5		; AND  ASN
-	DEFB	$C8		; <=  >=
-	DEFB	$C9		; >=  <>
-	DEFB	$C7		; <>  <=
-	DEFB	$B8		; LINE  LN
-	DEFB	$D0		; THEN  TIME
-	DEFB	$AD		; TO  TAB
-	DEFB	$D1		; STEP  STICK
-	DEFB	$DB		; FREE  FLASH
-	DEFB	$CF		; MEM$  MEM$
-	DEFB	$D5		; TIME  TIME$
-	DEFB	$C1		; STICK  STR$
-	DEFB	$E4		; DPEEK  DATA
-	DEFB	$C5		; OPEN #  OR
-	DEFB	$B9		; EOF #  EXP
-	DEFB	$D0		; TIME$  TIME
-	DEFB	$A5		; REF  RND
+	DEFB	$BC		; SCREEN$ followed by SGN
+	DEFB	$BD		; ATTR followed by ABS
+	DEFB	$B7		; AT followed by ATN
+	DEFB	$B4		; TAB followed by TAN
+	DEFB	$B0		; VAL$ followed by VAL
+	DEFB	$B3		; CODE followed by COS
+	DEFB	$AE		; VAL followed by VAL$
+	DEFB	$CA		; LEN followed by LINE
+	DEFB	$BB		; SIN followed by SQR
+	DEFB	$C2		; COS followed by CHR$
+	DEFB	$CB		; TAN followed by THEN
+	DEFB	$AC		; ASN followed by AT
+	DEFB	$C6		; ACS followed by AND
+	DEFB	$AB		; ATN followed by ATTR
+	DEFB	$B1		; LN followed by LEN
+	DEFB	$D4		; EXP followed by EOF #
+	DEFB	$DD		; INT followed by INVERSE
+	DEFB	$CD		; SQR followed by STEP
+	DEFB	$B2		; SGN followed by SIN
+	DEFB	$B6		; ABS followed by ACS
+	DEFB	$A7		; PEEK followed by PI
+	DEFB	$D9		; IN followed by INK
+	DEFB	$C0		; USR followed by USR
+	DEFB	$AA		; STR$ followed by SCREEN$
+	DEFB	$AF		; CHR$ followed by CODE
+	DEFB	$C3		; NOT followed by NOT
+	DEFB	$DC		; BIN followed by BRIGHT
+	DEFB	$DE		; OR followed by OVER
+	DEFB	$B5		; AND followed by ASN
+	DEFB	$C8		; <= followed by >=
+	DEFB	$C9		; >= followed by <>
+	DEFB	$C7		; <> followed by <=
+	DEFB	$B8		; LINE followed by LN
+	DEFB	$D0		; THEN followed by TIME
+	DEFB	$AD		; TO followed by TAB
+	DEFB	$D1		; STEP followed by STICK
+	DEFB	$DB		; FREE followed by FLASH
+	DEFB	$CF		; MEM$ followed by MEM$
+	DEFB	$D5		; TIME followed by TIME$
+	DEFB	$C1		; STICK followed by STR$
+	DEFB	$E4		; DPEEK followed by DATA
+	DEFB	$C5		; OPEN # followed by OR
+	DEFB	$B9		; EOF # followed by EXP
+	DEFB	$D0		; TIME$ followed by TIME
+	DEFB	$A5		; REF followed by RND
 	DEFB	$D7		; unchanged
-	DEFB	$D8		; HEX  HEX
-	DEFB	$A6		; INK  INKEY$
-	DEFB	$BE		; PAPER  PEEK
-	DEFB	$A8		; FLASH  FN
-	DEFB	$C4		; BRIGHT  BIN
-	DEFB	$BF		; INVERSE  IN
-	DEFB	$DF		; OVER  OCT
-	DEFB	$D3		; OCT  OPEN #
+	DEFB	$D8		; HEX followed by HEX
+	DEFB	$A6		; INK followed by INKEY$
+	DEFB	$BE		; PAPER followed by PEEK
+	DEFB	$A8		; FLASH followed by FN
+	DEFB	$C4		; BRIGHT followed by BIN
+	DEFB	$BF		; INVERSE followed by IN
+	DEFB	$DF		; OVER followed by OCT
+	DEFB	$D3		; OCT followed by OPEN #
 	DEFB	$E0		; unchanged
 	DEFB	$E1		; unchanged
-	DEFB	$E3		; ><  <<
-	DEFB	$E5		; <<  >>
-	DEFB	$D2		; DATA  DPEEK
-	DEFB	$E2		; >>  ><
+	DEFB	$E3		; >< followed by <<
+	DEFB	$E5		; << followed by >>
+	DEFB	$D2		; DATA followed by DPEEK
+	DEFB	$E2		; >> followed by ><
+
