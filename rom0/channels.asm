@@ -139,6 +139,10 @@ K_ENTP:	RES	4,(IY+$37)	; allow ELSE
 	SCF
 	JR	K_ING3
 
+K_M_SPC:SET	3,(HL)		; turn off K mode
+	SET	5,(IY+$30)	; suppress K mode
+	JR	K_NSP
+
 K_INB:	BIT	3,(IY+$01)	; mode K?
 	JR	NZ,K_MDL	; jump, if not
 	LD	HL,K_MODE
@@ -168,11 +172,14 @@ K_NSP:	LD	(K_DATA),A
 	JR	KEY_DATA0
 
 KEY_M_K0:
+	LD	HL,K_STATE
+	BIT	6,(HL)
+	JR	Z,K_NSP
 	RST	$28
 	DEFW	X1F5A		; CAPS SHIFT?
 	LD	A," "
 	CCF
-	JR	C,KEY_MODE2
+	JR	C,K_TRAD
 	LD	HL,FLAGS
 	BIT	3,(HL)		; mode K?
 	JR	Z,K_M_SPC	; jump, if so
@@ -190,10 +197,6 @@ TFLAGS2:LD	HL,FLAGS2
 	XOR	(HL)
 	LD	(HL),A		; toggle CAPS LOCK
 	JR	KEY_FLAG0
-
-K_M_SPC:SET	3,(HL)		; turn off K mode
-	SET	5,(IY+$30)	; suppress K mode
-	JR	K_NSP
 
 KEY_MODE0:
 	CP	$0E
