@@ -400,10 +400,10 @@ ERROR_I:RST	$28
 THENLESS:
 	RES	4,(IY+$37)	; signal true outcome
 	CALL	TEST_ZERO
-	LD	(STKEND),HL
 SWAPNZ:	JP	NZ,SWAP		; Upon true condition, simply continue
 
 ; Upon false condition start scanning for END IF, ELSE or end of code
+THENLESS0:
 	SET	4,(IY+$37)	; signal false outcome
 	LD	BC,(NXTLIN)
 	LD	DE,T_IF
@@ -418,8 +418,9 @@ SWAPNZ:	JP	NZ,SWAP		; Upon true condition, simply continue
 ELSE:	POP	BC		; discard STMT-RET
 	CALL	SYNTAX_Z
 	JR	Z,ELSE_S
-	BIT	4,(IY+$37)	; FLAGX, check if last IF was false
-	RES	4,(IY+$37)
+	LD	HL,FLAGX
+	BIT	4,(HL)		; FLAGX, check if last IF was false
+	RES	4,(HL)
 	JR	NZ,ELSE_1
 	RST	$18
 	CP	$0D
@@ -543,6 +544,7 @@ TEST_ZERO:
 	DEC	HL
 	DEC	HL
 	OR	(HL)		; zero only for small integers
+	LD	(STKEND),HL
 	RET
 
 ASSERT:	CALL	TEST_ZERO
@@ -1762,7 +1764,7 @@ STEP_NL:LD	(NXTLIN),HL
 STEP_N:	RST	$20		; read next
 	CP	$0D
 	JR	Z,STEP_LE	; LINE-END
-	INC	(IY+$0D)
+STEP_L1:INC	(IY+$0D)
 	CP	":"
 	JR	Z,STEP_N
 
@@ -1821,9 +1823,12 @@ STEP_2:	CALL	DECWORD
 	RST	$28
 	DEFW	L1601		; CHAN-OPEN
 	RES	3,(IY+$02)	; no edit line
+	LD	HL,FLAGX
+	LD	C,(HL)
 	RST	$28
 	DEFW	L15DE		; WAIT-KEY1
 	PUSH	AF
+	LD	(HL),C
 	RST	$28
 	DEFW	L0D6E		; CLS-LOWER
 	POP	AF
@@ -1834,11 +1839,60 @@ STEP_2:	CALL	DECWORD
 	CP	"C"
 	JR	Z,STEP_X
 	RST	$18
+	CP	REM_T
+	JR	Z,ST_REM
+	CP	IF_T
+	JR	Z,ST_IF
+	CP	ELSE_T
+	JR	Z,ST_ELSE
 	LD	B,0
 	LD	HL,X1B40
 	PUSH	HL
 	LD	HL,STEP_HOOK
-	JP	SWAP
+	JR	ST_SW
+
+ST_ELSE:LD	HL,FLAGX
+	BIT	4,(HL)		; FLAGX, check if last IF was false
+	RES	4,(HL)
+	JR	NZ,ST_IF1
+	RST	$20
+	CP	$0D
+	SCF
+	LD	BC,STEP_HOOK
+	JR	Z,ST_ELSE_3	; multi-line ELSE block
+	CP	IF_T
+	JR	Z,ST_ELSEIF	; ELSE IF
+	JR	ST_REM
+
+ST_ELSEIF:
+	INC	HL
+	CALL	SKIPEX
+	CP	THEN_T
+	JR	Z,ST_REM
+	DEC	HL
+	LD	(CH_ADD),HL
+ST_ELSE_3:
+	JP	ELSE_3
+
+ST_IF:	RST	$20
+	RES	4,(IY+$37)	; signal true outcome
+	RST	$28
+	DEFW	L24FB + 1	; SCANNING + 1
+	CP	THEN_T
+	JR	NZ,ST_THENLESS
+	CALL	TEST_ZERO
+ST_IF1:	JP	NZ,STEP_N
+	SET	4,(IY+$37)	; signal false outcome
+ST_REM:	LD	HL,(NXTLIN)
+	XOR	A
+	JP	STEP_LC
+ST_THENLESS:
+	CALL	TEST_ZERO
+	JR	NZ,ST_IF1
+	LD	BC,STEP_HOOK
+	PUSH	BC
+	PUSH	BC		; placeholder
+	JP	THENLESS0
 
 ERROR_L:RST	$28
 	DEFW	L1B7B		; L Break into program
