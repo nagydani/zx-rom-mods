@@ -42,7 +42,7 @@
 	DEFB	P_PLUG - $	; Es8
 	DEFB	P_STACK - $	; STACK
 	DEFB	P_LABEL - $	; LABEL/@
-	DEFB	P_PLUG - $	; sI
+	DEFB	P_POP - $	; POP
 	DEFB	P_PLAY - $	; PLAY
 	DEFB	P_PLUG - $	; EsJ
 	DEFB	P_PLUG - $	; EI
@@ -68,7 +68,7 @@
 	DEFB	P_ASSERT - $	; ASSERT
 	DEFB	P_PLUG - $	; EB
 	DEFB	P_ENDIF - $	; END IF
-	DEFB	P_PLUG - $	; sY
+	DEFB	P_YIELD - $	; YIELD
 	DEFB	P_PALETTE - $	; PALETTE
 	DEFB	P_EXIT - $	; EXIT
 	DEFB	P_WHILE - $	; WHILE
@@ -87,8 +87,8 @@ P_RENUM:DEFB	$00		; TODO: all sorts of arguments for RENUM
 P_EXIT:	DEFB	$00
 	DEFW	PLUG	
 
-;;P_ERROR:DEFB	$05
-;;	DEFW	DERROR
+P_POP:	DEFB	$00
+	DEFW	POP
 
 P_ELSE:	DEFB	$05
 	DEFW	ELSE
@@ -153,6 +153,7 @@ P_ENDWHILE:
 	DEFB	$00
 	DEFW	ENDWHILE
 
+P_YIELD:
 P_ONERROR:
 P_PLAY:
 ; unimplemented instruction, accepted w/o parameters, but not executed
@@ -163,7 +164,7 @@ P_PLUG:
 CHECK_END:
 	CALL	SYNTAX_Z
 	RET	NZ
-	POP	BC		; SCAN_LOOP
+END05_E:POP	BC		; SCAN_LOOP
 END05:	POP	BC		; STMT_RET
 STMT_NEXT:
 	RST	$18
@@ -1171,9 +1172,9 @@ F_ELSE:	LD	A,(NESTING)
 	JR	EACH_COMEBACK
 
 F_NEXT:	RST	$20
-	CP	$0D
-	JR	Z,F_ENDIF
 	CP	":"
+	JR	Z,F_ENDIF
+	CP	$0D
 	JR	Z,F_ENDIF
 ; Consider variable
 	OR	$20			; lowercase
@@ -1395,7 +1396,7 @@ ZERROR:	DEC	A
 	JR	NZ,XERROR
 	CALL	NEXT_2NUM
 	CALL	SYNTAX_Z
-RERROR:	JP	Z,END05
+RERROR:	JP	Z,END05_E
 	RST	$28
 	DEFW	L1E94		; FIND-INT1
 	LD	(SUBPPC),A
@@ -2433,15 +2434,11 @@ ENDP_SW:JP	SWAP
 
 ; Discard local variables before RETURN
 RETURN_CONT:
-	PUSH	HL
+	EX	(SP),HL
 	PUSH	BC
-RET_L:	CALL	SKIP_LL
-	OR	A
-	JR	Z,ENDP_SW	; 7 RETURN without GOSUB
+	CALL	CALLCTX
 	CP	$3F
 	JR	Z,RETURN_GS
-	CP	REPEAT_M
-	JR	Z,RET_L
 	CP	PROC_M
 	JR	NZ,ENDP_SW		; TODO: consider other contexts
 ; returning from a PROC
@@ -2480,3 +2477,36 @@ RETURN_GS:
 	PUSH	DE
 	JR	ENDP_SW		; RETURN again
 
+POP:	CALL	CALLCTX
+	CP	$3F
+	PUSH	HL
+	JR	Z,POP_GS
+	DEC	HL
+	DEC	HL		; skip old error address
+POP_GS:	DEC	HL
+	LD	DE,OSPCC
+	LD	BC,$0003
+	LDDR			; move return pointer to CONTINUE pointer
+	POP	HL		; new context
+	POP	BC		; return address
+	POP	DE		; error address
+	LD	SP,HL
+	PUSH	DE		; error address
+	LD	(ERR_SP),SP
+	PUSH	BC		; return address
+	JR	ENDP_SW
+
+; Find calling context (GO SUB or PROC)
+CALLCTX:CALL	SKIP_LL
+	SCF
+RET_L:	CALL	NC,LOC_L
+	OR	A
+	JR	Z,ERROR7
+	CP	REPEAT_M
+	JR	Z,RET_L
+	CP	WHILE_M
+	JR	Z,RET_L
+	RET
+
+ERROR7:	RST	$28
+	DEFW	REP7

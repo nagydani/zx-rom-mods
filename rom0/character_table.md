@@ -151,7 +151,7 @@
 | ... |
 | AA | STACK
 | AB | LABEL / @
-| ... |
+| AC | POP
 | AD | PLAY
 | ... |
 | B3 | END WHILE
@@ -169,7 +169,7 @@
 | C3 | ASSERT
 | ... |
 | C5 | END IF
-| C6 | POP
+| C6 | YIELD
 | C7 | PALETTE
 | C8 | EXIT
 | C9 | WHILE

@@ -921,7 +921,7 @@ EXTTAB_I:
 	DEFB	$A9		; no change
 	DEFB	$CD		; STACK followed by STEP
 	DEFB	$AB		; @ followed by @
-	DEFB	$AC		; no change
+	DEFB	$F5		; POP followed by PRINT
 	DEFB	$F6		; PLAY followed by PLOT
 	DEFB	$AE		; no change
 	DEFB	$AF		; no change
@@ -939,7 +939,7 @@ EXTTAB_I:
 	DEFB	$BB		; no change
 	DEFB	$BC		; no change
 	DEFB	$BD		; no change
-	DEFB	$C6		; POKE followed by POP
+	DEFB	$AC		; POKE followed by POP
 	DEFB	$BF		; no change
 	DEFB	$C2		; USR followed by UNTIL
 	DEFB	$C1		; no change
@@ -947,7 +947,7 @@ EXTTAB_I:
 	DEFB	$C3		; ASSERT followed by ASSERT
 	DEFB	$C4		; no change
 	DEFB	$CA		; END IF followed by END PROC
-	DEFB	$F5		; POP followed by PRINT
+	DEFB	$C6		; YIELD followed by YIELD
 	DEFB	$DA		; PALETTE followed by PAPER
 	DEFB	$CB		; EXIT followed by ELSE
 	DEFB	$C9		; WHILE followed by WHILE
@@ -993,7 +993,7 @@ EXTTAB_I:
 	DEFB	$F0		; LET followed by LIST
 	DEFB	$AD		; PAUSE followed by PLAY
 	DEFB	$E6		; NEXT followed by NEW
-	DEFB	$F5		; POKE followed by PRINT
+	DEFB	$AC		; POKE followed by POP
 	DEFB	$CC		; PRINT followed by PROC
 	DEFB	$BE		; PLOT followed by POKE
 	DEFB	$F9		; RUN followed by RANDOMIZE
