@@ -149,7 +149,8 @@
 | A7 | RENUM
 | A8 | DEF PROC
 | ... |
-| AB | LABEL
+| AA | STACK
+| AB | LABEL / @
 | ... |
 | AD | PLAY
 | ... |
@@ -168,7 +169,7 @@
 | C3 | ASSERT
 | ... |
 | C5 | END IF
-| ... |
+| C6 | POP
 | C7 | PALETTE
 | C8 | EXIT
 | C9 | WHILE

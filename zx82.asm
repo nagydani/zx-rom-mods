@@ -49,7 +49,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 26-APR-2019
+; Last updated: 01-JUN-2019
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -9614,7 +9614,7 @@ L1E5A:  LD      (SEED),BC      ; place in SEED system variable.
 ; by using the last part of GO TO and exits indirectly to STMT-RET.
 
 ;; CONTINUE
-;;; BUGFIX: No CONTINUE from program execution, only from command
+;;; BUGFIX: Move CONTINUE out of the way for GO TO hook.
 L1E5F:  JP	CONTINUE
 ;;; L1E5F:  LD      HL,(OLDPPC)      ; fetch OLDPPC line number.
 ;;; LD      D,(IY+$36)      ; fetch OSPPC statement.
@@ -19826,19 +19826,11 @@ LIST_RANGE_2:
 	LD	(MEMBOT+28),BC	; set interval end
 	RET
 
-; CONTINUE only from command (21 bytes)
+; CONTINUE moved out of the way of GO TO (9 bytes)
 CONTINUE:
-	LD	HL,(PPC)
-	INC	HL
-	INC	HL
-	LD	A,H
-	OR	L
 	LD	HL,(OLDPPC)
 	LD	D,(IY+$36)	; fetch OSPPC statement.
-	JP	Z,L1E73		; forward to GO-TO-2
-	CALL	CONTINUE_HOOK
-	RST	$08
-	DEFB	$0B		; Nonsense in BASIC
+	JP	L1E73		; forward to GO-TO-2
 
 ; Clean up after report in MAIN-EXEC (8 bytes)
 REP_CLEAR:
@@ -19907,7 +19899,7 @@ REPORT1:CALL	NEXT_HOOK
 ; REPORT7, check for local variables first (6 bytes)
 REPORT7:CALL	RETURN_HOOK
 	PUSH	HL
-	RST	$08
+REP7:	RST	$08
 	DEFB	$06		; 7 RETURN without GOSUB
 
 ; POINTERS except DEST, if pointing to local variable (41 bytes)
@@ -20098,9 +20090,9 @@ ESTOP:	CALL	RUN_HOOK
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-	DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF;	, $FF;
+	DEFB    $FF, $FF, $FF, $FF, $FF, $FF;	, $FF, $FF;
+        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
@@ -20200,8 +20192,6 @@ INDEXER_2:
 	RET	C		; if code is found, return immediately
 	CALL	NOPAGE
 INFIX_HOOK:
-	CALL	NOPAGE
-CONTINUE_HOOK:
 	CALL	NOPAGE
 STRING_HOOK:
 	CALL	NOPAGE
