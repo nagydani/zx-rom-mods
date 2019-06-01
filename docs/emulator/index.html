@@ -1,0 +1,31 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<title>ZX85 Emulator</title>
+	<script src="jdataview.js"></script>
+	<script src="jsspeccy-core.min.js"></script>
+	<script>
+	function go() {
+		var jsspeccy=JSSpeccy('zx85', {
+			'autostart': true,
+			'autoload': false,
+			'audio': false
+		});
+	}
+	</script>
+	<style>
+	#zx85 {
+        image-rendering: optimizeSpeed;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: -o-crisp-edges;
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+        image-rendering: pixelated;
+	-ms-interpolation-mode: nearest-neighbor;
+	}
+	</style>
+</head>
+<body onload="go()">
+	<div id="zx85"></div>
+</body>
+</html>
