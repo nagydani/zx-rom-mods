@@ -125,7 +125,7 @@
 | D4 | EOF #
 | D5 | TIME$
 | D6 | REF
-| ... |
+| D7 | ITEM
 | D8 | HEX
 | D9 | INK
 | DA | PAPER
