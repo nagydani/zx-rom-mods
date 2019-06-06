@@ -20161,7 +20161,7 @@ ESTOP:	CALL	RUN_HOOK
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF;	, $FF;
+        DEFB    $FF, $FF, $FF, $FF;	, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
@@ -20177,7 +20177,7 @@ ESTOP:	CALL	RUN_HOOK
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 
-; 113 bytes used before the character set
+; 116 bytes used before the character set
 
 ; Local variables in 128k mode
 STK_F_ARG:
@@ -20212,6 +20212,8 @@ LV_HOOK:
 RETURN_HOOK:
 	CALL	NOPAGE
 MAINADD_HOOK:
+	CALL	NOPAGE
+ONERR_HOOK:
 	CALL	NOPAGE
 ERROR_HOOK:
 	CALL	NOPAGE

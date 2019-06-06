@@ -9,6 +9,8 @@
 ; 7B REPEAT, 7 bytes: (NXTLIN)-(PROG), (CHADD)-(PROG), (PPC), (SUBPPC)
 ; 7C WHILE, 9 bytes: (NXTLIN)-(PROG), (CHADD)-(PROG), (PPC), (SUBPPC), error
 ; 7D PROC, 9 bytes: (DATADD)-(PROG), (NXTLIN)-(PROG), (PPC), (SUBPPC), error
+; 7E ON ERROR, 5 bytes (CHADD)-(PROG), (PPC), (SUBPPC)
+; 7F ERROR, 4 bytes (ERRNO)+1, (PPC), (SUBPPC)
 
 ; 81..9A string reference: 2 bytes of length + symbolic reference
 ; A1..BA numeric reference: 2 bytes of length + symbolic reference
@@ -18,6 +20,8 @@
 REPEAT_M:	EQU	$7B
 WHILE_M:	EQU	$7C
 PROC_M:		EQU	$7D
+ONERROR_M:	EQU	$7E
+ERROR_M:	EQU	$7F
 
 ; Skip all local variables, incl. loops
 SKIP_LL:CALL	SKIP_LC
@@ -53,6 +57,8 @@ LOC_L:	LD	A,$3E + 1
 	JR	Z,LOC_WHL	; WHILE entry
 	CP	PROC_M
 	JR	Z,LOC_PRC
+	CP	ERROR_M
+	JR	Z,LOC_ERR
 	BIT	7,A
 	JR	Z,LOC_SA	; simple variables and arrays
 	SUB	$E0
@@ -67,6 +73,9 @@ LOC_PRC:
 LOC_WHL:
 	LD	DE,$000A
 ADDHLDE:ADD	HL,DE
+	RET
+LOC_ERR:LD	DE,$0005
+	ADD	HL,DE
 	RET
 LOC_REP:LD	DE,$0008
 	ADD	HL,DE

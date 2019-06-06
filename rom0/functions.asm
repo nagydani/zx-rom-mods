@@ -585,11 +585,7 @@ S_STR_D:JR	Z,S_STR_END
 	DEFW	L2D60		; E-LOOP
 	CALL	STK_BASE
 NROUND:	CALL	MOD2A
-	ADD	"0"
-	CP	"9"+1
-	JR	C,STR_NUM
-	ADD	A,7
-STR_NUM:RST	$10		; print digit
+	CALL	PR_DIGIT
 	INC	HL
 	INC	DE		; adjust pointers
 	POP	AF
@@ -607,6 +603,14 @@ STR_DG:	JR	NC,STR_FR	; still fractional
 	JR	C,D_STR_E
 STR_FR:	CALL	STK_BASE
 	JR	NROUND
+
+PR_DIGIT:
+	ADD	"0"
+	CP	"9"+1
+	JR	C,STR_NUM
+	ADD	A,7
+STR_NUM:RST	$10		; print digit
+	RET
 
 D_STR_E:POP	AF		; fractional digits, Z set if zero
 	LD	(STKEND),HL
