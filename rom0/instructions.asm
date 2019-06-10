@@ -1413,7 +1413,10 @@ ZERROR:	DEC	A
 	RST	$18
 	CP	","
 	JR	NZ,XERROR
-	CALL	NEXT_2NUM
+	RST	$20
+	CP	LINE_T
+	JR	Z,STOP_LINE
+	CALL	CLASS2_08
 	CALL	SYNTAX_Z
 RERROR:	JP	Z,END05_E
 	RST	$28
@@ -1427,7 +1430,20 @@ XERROR:	CALL	SYNTAX_Z
 	POP	AF
 	LD	L,A
 	RST	$28
-	DEFW	L0055
+	DEFW	L0055		; ERROR-3
+
+STOP_LINE:
+	RST	$20
+	CALL	SYNTAX_Z
+	JR	Z,RERROR
+	POP	AF
+	LD	(ERR_NR),A
+	POP	HL		; discard ESTOP
+	LD	HL,L0055 + 3	; ERROR-3 + 3
+	EX	(SP),HL
+	LD	HL,SUBPPC
+	LD	A,1
+	JP	POPCTX
 
 PALETTE:CP	INK_T
 	JR	Z,PAL_I
@@ -2504,17 +2520,24 @@ RET_E:	DEC	HL
 	JR	ENDP_SW		; RETURN again
 
 
-POP:	CALL	CALLCTX
+POP:	LD	HL,OSPCC
+	XOR	A
+POPCTX:	LD	(MEMBOT),HL
+	LD	(MEMBOT+2),A
+	CALL	CALLCTX
 	CP	$3F
 	PUSH	HL
 	JR	Z,POP_GS
 	DEC	HL
 	DEC	HL		; skip old error address
 POP_GS:	DEC	HL
-	LD	DE,OSPCC
 	LD	BC,$0003
+	LD	DE,(MEMBOT)
 	LDDR			; move return pointer to CONTINUE pointer
-	POP	HL		; new context
+	DEC	(IY+MEMBOT+2-ERR_NR)
+	JR	NZ,POPCNT
+	DEC	(IY+SUBPPC-ERR_NR)
+POPCNT:	POP	HL		; new context
 	POP	BC		; return address
 	POP	DE		; error address
 	LD	SP,HL
@@ -2536,8 +2559,7 @@ RET_L:	CALL	NC,LOC_L
 	RET
 
 ERROR7:	RST	$28
-	DEFW	REP7
-
+	DEFW	REP7		; 7 Missing PROC or GO SUB
 
 ONERROR_S:
 	RST	$28
@@ -2586,6 +2608,8 @@ ONERR_CONT:
 	ADD	HL,SP
 ERR_LC:	CALL	LOC_L
 	JR	C,ONERR_F
+	CP	ERROR_M
+	JR	Z,ERR_OK
 	OR	A
 	JR	NZ,ERR_LC
 ERR_OK:	LD	HL,L1303	; MAIN-4
@@ -2624,7 +2648,7 @@ ERR_NJ:	LD	A,(HL)
 	INC	SP
 	LD	DE,$3E00 + ERROR_M
 	PUSH	DE
-	LD	DE,L1303	; MAIN-4
+	LD	DE,ONERR_HOOK
 	PUSH	DE
 	LD	(ERR_SP),SP
 	LD	L,C
@@ -2632,14 +2656,14 @@ ERR_NJ:	LD	A,(HL)
 	INC	HL
 	LD	C,(HL)
 	INC	HL
-	LD	B,(HL)
+	LD	B,(HL)			; BC = (CH_ADD) - (PROG)
 	INC	HL
 	LD	E,(HL)
 	INC	HL
-	LD	D,(HL)
+	LD	D,(HL)			; DE = (PPC)
 	INC	HL
 	LD	A,(HL)
-	DEC	A
+	DEC	A			; A = (SUBPPC)
 	LD	(SUBPPC),A
 	LD	(PPC),DE
 	LD	A,C
@@ -2648,15 +2672,70 @@ ERR_NJ:	LD	A,(HL)
 	LD	HL,(PROG)
 	ADD	HL,BC
 	LD	(CH_ADD),HL
-	RST	$18
+	RST	$18			; read next character
 	RST	$28
 	DEFW	L2C8D			; ALPHA
-	JR	C,ERR_ARG
-	LD	(IY+$00),$FF		; ERR_NR: no error
+	JR	NC,ERR_NAR
+	POP	DE			; error address
+	LD	C,A			; error variable name
+	LD	B,$3E			; and marker
+	LD	HL,$0000
+	LD	A,(ERR_NR)
+	INC	A
+	PUSH	HL
+	PUSH	AF			; error number
+	EX	AF,AF'			; save error number
+	INC	SP
+	PUSH	HL
+	PUSH	BC			; marker
+	RST	$20			; read next character
+	CP	","
+	JR	NZ,ERR_FRM
+	RST	$20
+	LD	C,A			; line variable name
+	LD	HL,$000A		; line offset in the frame
+	ADD	HL,SP
+	PUSH	HL
+	INC	SP			; push 0 byte on stack
+	LD	A,(HL)
+	INC	HL
+	LD	H,(HL)
+	LD	L,A			; HL = error line number
+	PUSH	HL
+	LD	HL,$0000
+	PUSH	HL			; push 0 word on stack
+	PUSH	BC			; marker
+	RST	$20			; read next character
+	CP	","
+	JR	NZ,ERR_FRM
+	RST	$20
+	LD	C,A			; statement variable name
+	LD	HL,$0013		; statement offset in the frame
+	ADD	HL,SP
+	LD	A,(HL)
+	EX	AF,AF'
+	CP	$09			; 9 STOP statement?
+	JR	Z,ERR_DEC
+	CP	$15			; L BREAK into program?
+	JR	Z,ERR_DEC
+	EX	AF,AF'
+ERR_STS:LD	HL,$0000
+	PUSH	HL			; push 0 word on stack
+	PUSH	AF			; error statement number
+	INC	SP
+	PUSH	HL			; push 0 word on stack
+	PUSH	BC			; marker
+	RST	$20			; read next character
+ERR_FRM:PUSH	DE			; error address
+	LD	(ERR_SP),SP
+ERR_NAR:LD	(IY+$00),$FF		; ERR_NR: no error
 	LD	HL,L1B76		; STMT-RET
 	PUSH	HL
-	JR	ONERR_SW
+	JP	SWAP
 
-ERR_ARG:
+ERR_DEC:EX	AF,AF'
+	DEC	A
+	JR	ERR_STS
+
 ERR_ZERO:
-	rst	0
+	rst	0			; TODO: find statement
