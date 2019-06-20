@@ -619,14 +619,11 @@ MSGSKIP:INC	DE
 	SET	0,(IY+$01)	; suppress leading space
 	RET
 
-OPENSTRM2:
-	DEFB	0		; TODO: empty plug
-
 CHINFO0:
-K_CH:	DEFW	PRINT_OUT
-	DEFW	L10A8
+K_CH:	DEFW	KOUT
+	DEFW	KIN
 	DEFB	"K"
-S_CH:	DEFW	PRINT_OUT
+S_CH:	DEFW	SOUT
 	DEFW	L15C4
 	DEFB	"S"
 R_CH:	DEFW	L0F81
@@ -635,32 +632,17 @@ R_CH:	DEFW	L0F81
 P_CH:	DEFW	POUT
 	DEFW	PIN
 	DEFB	"P"
-
-KCHAN:	DEFW	KOUT
-	DEFW	KIN
-	DEFB	"K"
-	DEFW	0
-	DEFW	0		; TODO: proper close
-	DEFW	KCHAN_E - KCHAN
-KCHAN_E:
-SCHAN:	DEFW	SOUT
-	DEFW	L15C4
-	DEFB	"S"
-	DEFW	0
-	DEFW	0		; TODO: proper close
-	DEFW	SCHAN_E - SCHAN
-SCHAN_E:
 	DEFB	$80
 CHINFO0_E:	EQU	$
 
 INIT_STRM:
-	DEFW	KCHAN - CHINFO0 + 1	; stream $FD offset to channel 'K'
-        DEFW    SCHAN - CHINFO0 + 1	; stream $FE offset to channel 'S'
+	DEFW	K_CH - CHINFO0 + 1	; stream $FD offset to channel 'K'
+        DEFW    S_CH - CHINFO0 + 1	; stream $FE offset to channel 'S'
         DEFW    R_CH - CHINFO0 + 1	; stream $FF offset to channel 'R'
 
-        DEFW    KCHAN - CHINFO0 + 1	; stream $00 offset to channel 'K'
-        DEFW    KCHAN - CHINFO0 + 1	; stream $01 offset to channel 'K'
-        DEFW    SCHAN - CHINFO0 + 1	; stream $02 offset to channel 'S'
+        DEFW    K_CH - CHINFO0 + 1	; stream $00 offset to channel 'K'
+        DEFW    K_CH - CHINFO0 + 1	; stream $01 offset to channel 'K'
+        DEFW    S_CH - CHINFO0 + 1	; stream $02 offset to channel 'S'
         DEFW    P_CH - CHINFO0 + 1	; stream $03 offset to channel 'P'
 
 COPYRIGHT:
