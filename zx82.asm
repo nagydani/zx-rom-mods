@@ -5669,7 +5669,7 @@ L11CB:  LD      B,A             ; Save the flag to control later branching.
                                 ; and can't be in the range $40 - $7F as 'snow'
                                 ; appears on the screen.
 
-        NOP                     ; These seem unnecessary.
+;;;        NOP                     ; These seem unnecessary.
 ;;;        NOP                     ;
 ;;;        NOP                     ;
 ;;;        NOP                     ;
@@ -5721,16 +5721,18 @@ RAM_DONE:
 	DEC     HL              ; step back to last valid location.
         EXX                     ; regardless of state, set up possibly
                                 ; stored system variables in case from NEW.
-        LD      (P_RAMT),BC      ; insert P-RAMT.
-        LD      (RASP),DE      ; insert RASP/PIP.
-        LD      (UDG),HL      ; insert UDG.
+        LD      (P_RAMT),BC	; insert P-RAMT.
+        LD      (RASP),DE	; insert RASP/PIP.
+        LD      (UDG),HL	; insert UDG.
+	LD	HL,NMIVEC
+	LD	(NMIADD),HL
         EXX                     ; switch in main set.
         INC     B               ; now test if we arrived here from NEW.
         JR      Z,RAM_SET         ; forward to RAM-SET if we did.
 
 ;   This section applies to START only.
 
-        LD      (P_RAMT),HL      ; set P-RAMT to the highest working RAM
+X1200:  LD      (P_RAMT),HL      ; set P-RAMT to the highest working RAM
                                 ; address.
         LD      DE,$3EAF        ; address of last byte of 'U' bitmap in ROM.
         LD      BC,$00A8        ; there are 21 user defined graphics.
@@ -5750,12 +5752,8 @@ RAM_DONE:
 ;   The NEW command path rejoins here.
 
 ;; RAM-SET
-;;;L1219:
+L1219:
 RAM_SET:LD      (RAMTOP),HL      ; set system variable RAMTOP to HL.
-; ---
-	LD	HL,NMIVEC	; The warm reset routine
-	LD	(NMIADD),HL	; goes into NMIADD
-; ---
 
 ;   New
 ;   Note. this entry point is a disabled Warm Restart that was almost certainly
@@ -5879,6 +5877,7 @@ NMIVEC:	LD	A,$14		; BREAK into program
 				; This is to indicate NMI
 	JP	L121C
 
+	NOP
 ; -------------------------
 ; THE 'MAIN EXECUTION LOOP'
 ; -------------------------
