@@ -1072,5 +1072,3 @@ EXTTAB_O:
 	DEFB	$E5		; << followed by >>
 	DEFB	$D2		; DATA followed by DPEEK
 	DEFB	$E2		; >> followed by ><
-
-OPENSTRM2:	DEFB	0

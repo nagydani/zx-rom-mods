@@ -164,14 +164,11 @@ F_SCAN:	LD	HL,10
 	JP	(HL)
 
 	INCLUDE "channels.asm"
+	INCLUDE	"xchannel.asm"
 	INCLUDE "tokenizer.asm"
 
 PR_OUT:
 PR_IN:
-X_OUT:
-X_IN:
-NX_OUT:
-NX_IN:
 	JP	SWAP
 
 R_LINK:	DEFB	$00, $03, $00, $07, $01, $00, $04, $FF
@@ -303,7 +300,7 @@ R_KEY:	XOR	A
 	RST	$28
 	DEFW	L0C0A		; PO-MSG
 	SET	5,(IY+$02)
-	LD	DE,L12A9
+MAIN1:	LD	DE,L12A9
 	PUSH	DE
 	JP	SWAP
 
@@ -1804,7 +1801,7 @@ C256:	DEFB	$00, $00, $00, $01, $00
 	JP	K_IN
 	JP	X_OUT
 	JP	X_IN
-	JP	NX_OUT
-	JP	NX_IN
+	JP	NEW_X_OUT
+	JP	NEW_X_IN
 	JP	F_SCAN
 	DEFS	$4000 - $
