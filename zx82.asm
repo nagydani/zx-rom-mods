@@ -6857,36 +6857,51 @@ L1701:  PUSH    HL              ; * save address of stream data pointer
         LD      HL,(CHANS)      ; fetch CHANS address to HL
         ADD     HL,BC           ; add the offset to address the second
                                 ; byte of the output routine hopefully.
-        INC     HL              ; step past
-        INC     HL              ; the input routine.
+;;; BUGFIX: sensible CLOSE # routine, fixing the bug
+	JR	CLOSE3
+;;;	INC     HL              ; step past
+;;;	INC     HL              ; the input routine.
 
 ;    Note. When the Sinclair Interface1 is fitted then an instruction fetch
 ;    on the next address pages this ROM out and the shadow ROM in.
 
 ;; ROM_TRAP
-L1708:  INC     HL              ; to address channel's letter
-        LD      C,(HL)          ; pick it up in C.
+L1708:	INC	HL		; Same instruction as in Interface 1 Shadow ROM
+	POP	HL
+	RET
+CLOSE3:	PUSH	AF		; save transformed stream number
+	INC     HL              ; step past
+	INC     HL              ; the input routine.
+	LD	A,B
+	OR	C
+	JR	Z,L1725		; REPORT-Ob, stream already closed
+;;;
+	INC     HL              ; to address channel's letter
+	LD      C,(HL)          ; pick it up in C.
                                 ; Note. but if stream is already closed we
                                 ; get the value $10 (the byte preceding 'K').
 
-; Save one byte for the terminating zero of the close table
-;        EX      DE,HL           ; save the pointer to the letter in DE.
+	EX      DE,HL           ; save the pointer to the letter in DE.
+;   Note. The string pointer is saved but not used!! (in this ROM)
+;;; BUGFIX: do a lookup in the ROM0, if applicable
+	LD	L,$B0		; A byte that is convenient to check
+	CALL	INDEXER_HOOK
+	POP	HL
+	LD	A,H
+	JR	L1708		; Trigger ZX Interface 1, or return
 
-;   Note. The string pointer is saved but not used!!
-
-        LD      HL,L1716        ; address: cl-str-lu in ROM.
-        CALL    L16DC           ; routine INDEXER uses the code to get
+;;;	LD      HL,L1716        ; address: cl-str-lu in ROM.
+;;;	CALL    L16DC           ; routine INDEXER uses the code to get
                                 ; the 8-bit offset from the current point to
                                 ; the address of the closing routine in ROM.
                                 ; Note. it won't find $10 there!
-
-        LD      C,(HL)          ; transfer the offset to C.
-        LD      B,$00           ; prepare to add.
-        ADD     HL,BC           ; add offset to point to the address of the
+;;;	LD      C,(HL)          ; transfer the offset to C.
+;;;	LD      B,$00           ; prepare to add.
+;;;	ADD     HL,BC           ; add offset to point to the address of the
                                 ; routine that closes the stream.
                                 ; (and presumably removes any buffers that
                                 ; are associated with it.)
-        JP      (HL)            ; jump to that routine.
+;;;	JP      (HL)            ; jump to that routine.
 
 ; --------------------------------
 ; THE 'CLOSE STREAM LOOK-UP' TABLE
@@ -6899,11 +6914,10 @@ L1708:  INC     HL              ; to address channel's letter
 ;   picked up from a channel that has an open stream.
 
 ;; cl-str-lu
-L1716:  DEFB    'K', L171C-$-1  ; offset 5 to CLOSE-STR
-        DEFB    'S', L171C-$-1  ; offset 3 to CLOSE-STR
-        DEFB    'P', L171C-$-1  ; offset 1 to CLOSE-STR
-; Fixing the CLOSE bug
-	DEFB	0
+;;;L1716:
+;;;	DEFB    'K', L171C-$-1  ; offset 5 to CLOSE-STR
+;;;	DEFB    'S', L171C-$-1  ; offset 3 to CLOSE-STR
+;;;	DEFB    'P', L171C-$-1  ; offset 1 to CLOSE-STR
 
 ; ------------------------------
 ; THE 'CLOSE STREAM' SUBROUTINES
@@ -6912,8 +6926,8 @@ L1716:  DEFB    'K', L171C-$-1  ; offset 5 to CLOSE-STR
 ; which is not surprising with regard to 'K' and 'S'.
 
 ;; CLOSE-STR
-L171C:  POP     HL              ; * now just restore the stream data pointer
-        RET                     ; in STRMS and return.
+;;;L171C:	POP     HL              ; * now just restore the stream data pointer
+;;;	RET                     ; in STRMS and return.
 
 ; -----------
 ; Stream data
@@ -20189,6 +20203,7 @@ NEW:	CALL	NEW_HOOK
 INDEXER_2:
 	CALL	L16DC		; INDEXER
 	RET	C		; if code is found, return immediately
+INDEXER_HOOK:
 	CALL	NOPAGE
 INFIX_HOOK:
 	CALL	NOPAGE

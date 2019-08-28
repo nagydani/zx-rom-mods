@@ -9,6 +9,44 @@ OPENSTRM2:
 	DEFB	OPENX - $
 	DEFB	0
 
+CLOSESTRM2:
+	DEFB	"X"
+	DEFB	CLOSEX - $
+	DEFB	0
+
+CLOSEX:	PUSH	DE		; save letter address
+	INC	DE
+	INC	DE
+	LD	A,(DE)		; reclaim bank
+	LD	BC,$7FFD
+	LD	HL,BANK_M
+	LD	(HL),A
+	OUT	(C),A
+	LD	A,(BANK_F)
+	LD	($FFFF),A
+	LD	A,(HL)
+	LD	(BANK_F),A
+	XOR	A
+	LD	(HL),A
+	OUT	(C),A
+	INC	DE
+	INC	DE
+	INC	DE
+	EX	DE,HL
+	LD	C,(HL)		; fetch descriptor length
+	INC	HL
+	LD	B,(HL)
+	POP	HL		; restore letter address
+	DEC	HL
+	DEC	HL
+	DEC	HL
+	DEC	HL		; HL = descriptor start
+	RST	$28
+	DEFW	L19E8		; RECLAIM-2
+	POP	AF
+	POP	HL
+	JP	SWAP
+
 OPENX:	POP	BC		; length of channel description
 	DEC	BC
 	LD	A,B
@@ -77,14 +115,16 @@ NEWCO:	LD	(OLDSP),SP
 	OUT	(C),A
 	POP	AF
 	LD	SP,(OLDSP)
-	JR	SWAPIN_SAVE
+	CALL	SWAPIN
+	POP	DE	; restore channel offset
+	POP	HL	; restore HL
+	JP	SWAP
 
 X_OUT:	EX	AF,AF'
 	LD	HL,(CURCHL)
 	LD	DE,6
 	ADD	HL,DE
 	LD	A,(HL)
-SWAPIN_SAVE:
 	EXX
 	PUSH	BC
 	PUSH	DE
@@ -94,8 +134,6 @@ SWAPIN_SAVE:
 	POP	DE
 	POP	BC
 	EXX
-	POP	DE	; restore channel offset
-	POP	HL	; restore HL
 	JP	SWAP
 
 SWAPIN:	LD	(OLDSP),SP
@@ -147,7 +185,7 @@ NEW_X_IN:
 	INC	HL
 	LD	A,(HL)
 	SCF
-	RET
+	JP	SWAP
 NEW_X_IN_1:
 	XOR	A
 	EX	AF,AF'		; Reads on the other side return empty.
