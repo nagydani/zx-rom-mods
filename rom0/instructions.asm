@@ -1344,9 +1344,7 @@ NEXT:	POP	BC
 	LD	SP,HL
 	PUSH	DE		; restore error address
 	LD	(ERR_SP),SP
-	PUSH	BC		; restore return address
-	JP	SWAP
-NEXT_SW:POP	BC		; discard one more return address
+NEXT_SW:PUSH	BC		; restore return address
 	JP	SWAP
 
 ERROR_1:RST	$28
