@@ -488,13 +488,11 @@ K_RST:	LD	(HL),A
 	LD	DE,$5ABE	; attribute at 21,30
 	LD	A,(ATTR_P)
 	LD	(HL),A
-	XOR	A
-	SRL	B
-	RRA
-	SRL	B
-	RRA
-	SRL	B
-	RRA
+	LD	A,B
+	RRCA
+	RRCA
+	RRCA
+	AND	$E0
 	LD	C,A
 	DEC	BC
 	LDDR
@@ -503,7 +501,7 @@ K_RST0: LD	(IY+$31),$02	; now set DF_SZ lower screen to 2
 	LD	(RETADDR),BC
 S_IO_E:	RST	$28
 	DEFW	L0DD9		; CL-SET
-KS_NR:	JP	SWAP
+KS_NR:	JR	COR_SW
 
 ; channel S service routine
 S_OUT:	LD	HL,S_STATE
@@ -534,12 +532,14 @@ CLSET:	EQU	L0DD9 + 9
 COR_OUT:LD	D,A
 	POP	AF
 	BIT	4,(IY + TV_FLAG - ERR_NR)
-	JR	NZ,COR_SUP
+	JR	NZ,KS_SW
+	BIT	7,A
+	JR	NZ,COR_TK
 	LD	(TSTACK-2),SP
 	LD	SP,TSTACK-2
 	CALL	COR_OUT1
 	LD	SP,(TSTACK-2)
-COR_SUP:JP	SWAP
+COR_SW:	JR	KS_SW
 
 
 COR_CNT:LD	BC,SWAP
@@ -556,7 +556,7 @@ KS_OUT:	BIT	0,(HL)		; direct output
 	DEFW	POFETCH
 	POP	AF
 	JP	NZ,E_HEAD
-	CP	$18
+COR_TK:	CP	$18
 	JR	C,KS_CTRL
 	CP	$20
 	JR	C,PR_GR_0
@@ -590,7 +590,7 @@ KS_IND:	BIT	1,(HL)
 	PUSH	HL
 	LD	HL,XPOCONT	; TODO: proper handling in this ROM
 	EX	(SP),HL
-	JP	SWAP
+KS_SW:	JP	SWAP
 
 KS_IND2:RES	1,(HL)
 	INC	HL	; width
