@@ -157,7 +157,8 @@ P_ONERROR:
 	DEFB	$05
 	DEFW	ONERROR
 
-P_YIELD:
+P_YIELD:DEFB	$00
+	DEFW	YIELD
 P_PLAY:
 ; unimplemented instruction, accepted w/o parameters, but not executed
 P_PLUG:
@@ -2737,3 +2738,44 @@ ERR_DEC:EX	AF,AF'
 
 ERR_ZERO:
 	rst	0			; TODO: find statement
+
+YIELD:	LD	BC,SWAP
+	PUSH	BC
+YIELD_R:LD	HL,(CHANS)
+	LD	BC,$0014
+	ADD	HL,BC			; skip system channels
+	LD	C,$04
+YIELD_L:EX	DE,HL
+	LD	HL,(PROG)
+	SCF
+	SBC	HL,DE
+	RET	Z
+	EX	DE,HL
+	PUSH	HL
+	ADD	HL,BC
+	LD	A,(HL)
+	INC	HL
+	CP	"X"
+	JR	Z,YIELD_X
+	ADD	HL,BC
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+YIELD_N:POP	HL
+	ADD	HL,DE
+	JR	YIELD_L
+YIELD_X:LD	A,(BANK_M)
+	OR	A
+	JR	NZ,YIELD_C
+	INC	HL
+	EX	AF,AF'			; the other side will read empty
+	LD	A,(HL)
+	PUSH	BC
+	CALL	SWAPIN
+YIELD_B:POP	BC
+	LD	DE,$000B
+	JR	YIELD_N
+YIELD_C:EX	AF,AF'
+	PUSH	BC
+	CALL	SWAPOUT
+	JR	YIELD_B

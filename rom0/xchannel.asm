@@ -125,6 +125,7 @@ X_OUT:	EX	AF,AF'
 	LD	DE,6
 	ADD	HL,DE
 	LD	A,(HL)
+SWAPIN_SAVE:
 	EXX
 	PUSH	BC
 	PUSH	DE
@@ -157,18 +158,8 @@ NEW_X_OUT:
 	BIT	0,(IX+5)
 	JR	NZ,NX_SW	; No controls with full buffer
 NEW_X_OUT_1:
-	EX	AF,AF'
-	EXX
-	PUSH	BC
-	PUSH	DE
-	PUSH	HL
 	LD	(IY+$00),$FF	; Do not pass error condition
-	CALL	SWAPOUT
-	POP	HL
-	POP	DE
-	POP	BC
-	EXX
-	EX	AF,AF'
+	CALL	SWAPOUT_SAVE
 	JR	NC,NX_SW	; No output clash
 	LD	IX,(CURCHL)
 	LD	(IX+6),A
@@ -188,11 +179,22 @@ NEW_X_IN:
 	JP	SWAP
 NEW_X_IN_1:
 	XOR	A
-	EX	AF,AF'		; Reads on the other side return empty.
-	CALL	SWAPOUT
-	EX	AF,AF'
+	CALL	SWAPOUT_SAVE
 	JP	SWAP
 
+SWAPOUT_SAVE:
+	EX	AF,AF'
+	EXX
+	PUSH	BC
+	PUSH	DE
+	PUSH	HL
+	CALL	SWAPOUT
+	POP	HL
+	POP	DE
+	POP	BC
+	EXX
+	EX	AF,AF'
+	RET
 
 X_IN:	XOR	A
 	EX	AF,AF'		; Reads on the other side return empty.
@@ -200,7 +202,7 @@ X_IN:	XOR	A
 	LD	DE,6
 	ADD	HL,DE
 	LD	A,(HL)
-	CALL	SWAPIN
+	CALL	SWAPIN_SAVE
 	EX	AF,AF'
 	JR	C,XI_SW		; Not channel state control
 	PUSH	AF

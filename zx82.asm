@@ -9952,12 +9952,11 @@ L1F3A:	XOR	A
 	LD	A,B
 	OR	C
 	JP	Z,L15DE		; WAIT-KEY1, indefinite PAUSE
-	LD	A,(FRAMES+2)
-	DEFB	$DD
-	LD	L,A		; LD IXL,A
-	LD	DE,(FRAMES)	; start time in IXL DE
-	JP	PAUSE_L
-	DEFS	2		; 2 spare bytes
+	LD	HL,(FRAMES+1)
+	LD	DE,(FRAMES)	; start time in H DE
+PAUSE_L:CALL	L15E6		; INPUT-AD
+	RET	C
+	JP	PAUSE_D
 ;; PAUSE-1
 ;;;L1F3A:  CALL    L1E99           ; routine FIND-INT2 puts value in BC
 ;;;L1F3D:  HALT                    ; wait for interrupt.
@@ -19860,17 +19859,21 @@ LIST_CURSOR:
 	SCF
 	RET
 
-; PAUSE loop (21 bytes)
-PAUSE_L:CALL	L15E6		; INPUT-AD
-	RET	C
+; PAUSE loop (24 bytes)
+PAUSE_D:PUSH	HL
 	LD	HL,(FRAMES)
 	SBC	HL,DE
 	LD	A,(FRAMES+2)
-	DEFB	$DD
-	SBC	A,L		; time elapsed in AHL
+	EX	(SP),HL
+	SBC	A,H		; time elapsed in AHL
+	PUSH	BC
+	EXX
+	POP	BC
+	POP	HL
 	RET	NZ		; definitely over
 	SBC	HL,BC
-	JR	C,PAUSE_L
+	EXX
+	JP	C,PAUSE_L
 	RET
 
 ; Abstract COPY (10 bytes)
@@ -20103,7 +20106,7 @@ ESTOP:	CALL	RUN_HOOK
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-	DEFB    $FF, $FF, $FF, $FF, $FF, $FF;	, $FF, $FF;
+	DEFB    $FF, $FF, $FF;	, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
