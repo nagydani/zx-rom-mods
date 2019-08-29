@@ -1,5 +1,15 @@
-ERROR_4:RST	$28
-	DEFW	L1F15		; 4 Out of memory
+MAKE_B:	LD      BC,$000B
+	PUSH	HL
+	LD	HL,(PROG)
+	DEC	HL
+        PUSH    BC
+        RST	$28
+	DEFW	L1655		; MAKE-ROOM
+        POP     BC
+	POP	HL
+        LDDR
+        EX      DE,HL
+	RET
 
 ERROR_F:RST	$28
 	DEFW	L1765		; F Invalid file name
@@ -7,6 +17,8 @@ ERROR_F:RST	$28
 OPENSTRM2:
 	DEFB	"X"
 	DEFB	OPENX - $
+	DEFB	"Z"
+	DEFB	OPENZ - $
 	DEFB	0
 
 CLOSESTRM2:
@@ -14,12 +26,15 @@ CLOSESTRM2:
 	DEFB	CLOSEX - $
 	DEFB	0
 
-CLOSEX:	PUSH	DE		; save letter address
+CLOSEX:	LD	HL,BANK_M
+	LD	A,(HL)
+	OR	A
+	JR	NZ,CLOSE_NX
+	PUSH	DE		; save letter address
 	INC	DE
 	INC	DE
 	LD	A,(DE)		; reclaim bank
 	LD	BC,$7FFD
-	LD	HL,BANK_M
 	LD	(HL),A
 	OUT	(C),A
 	LD	A,(BANK_F)
@@ -43,25 +58,47 @@ CLOSEX:	PUSH	DE		; save letter address
 	DEC	HL		; HL = descriptor start
 	RST	$28
 	DEFW	L19E8		; RECLAIM-2
+CLOSE_NX:
 	POP	AF
-	POP	HL
+HLSW:	POP	HL
 	JP	SWAP
 
-OPENX:	POP	BC		; length of channel description
+OPENX:	LD	E,$15
+	JR	OPENXZ
+OPENZ:	LD	E,$20
+
+OPENXZ:	POP	BC		; length of channel description
 	DEC	BC
 	LD	A,B
 	OR	C
 	JR	NZ,ERROR_F
-	LD	HL,(PROG)
-	DEC	HL
-	LD      BC,X_CHAN_E - X_CHAN
-        PUSH    BC
-        RST	$28
-	DEFW	L1655		; MAKE-ROOM
-        LD      HL,X_CHAN_E - 1
-        POP     BC
-        LDDR
-        EX      DE,HL
+	LD	D,0
+	LD	A,(BANK_M)
+	OR	A
+	JR	NZ,HLSW
+	LD	A,$15
+	CP	E
+	JR	Z,OPENX1
+	LD	DE,(CHANZ)
+	LD	A,D
+	OR	E
+	JR	NZ,HLSW
+	LD	HL,Z_CHAN_E - 1
+	CALL	MAKE_B
+	LD	DE,(CHANS)
+	AND	A
+	SBC	HL,DE
+	INC	HL
+	INC	HL
+	LD	(CHANZ),HL
+	EX	DE,HL		; TODO: can be saved, if necessary
+	JR	HLSW
+
+ERROR_4:RST	$28
+	DEFW	L1F15		; 4 Out of memory
+
+OPENX1:	LD      HL,X_CHAN_E - 1
+	CALL	MAKE_B
 	LD	A,(BANK_F)
 	INC	A
 	JR	Z,ERROR_4
@@ -101,7 +138,7 @@ NEWCO:	LD	(OLDSP),SP
 	LDIR			; channels K, S, R, P
 	LD	HL,EMPTY2
 	LD	C,EMPTY_E - EMPTY2
-	LDIR			; channel X and empty program
+	LDIR			; channels X,Z and empty program
 	LD	HL,EMPTY_STK
 	LD	DE,$FFFA
 	LD	(NEWERR_SP),DE
@@ -125,6 +162,9 @@ X_OUT:	EX	AF,AF'
 	LD	DE,6
 	ADD	HL,DE
 	LD	A,(HL)
+	CALL	SWAPIN_SAVE
+	JP	SWAP
+
 SWAPIN_SAVE:
 	EXX
 	PUSH	BC
@@ -135,7 +175,7 @@ SWAPIN_SAVE:
 	POP	DE
 	POP	BC
 	EXX
-	JP	SWAP
+	RET
 
 SWAPIN:	LD	(OLDSP),SP
 	CALL	SWAP_SYSVARS
@@ -275,10 +315,10 @@ SWAP_SYSVARS:
 	LDDR
 	RET
 
-PROGVAL:EQU	NEWCHINFO + $0B + 1 + $14
+PROGVAL:EQU	NEWCHINFO + $0B + $0B + 1 + $14
 
 EMPTY_STRMS:
-	DEFW	$0001,$0006,$000B,$0015,$0001,$0006,$0010	; K,S,R,X,K,S,P
+	DEFW	$0001,$0020,$000B,$0015,$0001,$0006,$0010	; K,Z,R,X,K,S,P
 EMPTY:	DEFW	PROGVAL		; VARS
 	DEFW	0		; DEST
 	DEFW	NEWCHINFO	; CHANS
@@ -305,7 +345,14 @@ NEW_X_CHAN:
 	DEFB	0		; flags 0 - buffer empty/full
 	DEFB	0		; buffer
 	DEFW	0		; ?
-	DEFW	EMPTY3-NEW_X_CHAN
+	DEFW	NEW_X_CHAN_E-NEW_X_CHAN
+NEW_X_CHAN_E:	EQU	$
+Z_CHAN:	DEFW	ZOUT
+	DEFW	ZIN
+	DEFB	"Z"
+	DEFS	4
+	DEFW	Z_CHAN_E - Z_CHAN
+Z_CHAN_E:	EQU	$
 EMPTY3:	DEFB	$80,$80,$0D,$80	; channels terminator, empty BASIC program, empty editor line
 EMPTY_E:	EQU	$
 

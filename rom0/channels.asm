@@ -393,7 +393,7 @@ L_MODE:	DEFB	$E2,"~"
 ; print flashing cursor (invert character)
 PCURSOR:PUSH	AF
 	RST	$28
-	DEFW	L0B03		; PO-FETCH
+	DEFW	POFETCH
 	PUSH	BC
 	PUSH	HL
 	LD	HL,(ECHO_E)
@@ -501,7 +501,7 @@ K_RST0: LD	(IY+$31),$02	; now set DF_SZ lower screen to 2
 	LD	(RETADDR),BC
 S_IO_E:	RST	$28
 	DEFW	L0DD9		; CL-SET
-KS_NR:	JR	COR_SW
+KS_NR:	JP	SWAP
 
 ; channel S service routine
 S_OUT:	LD	HL,S_STATE
@@ -529,28 +529,10 @@ CLSET:	EQU	L0DD9 + 9
 
 ; channel K/S direct output for coroutines
 
-COR_OUT:LD	D,A
-	POP	AF
-	BIT	4,(IY + TV_FLAG - ERR_NR)
-	JR	NZ,KS_SW
-	BIT	7,A
-	JR	NZ,COR_TK
-	LD	(TSTACK-2),SP
-	LD	SP,TSTACK-2
-	CALL	COR_OUT1
-	LD	SP,(TSTACK-2)
-COR_SW:	JR	KS_SW
-
-
-COR_CNT:LD	BC,SWAP
-	PUSH	BC
 KS_OUT:	BIT	0,(HL)		; direct output
 	JR	NZ,KS_IND
 	BIT	2,(HL)
 	PUSH	AF
-	LD	A,(BANK_M)
-	OR	A
-	JR	NZ,COR_OUT
 	EX	DE,HL
 	RST	$28
 	DEFW	POFETCH
@@ -597,7 +579,7 @@ KS_IND2:RES	1,(HL)
 	INC	HL	; tv1
 	INC	HL	; tv2
 	LD	(HL),A
-	JP	SWAP
+	JR	KS_SW
 
 P_GR_TK:CP	$90
 	JR	NC,PR_T_UDG
@@ -697,7 +679,9 @@ K_HEAD:	LD	(RETADDR),BC
 	PUSH	BC
 	PUSH	DE
 	EXX
+	PUSH	BC
 	PUSH	DE
+	PUSH	HL
 	LD	HL,(ATTR_T)
 	LD	H,(IY + P_FLAG - ERR_NR)
 	PUSH	HL
@@ -735,7 +719,9 @@ E_HEAD1:LD	(FLAGS),A
 	POP	HL
 	LD	(IY + ATTR_T - ERR_NR),L
 	LD	(IY + P_FLAG - ERR_NR),H
+	POP	HL
 	POP	DE
+	POP	BC
 	EXX
 	POP	HL
 	POP	BC
@@ -905,19 +891,6 @@ TRST:	RST	$28
 POSCR:	RST	$28	; TODO: take width into account
 	DEFW	L0C55	; PO-SCR
 	RET
-
-COR_OUT1:PUSH	DE
-	EX	AF,AF'
-	XOR	A
-	CALL	PAGE
-	EX	AF,AF'
-	CALL	COR_CNT
-	POP	AF
-PAGE:	LD	BC,$7FFD
-	LD	(BANK_M),A
-	OUT	(C),A
-	RET
-
 
 EDITOR_HEADER0:
 	DEFB	$14,$00,$16,$00,$00,$13,$01,$10,$07

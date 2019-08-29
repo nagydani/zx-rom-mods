@@ -5003,7 +5003,10 @@ L0FA9:  LD      HL,(E_PPC)      ; fetch E_PPC the last line number entered.
         POP     HL              ; restore the address of CURCHL.
 ;;; BUFGIX: tail call, baby!
 	JP	L1615
-	DEFS	3		; spare 3 bytes
+;;; Zero stream definition
+ZIN:	XOR	A
+	SCF
+ZOUT:	RET
 ;;;     CALL    L1615           ; routine CHAN-FLAG sets flags for it.
 ;;;     RET                     ; RETURN to ED-LOOP.
 

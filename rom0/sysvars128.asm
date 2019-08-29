@@ -13,6 +13,7 @@
 ; 7 - jump locations are cached
 
 
+CHANZ:		EQU	$5B7F
 OLDSP:		EQU	$5B81
 TSTACK:		EQU	$5BFF
 
