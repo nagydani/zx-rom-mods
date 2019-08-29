@@ -664,6 +664,9 @@ E_HEAD:	EX	DE,HL
 	RES	2,(HL)
 	CP	"?"
 	JR	Z,E_QUEST
+	PUSH	HL		; channel flag address
+	LD	H,(HL)
+	PUSH	HL		; channel flag content
 	LD	HL,FLAGS2
 	BIT	5,(HL)
 	JR	Z,K_HEAD
@@ -682,12 +685,12 @@ K_HEAD:	LD	(RETADDR),BC
 	PUSH	HL
 	LD	HL,(ATTR_T)
 	LD	H,(IY + P_FLAG - ERR_NR)
-	PUSH	HL
+	PUSH	HL			; save ATTR_T and P_FLAG
 	LD	HL,(FLAGS - 1)
 	LD	L,(IY+$30)
-	SET	2,(IY+$30)
-	PUSH	HL
-	PUSH	AF
+	SET	2,(IY+$30)		; set quote mode
+	PUSH	HL			; save FLAGS and FLAGS2
+	PUSH	AF			; save cursor character
 	LD	DE,EDITOR_HEADER0
 	CALL	MESSAGE
 	BIT	5,(IY+$37)
@@ -704,15 +707,15 @@ E_HEADI:CALL	MESSAGE
 E_HEADB:CALL	MESSAGE
 	LD	A,(C_SPCC)
 	CALL	DECBYTE
-E_HEAD0:LD	A,$06			; TAB
+E_HEAD0:LD	A,$06			; tabulation
 	RST	$10
-	POP	AF
-	RST	$10
+	POP	AF			; restore cursor character
+	RST	$10			; and print it
 	LD	DE,EDITOR_HEADER1
 	CALL	MESSAGE
-	POP	AF
+	POP	AF			; restore FLAGS to A and FLAGS2 to F
 	JP	PE,E_HEAD1
-	RES	2,(IY+$30)
+	RES	2,(IY+$30)		; restore quote mode
 E_HEAD1:LD	(FLAGS),A
 	POP	HL
 	LD	(IY + ATTR_T - ERR_NR),L
@@ -723,6 +726,9 @@ E_HEAD1:LD	(FLAGS),A
 	EXX
 	POP	HL
 	POP	BC
+	POP	AF			; restore channel flag content into A
+	POP	DE			; restore channel flag address into DE
+	LD	(DE),A
 TSTORE3:JP	TSTORE
 
 E_HEADT:LD	DE,EDITOR_HEADERT
