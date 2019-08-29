@@ -544,18 +544,16 @@ COR_TK:	CP	$18
 	JR	C,PR_GR_0
 	CP	$80
 	JR	NC,P_GR_TK
-	CP	">"		; can be program cursor
-	JR	Z,PR_NQ
-	BIT	2,(IY+$30)	; inside quotes
-	JR	NZ,PR_NQ
 	CP	":"
-	JR	NZ,PR_NQ	; pr-able except colon leaves mode unchanged
+	JR	NZ,PR_NC	; pr-able except colon leaves mode unchanged
 	EX	DE,HL
-	RES	3,(HL)		; colon outside of quotes sets instr. mode
+	RES	3,(HL)		; colon sets instr. mode
+	BIT	2,(IY+$30)	; inside quotes?
+	JR	NZ,PR_NQ	; if so, jump over instr. count increment
 	LD	HL,C_SPCC
 	INC	(HL)
-	EX	DE,HL
-PR_NQ:	RST	$28
+PR_NQ:	EX	DE,HL
+PR_NC:	RST	$28
 	DEFW	L0B65	; PO-CHAR
 	JR	TSTORE2
 
