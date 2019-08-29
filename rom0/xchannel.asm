@@ -1,26 +1,3 @@
-MAKE_B:	LD      BC,$000B
-	PUSH	HL
-	LD	HL,(PROG)
-	DEC	HL
-        PUSH    BC
-        RST	$28
-	DEFW	L1655		; MAKE-ROOM
-        POP     BC
-	POP	HL
-        LDDR
-        EX      DE,HL
-	RET
-
-ERROR_F:RST	$28
-	DEFW	L1765		; F Invalid file name
-
-OPENSTRM2:
-	DEFB	"X"
-	DEFB	OPENX - $
-	DEFB	"Z"
-	DEFB	OPENZ - $
-	DEFB	0
-
 CLOSESTRM2:
 	DEFB	"X"
 	DEFB	CLOSEX - $
@@ -51,6 +28,42 @@ CLOSEX:	LD	HL,BANK_M
 	LD	C,(HL)		; fetch descriptor length
 	INC	HL
 	LD	B,(HL)
+	POP	DE		; restore letter address
+	PUSH	DE		; save letter address
+	LD	HL,(CHANS)
+	AND	A
+	SBC	HL,DE
+	EX	DE,HL		; negative offset into DE
+	LD	HL,STRMS
+	LD	A,19
+CLOSEL:	EX	AF,AF'
+	PUSH	HL
+	LD	A,(HL)
+	INC	HL
+	LD	H,(HL)
+	LD	L,A
+	ADD	HL,DE
+	JR	NC,CLOSELO
+	AND	A
+	SBC	HL,DE
+	AND	A
+	SBC	HL,BC
+	EX	(SP),HL
+	DEC	SP
+	POP	AF
+	LD	(HL),A
+	INC	HL
+	DEC	SP
+	POP	AF
+	LD	(HL),A
+	DEC	HL
+	DEFB	$3E		; LD A, skip one byte
+CLOSELO:POP	HL
+	INC	HL
+	INC	HL
+	EX	AF,AF'
+	DEC	A
+	JR	NZ,CLOSEL
 	POP	HL		; restore letter address
 	DEC	HL
 	DEC	HL
@@ -63,26 +76,108 @@ CLOSE_NX:
 HLSW:	POP	HL
 	JP	SWAP
 
-OPENX:	LD	E,$15
-	JR	OPENXZ
-OPENZ:	LD	E,$20
 
-OPENXZ:	POP	BC		; length of channel description
+MAKE_B:	LD      BC,$000B
+	PUSH	HL
+	LD	HL,(PROG)
+	DEC	HL
+        PUSH    BC
+        RST	$28
+	DEFW	L1655		; MAKE-ROOM
+        POP     BC
+	POP	HL
+        LDDR
+        EX      DE,HL
+	RET
+
+ERROR_F:RST	$28
+	DEFW	L1765		; F Invalid file name
+
+OPENSTRM2:
+	DEFB	"X"
+	DEFB	OPENX - $
+	DEFB	"Z"
+	DEFB	OPENZ - $
+	DEFB	0
+
+OPENX:	POP	BC
+	DEC	BC
+	LD	A,B
+	OR	C
+	EX	DE,HL
+	LD	E,$15
+	JR	Z,OPENZX
+	LD	A,(BANK_M)
+	OR	A
+	JR	NZ,ERROR_F
+	INC	HL
+	LD	A,(HL)
+	CP	":"
+	JR	NZ,ERROR_F
+	DEC	BC
+	LD	A,B
+	OR	C
+	JR	Z,OPENZX
+	PUSH	BC		; save BC = length of initial command
+	INC	HL
+	LD	BC,(PROG)
+	SBC	HL,BC		; CF=0 anyway
+	PUSH	HL		; save PROG offset of string
+	CALL	OPENXZ
+	LD	HL,(CHANS)
+	ADD	HL,DE
+	LD	BC,$0005
+	ADD	HL,BC
+	LD	A,(HL)
+	EX	AF,AF'
+	POP	BC		; restore BC = PROG offset of string
+	LD	HL,(PROG)
+	ADD	HL,BC
+	POP	BC		; restore BC = length of initial command
+	PUSH	DE		; save channel offset
+OPENW:	PUSH	BC
+	LD	A,(HL)
+	INC	HL
+	SCF
+	EX	AF,AF'
+	PUSH	AF
+	PUSH	HL
+	CALL	SWAPIN
+	POP	HL
+	POP	AF
+	POP	BC
+	EX	AF,AF'
+	DEC	BC
+	LD	A,B
+	OR	C
+	JR	NZ,OPENW
+	LD	A,$0D		; ENTER
+	SCF
+	EX	AF,AF'
+	CALL	SWAPIN
+	POP	DE		; restore channel offset
+	JR	HLSW
+
+OPENZ:	LD	E,$20
+	POP	BC		; length of channel description
 	DEC	BC
 	LD	A,B
 	OR	C
 	JR	NZ,ERROR_F
-	LD	D,0
+OPENZX:	CALL	OPENXZ
+	JR	HLSW
+
+OPENXZ:	LD	D,0
 	LD	A,(BANK_M)
 	OR	A
-	JR	NZ,HLSW
+	RET	NZ
 	LD	A,$15
 	CP	E
 	JR	Z,OPENX1
 	LD	DE,(CHANZ)
 	LD	A,D
 	OR	E
-	JR	NZ,HLSW
+	RET	NZ
 	LD	HL,Z_CHAN_E - 1
 	CALL	MAKE_B
 	LD	DE,(CHANS)
@@ -92,7 +187,7 @@ OPENXZ:	POP	BC		; length of channel description
 	INC	HL
 	LD	(CHANZ),HL
 	EX	DE,HL		; TODO: can be saved, if necessary
-	JR	HLSW
+	RET
 
 ERROR_4:RST	$28
 	DEFW	L1F15		; 4 Out of memory
@@ -154,8 +249,7 @@ NEWCO:	LD	(OLDSP),SP
 	LD	SP,(OLDSP)
 	CALL	SWAPIN
 	POP	DE	; restore channel offset
-	POP	HL	; restore HL
-	JP	SWAP
+	RET
 
 X_OUT:	EX	AF,AF'
 	LD	HL,(CURCHL)
