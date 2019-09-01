@@ -49,7 +49,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 28-AUG-2019
+; Last updated: 01-SEP-2019
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -5453,7 +5453,9 @@ L111D:  CALL    L0D4D           ; routine TEMPS sets temporary attributes.
         PUSH    HL              ; and push also
 
         SCF                     ; set carry flag to control SET-DE
-        CALL    L1195           ; call routine SET-DE
+;;; BUGFIX: extensible for faster editor
+	CALL	SET_DE
+;;;	CALL    L1195           ; call routine SET-DE
                                 ; if in input DE = WORKSP
                                 ; if in edit  DE = E_LINE
         EX      DE,HL           ; start address to HL
@@ -20043,6 +20045,10 @@ ESTOP:	CALL	RUN_HOOK
 	RST	$08
 	DEFB	$08		; 9 STOP statement
 
+; Extensible ED-COPY (6 bytes)
+SET_DE:	CALL	ECHO_HOOK
+	JP	L1195
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
@@ -20109,7 +20115,8 @@ ESTOP:	CALL	RUN_HOOK
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-	DEFB    $FF, $FF, $FF;	, $FF, $FF, $FF, $FF, $FF;
+;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+        DEFB    $FF, $FF, $FF, $FF, $FF;	, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
@@ -20179,8 +20186,7 @@ ESTOP:	CALL	RUN_HOOK
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
         DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF;	, $FF, $FF, $FF, $FF;
+        DEFB    $FF;	, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
 ;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
@@ -20212,6 +20218,8 @@ INDEXER_2:
 INDEXER_HOOK:
 	CALL	NOPAGE
 INFIX_HOOK:
+	CALL	NOPAGE
+ECHO_HOOK:
 	CALL	NOPAGE
 STRING_HOOK:
 	CALL	NOPAGE

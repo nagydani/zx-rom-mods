@@ -35,55 +35,59 @@ EDITOR_MODE:
 
 ; Determine whether or not to suppress the leading space at the cursor position
 ; Pollutes: AF, HL, B
-; Output: DE cursor pointer
-SP_CUR:	RES	0,(IY+$01)	; do not suppress leading space
-	SCF
-	RST	$28
-	DEFW	L1195		; SET-DE
-	LD	HL,(K_CUR)	; is the cursor
-	EX	DE,HL		; at the beginning of
-	AND	A		; the current editor
-	SBC	HL,DE		; buffer?
-	JR	Z,ED_SPC	; if so, leading spaces must be suppressed
-	DEC	DE		; before the cursor
-	LD	A,(DE)		; do we
-	INC	DE		; have
-	CP	" "		; a space?
-	JR	Z,ED_SPC	; if so, suppress leading space
-	SUB	RND_T		; or a token?
-	RET	C		; if not, do not suppress
-	LD	HL,K_STATE	; if so, is it
-	BIT	3,(HL)		; an instruction?
-	JR	Z,ED_SPC	; if so, suppress leading space
-	LD	B,0		; if it is an operator
-	RRA			; CF = 0 at this point
-	RL	B
-	RRA
-	RL	B
-	RRA
-	RL	B
-	LD	HL,SPCTAB
-	ADD	A,L
-	LD	L,A
-	JR	NC,SP_CNC
-	INC	HL
-SP_CNC:	LD	A,(HL)
-	INC	B
-ED_MASK:RLCA
-	DJNZ	ED_MASK
-	RET	NC
-ED_SPC:	SET	0,(IY+$01)	; leading space suppression
-	RET
+; Output: DE cursor pointer or one before depending on BIT 2,(TV_FLAG)
+;;SP_CUR:	RES	0,(IY+$01)	; do not suppress leading space
+;;	SCF
+;;	RST	$28
+;;	DEFW	L1195		; SET-DE
+;;	LD	HL,(K_CUR)	; is the cursor
+;;	BIT	2,(IY+TV_FLAG-ERR_NR)	; previous character?
+;;	JR	Z,SP_CUR1
+;;	DEC	HL
+;;SP_CUR1:EX	DE,HL		; at the beginning of
+;;	AND	A		; the current editor
+;;	SBC	HL,DE		; buffer?
+;;	JR	Z,ED_SPC	; if so, leading spaces must be suppressed
+;;	DEC	DE		; before the cursor
+;;	LD	A,(DE)		; do we
+;;	INC	DE		; have
+;;	CP	" "		; a space?
+;;	JR	Z,ED_SPC	; if so, suppress leading space
+;;	SUB	RND_T		; or a token?
+;;	RET	C		; if not, do not suppress
+;;	LD	HL,K_STATE	; if so, is it
+;;	BIT	3,(HL)		; an instruction?
+;;	JR	Z,ED_SPC	; if so, suppress leading space
+;;	LD	B,0		; if it is an operator
+;;	RRA			; CF = 0 at this point
+;;	RL	B
+;;	RRA
+;;	RL	B
+;;	RRA
+;;	RL	B
+;;	LD	HL,SPCTAB
+;;	ADD	A,L
+;;	LD	L,A
+;;	JR	NC,SP_CNC
+;;	INC	HL
+;;SP_CNC:	LD	A,(HL)
+;;	INC	B
+;;ED_MASK:RLCA
+;;	DJNZ	ED_MASK
+;;	RET	NC
+;;ED_SPC:	SET	0,(IY+$01)	; leading space suppression
+;;	RET
 
 ; copy edit area
 ED_COPY:PUSH	HL		; save K_STATE address
 	SET	6,(HL)		; flashing cursor ON
-	
 	RES	3,(HL)		; begin with instructions
 	RST	$28
-	DEFW	L111D
-	POP	HL
+	DEFW	L111D		; ED-COPY
+POPHL:	POP	HL
 	RET
+
+ECHO_CONT:	EQU	SWAP
 
 ; channel K input service routine
 K_IN:	LD	HL,SWAP
@@ -811,7 +815,8 @@ K_HEAD:	LD	(RETADDR),BC
 	LD	HL,(FLAGS - 1)
 	LD	L,(IY+$30)
 	SET	2,(IY+$30)		; set quote mode
-	PUSH	HL			; save FLAGS and FLAGS2
+	LD	(K_SAV),HL		; save FLAGS and FLAGS2
+	PUSH	HL
 	PUSH	AF			; save cursor character
 	LD	DE,EDITOR_HEADER0
 	CALL	MESSAGE
