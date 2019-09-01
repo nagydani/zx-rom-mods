@@ -145,7 +145,8 @@ K_ATTR:	EQU	STEPSUB+1	; ATTR_T and MASK_T at cursor position
 K_PFLAG:EQU	K_ATTR+2	; P_FLAG at cursor position
 K_SAV:	EQU	K_PFLAG+1	; FLAGS and FLAGS2 at cursor position
 K_SAV2:	EQU	K_SAV+2		; K_STATE at cursor position
-S_MODE:	EQU	K_SAV2+1	; video mode
+K_CUR_S:EQU	K_SAV2+1	; Old K_CUR value
+S_MODE:	EQU	K_CUR_S+2	; video mode
 
 INIT_5B00_L:	EQU	$ - $5B00
 
@@ -287,7 +288,7 @@ R_KEY:	XOR	A
 	LD	(ATTR_P),A
 	LD	(ATTR_T),A
 	LD	(BORDCR),A
-	LD	HL,$0523
+	LD	HL,$0223
 	LD	(REPDEL),HL
 	DEC	(IY-$3A)
 	DEC	(IY-$36)

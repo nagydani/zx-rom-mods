@@ -87,7 +87,81 @@ ED_COPY:PUSH	HL		; save K_STATE address
 POPHL:	POP	HL
 	RET
 
-ECHO_CONT:	EQU	SWAP
+ECHO_CONT:
+	POP	HL
+	POP	HL
+	LD	HL,ECHOER
+	PUSH	HL
+	PUSH	HL			; set up return address
+	BIT	1,(IY+TV_FLAG-ERR_NR)	; printing tail only?
+	JR	Z,ED_ALL
+	RES	1,(IY+TV_FLAG-ERR_NR)	; reset flag
+ED_TAIL:AND	A
+	CALL	K_SWAP		; restore attributes
+	LD	HL,(K_SAV)
+	LD	DE,$F6FB
+	LD	A,(FLAGS)
+	AND	D
+	XOR	H
+	AND	D
+	XOR	H
+	LD	(FLAGS),A	; restore bits 0 and 3 of FLAGS
+	LD	A,(FLAGS2)
+	AND	E
+	XOR	L
+	AND	E
+	XOR	L
+	LD	(FLAGS2),A	; restore bit 2 of FLAGS2
+	LD	A,(K_SAV2)
+	AND	8		; bit 3 of old K_STATE
+	LD	HL,K_STATE
+	RES	3,(HL)
+	OR	(HL)
+	LD	(HL),A		; restore bit 3 of K_STATE
+	LD	BC,(RETADDR)
+	RST	$28
+	DEFW	L0DD9		; CL-SET to cursor position
+	LD	DE,(K_CUR)	; cursor position
+	LD	HL,TV_FLAG
+	BIT	2,(HL)		; step back?
+	JR	Z,ED_NBCK	; don't.
+	RES	2,(HL)		; reset flag
+	LD	DE,(K_CUR_S)	; old cursor position
+	LD	A,D
+	OR	E
+	JR	NZ,ED_NBCK
+	SCF
+ED_ALL:	RST	$28		; from the very beginning
+	DEFW	L1195		; SET-DE
+ED_NBCK:BIT	6,(HL)		; print only to cursor position?
+	JR	Z,ED_ATC	; don't
+	RES	6,(HL)		; reset flag
+ED_CLP:	RST	$28
+	DEFW	L18E1		; OUT-CURS
+	LD	A,(DE)
+	LD	HL,(K_CUR)
+	AND	A
+	SBC	HL,DE
+	INC	DE
+	JR	Z,ED_DONE
+	CP	$0D
+	JR	Z,ED_DONE	; TODO: may be unnecessay
+	RST	$28
+	DEFW	L1937		; OUT-CHAR
+	JR	ED_CLP
+
+ED_DONE:RST	$28
+	DEFW	L18E1		; OUT-CURS
+	POP	DE
+	POP	DE
+	LD	HL,(S_POSNL)
+	EX	(SP),HL
+	LD	HL,L117C	; ED-C-DONE
+	JR	ED_FWD
+
+ED_ATC:	LD	HL,L1894	; OUT-LINE4
+ED_FWD:	PUSH	HL
+	JP	SWAP		; return to ROM1, the POP DE at L18B4 discards return address
 
 ; channel K input service routine
 K_IN:	LD	HL,SWAP
@@ -149,9 +223,10 @@ NOPIP:	LD	A,(LAST_K)	; pressed keycode
 	RST	$28
 	DEFW	L0D6E		; CLS-LOWER
 	POP	AF
-NOCLSL:	CP	$18
-	JR	NC,K_IN_C
-	SET	1,(IY+$02)
+NOCLSL:	CP	$18		; printable?
+	JR	C,K_IN_C	; jump, if not
+	SET	1,(IY+TV_FLAG-ERR_NR)
+	SET	2,(IY+TV_FLAG-ERR_NR)
 K_IN_C:	CP	$88
 	JR	C,K_INB		; jump, if definitely not block graphics
 	CP	$90
@@ -188,6 +263,7 @@ K_ING3:	BIT	5,(IY+$30)	; mode K suppressed?
 	RST	$28
 	DEFW	L2C8D		; ALPHA
 	RET	C		; return, if so
+	RES	1,(IY+TV_FLAG-ERR_NR)	; echo from beginning
 	LD	HL,TKETAB
 	LD	BC,$0006
 	CPIR
@@ -331,13 +407,23 @@ KEY_FLAG0:
 
 KEY_CUR:CALL	EDITOR_MODE	; editor mode?
 	RET	NZ		; all controls are passed on, if not
+	CP	$08
+	RET	C		; pass on what is not an arrow key
 	CP	$0B		; up arrow
-	SCF
+	CCF
+	RET	C		; pass on what is not an arrow key
+	LD	HL,TV_FLAG
+	SET	6,(HL)		; stop listing at the cursor
 	JR	Z,K_HOME
 	CP	$0A		; down arrow
+	JR	Z,K_ENDK
+	CP	$09		; right arrow
 	SCF
-	RET	NZ		; if neither, pass on the key
-	LD	HL,(K_CUR)
+	RET	NZ		; pass on, if not
+	SET	1,(HL)
+	SET	2,(HL)		; start listing before the cursor
+	RET
+K_ENDK:	LD	HL,(K_CUR)
 	LD	A,$0D
 	CP	(HL)		; cursor on CR?
 	JR	Z,K_DOWN	; if so, pass on the down arrow
@@ -812,6 +898,8 @@ K_HEAD:	LD	(RETADDR),BC
 	PUSH	HL
 	SCF
 	CALL	K_SWAP
+	LD	HL,(K_CUR)
+	LD	(K_CUR_S),HL
 	LD	HL,(FLAGS - 1)
 	LD	L,(IY+$30)
 	SET	2,(IY+$30)		; set quote mode

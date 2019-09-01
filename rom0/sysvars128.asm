@@ -13,8 +13,9 @@
 ; 7 - jump locations are cached
 
 ; TV_FLAG unused bits
-; 1 - start writing at cursor position
-; 2 - step one byte back before doing so
+; 1 - start echo at cursor position
+; 2 - start echo at old cursor position
+; 6 - echo only to cursor position
 
 CHANZ:		EQU	$5B7F
 OLDSP:		EQU	$5B81
