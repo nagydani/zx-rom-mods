@@ -411,6 +411,7 @@ KEY_FLAG0:
 	RET
 
 KEY_CUR:CALL	EDITOR_MODE	; editor mode?
+	SCF
 	RET	NZ		; all controls are passed on, if not
 	CP	$08
 	RET	C		; pass on what is not an arrow key
@@ -470,7 +471,8 @@ K_HOME:	LD	HL,(E_LINE)
 	LD	HL,(WORKSP)
 KCUR_ED:EX	DE,HL
 	LD	HL,(K_CUR)
-	SBC	HL,DE		; CF is 1 at this point!
+	SCF
+	SBC	HL,DE
 	RET	C		; pass on the key, if at the beginning,
 K_UCUR:	LD	(K_CUR),DE	; put it there, if not
 	SET	3,(IY+$02)	; update cursor position
