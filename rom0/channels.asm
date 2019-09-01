@@ -255,12 +255,13 @@ K_ING0:	BIT	5,(IY+$30)	; mode K suppressed?
 	LD	A,(HL)
 K_ING1:	SCF
 K_ING2:	RES	1,(IY+$07)
-K_ING3:	BIT	5,(IY+$30)	; mode K suppressed?
+K_ING3:	LD	HL,FLAGS2
+	BIT	5,(HL)		; mode K suppressed?
 	RET	Z		; return, if not
 	CALL	EDITOR_MODE	; editing?
 	RET	NZ		; return, if not
-	LD	HL,K_STATE
-	BIT	2,(IY+$30)	; inside quotes?
+	BIT	2,(HL)		; inside quotes?
+	RES	2,(HL)
 	RET	NZ		; return, if so
 	RST	$28
 	DEFW	L2C8D		; ALPHA
@@ -276,7 +277,9 @@ K_TKE:	LD	(IY-$2D),$80	; signal potential token end
 	SCF
 	RET
 
-K_ENT:	LD	HL,K_STATE
+K_ENT:	LD	HL,0
+	LD	(K_CUR_S),HL	; reset old cursor position
+	LD	HL,K_STATE
 	LD	(IY+DEFADD+1-ERR_NR),1	; TODO: this is an ugly hack
 	RES	6,(HL)		; turn off blinking cursor
 K_ENTP:	RES	4,(IY+$37)	; allow ELSE
