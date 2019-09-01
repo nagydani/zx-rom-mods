@@ -93,9 +93,10 @@ ECHO_CONT:
 	LD	HL,ECHOER
 	PUSH	HL
 	PUSH	HL			; set up return address
-	BIT	1,(IY+TV_FLAG-ERR_NR)	; printing tail only?
+	LD	HL,TV_FLAG
+	BIT	1,(HL)		; printing tail only?
 	JR	Z,ED_ALL
-	RES	1,(IY+TV_FLAG-ERR_NR)	; reset flag
+	RES	1,(HL)		; reset flag
 ED_TAIL:AND	A
 	CALL	K_SWAP		; restore attributes
 	LD	HL,(K_SAV)
@@ -131,7 +132,8 @@ ED_TAIL:AND	A
 	OR	E
 	JR	NZ,ED_NBCK
 	SCF
-ED_ALL:	RST	$28		; from the very beginning
+ED_ALL:	SET	0,(IY+$01)	; leading space suppression
+	RST	$28		; from the very beginning
 	DEFW	L1195		; SET-DE
 ED_NBCK:BIT	6,(HL)		; print only to cursor position?
 	JR	Z,ED_ATC	; don't
@@ -409,11 +411,12 @@ KEY_CUR:CALL	EDITOR_MODE	; editor mode?
 	RET	NZ		; all controls are passed on, if not
 	CP	$08
 	RET	C		; pass on what is not an arrow key
-	CP	$0B		; up arrow
+	CP	$0C
 	CCF
 	RET	C		; pass on what is not an arrow key
 	LD	HL,TV_FLAG
-	SET	6,(HL)		; stop listing at the cursor
+	SET	6,(HL)		; stop listing at the cursor for movements
+	CP	$0B		; up arrow
 	JR	Z,K_HOME
 	CP	$0A		; down arrow
 	JR	Z,K_ENDK
