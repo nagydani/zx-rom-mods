@@ -12,6 +12,9 @@
 ; 5 - suppress K mode, if set
 ; 7 - jump locations are cached
 
+; TVFLAG unused bits
+; 1 - start writing at cursor position
+; 2 - step one byte before doing so
 
 CHANZ:		EQU	$5B7F
 OLDSP:		EQU	$5B81

@@ -134,13 +134,16 @@ K_TV:	DEFW	0
 S_STATE:DEFB	$00
 S_WIDTH:DEFB	$20
 S_TV:	DEFW	0
-S_MODE:	DEFS	1
+K_SPCC:	DEFB	1
 C_SPCC:	DEFB	1
 RCLINE:	DEFS	2		; current line being renumbered
 RCSTART:DEFW	10		; starting line number for renumbering
 RCSTEP:	DEFW	10		; step for renumbering
 STEPPPC:EQU	$
 STEPSUB:EQU	STEPPPC+2
+K_ATTR:	EQU	STEPSUB+1	; ATTR_T and MASK_T at cursor position
+K_PFLAG:EQU	K_ATTR+2	; P_FLAG at cursor position
+S_MODE:	EQU	K_PFLAG+1	; video mode
 
 INIT_5B00_L:	EQU	$ - $5B00
 
@@ -739,8 +742,8 @@ TOKENS0:DEFB	$80+"P"
 	DEFB	$80+"$"
 	DEFM	"TIM"		; E s0, $D0
 	DEFB	$80+"E"
-	DEFM	"STIC"		; E s6, $D1
-	DEFB	$80+"K"
+	DEFM	"STICK"		; E s6, $D1
+	DEFB	$80+" "
 	DEFM	"DPEEK"		; E s7,	$D2
 	DEFB	$80+" "
 	DEFM	"OPEN "		; E s4, $D3
@@ -796,6 +799,17 @@ REPORTS:DEFB	$80+">"
 MAX_ERR:EQU	$22
 ERR7TXT:DEFM	"7 Missing PROC or GO SU"
 	DEFB	$80+"B"
+
+; Trailing spaces after function/operator tokens
+SPCTAB:	DEFB	%01010111	; RND, POINT , PI, ATTR , INKEY$, SCREEN$ , FN , AT ,
+	DEFB	%11111111	; TAB , LEN , CODE , COS , VAL$ , SIN , VAL , TAN ,
+	DEFB	%11111111	; ASN , EXP , ATN , SQR , ACS , INT , LN , SGN ,
+	DEFB	%11111111	; ABS , STR$ , IN , NOT , PEEK , CHR$ , USR , BIN ,
+	DEFB	%10011101	; OR , <>, <=, THEN , AND , LINE , >=, TO ,
+	DEFB	%11000100	; STEP , STICK , MEM$, OPEN #, FREE, DPEEK , TIME, EOF #,
+	DEFB	%11011111	; TIME$ , INK , ITEM, FLASH , REF , PAPER , HEX , BRIGHT ,
+	DEFB	%10101001	; INVERSE , ?, OCT , <<, OVER , ><, ?, DATA ,
+	DEFB	%00000000	; >>.
 
 PEEK_T:	EQU	$BE
 LINE_T:	EQU	$CA

@@ -18,37 +18,95 @@
 ; byte 3:
 ; first argument saved (see TV_DATA + 1)
 
-; copy edit area
-ED_COPY:SET	6,(HL)
-	RES	3,(HL)
-	LD	HL,C_SPCC
-	LD	(HL),1
-	PUSH	HL
+; check editor mode
+; Output: Z is 1 in editor mode, 0 otherwise, CF set
+; Corrupts: HL, DE, F
+EDITOR_MODE:
+	LD	HL,(ERR_SP)
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	EX	DE,HL
+	LD	DE,L107F		; ED-ERROR
+	AND	A
+	SBC	HL,DE
+	SCF
+	RET
+
+; Determine whether or not to suppress the leading space at the cursor position
+; Pollutes: AF, HL, B
+; Output: DE cursor pointer
+SP_CUR:	RES	0,(IY+$01)	; do not suppress leading space
+	SCF
 	RST	$28
-	DEFW	L111D		; ED-COPY
+	DEFW	L1195		; SET-DE
+	LD	HL,(K_CUR)	; is the cursor
+	EX	DE,HL		; at the beginning of
+	AND	A		; the current editor
+	SBC	HL,DE		; buffer?
+	JR	Z,ED_SPC	; if so, leading spaces must be suppressed
+	DEC	DE		; before the cursor
+	LD	A,(DE)		; do we
+	INC	DE		; have
+	CP	" "		; a space?
+	JR	Z,ED_SPC	; if so, suppress leading space
+	SUB	RND_T		; or a token?
+	RET	C		; if not, do not suppress
+	LD	HL,K_STATE	; if so, is it
+	BIT	3,(HL)		; an instruction?
+	JR	Z,ED_SPC	; if so, suppress leading space
+	LD	B,0		; if it is an operator
+	RRA			; CF = 0 at this point
+	RL	B
+	RRA
+	RL	B
+	RRA
+	RL	B
+	LD	HL,SPCTAB
+	ADD	A,L
+	LD	L,A
+	JR	NC,SP_CNC
+	INC	HL
+SP_CNC:	LD	A,(HL)
+	INC	B
+ED_MASK:RLCA
+	DJNZ	ED_MASK
+	RET	NC
+ED_SPC:	SET	0,(IY+$01)	; leading space suppression
+	RET
+
+; copy edit area
+ED_COPY:PUSH	HL		; save K_STATE address
+	SET	6,(HL)		; flashing cursor ON
+	
+	RES	3,(HL)		; begin with instructions
+	RST	$28
+	DEFW	L111D
 	POP	HL
 	RET
 
-; channel K input
-K_IN:	LD	HL,K_STATE
+; channel K input service routine
+K_IN:	LD	HL,SWAP
+	PUSH	HL
+	LD	HL,K_STATE
 	BIT	7,(HL)
 	JR	Z,K_IN0
 	LD	A,(K_DATA)
 	RES	7,(HL)
 	CP	$80		; potential token ending signal
 	SCF
-	JR	NZ,K_INNSW
-	LD	A,$0E
-	LD	(LAST_K),A
-	JR	NOPIP
+	RET	NZ
+	LD	A,$0E		; pretend that EXT
+	LD	(LAST_K),A	; has been pressed
+	JP	NOPIP		; in silence
 
 K_INNK:	LD	B,(HL)
 	BIT	6,B
-	JP	Z,SWAP
+	RET	Z
 	LD	A,(FRAMES)
 	XOR	B
 	AND	$10
-	JR	Z,K_INNSW
+	RET	Z
 	PUSH	BC
 	PUSH	HL
 	CALL	PCURSOR
@@ -58,8 +116,7 @@ K_INNK:	LD	B,(HL)
 	XOR	B
 	LD	(HL),A
 	XOR	A
-K_INNSW:JP	SWAP
-
+	RET
 
 ; regular input
 K_IN0:	BIT	3,(IY+$02)
@@ -88,14 +145,17 @@ NOPIP:	LD	A,(LAST_K)	; pressed keycode
 	RST	$28
 	DEFW	L0D6E		; CLS-LOWER
 	POP	AF
-NOCLSL:	CP	$88
-	JR	C,K_INB
+NOCLSL:	CP	$18
+	JR	NC,K_IN_C
+	SET	1,(IY+$02)
+K_IN_C:	CP	$88
+	JR	C,K_INB		; jump, if definitely not block graphics
 	CP	$90
-	JR	NC,K_INW
+	JR	NC,K_INW	; jump, if UDG or tokens
 	LD	BC,$7FFE
 	IN	B,(C)
 	BIT	1,B		; check Symbol Shift
-	JR	NZ,K_ING0
+	JR	NZ,K_ING0	; jump if not block graphics
 	ADD	A,$100 - $70	; transpose to $18..$1F, set CF
 	JR	K_ING0
 
@@ -104,9 +164,9 @@ K_INW:	CP	RND_T		; USR "V" +
 	BIT	1,(IY+$07)	; mode G?
 	JR	Z,K_INB
 	ADD	A,$100 - $A4	; transpose to 1..5, set CF
-K_ING0:	BIT	5,(IY+$30)
-	JR	Z,K_ING2
-	LD	C,A
+K_ING0:	BIT	5,(IY+$30)	; mode K suppressed?
+	JR	Z,K_ING2	; jump, if not
+	LD	C,A		; mode L translation
 	LD	HL,L_MODE
 	CALL	INDEXER
 	LD	A,C
@@ -115,13 +175,15 @@ K_ING0:	BIT	5,(IY+$30)
 K_ING1:	SCF
 K_ING2:	RES	1,(IY+$07)
 K_ING3:	BIT	5,(IY+$30)	; mode K suppressed?
-	JR	Z,K_INSW	; jump, if not
+	RET	Z		; return, if not
+	CALL	EDITOR_MODE	; editing?
+	RET	NZ		; return, if not
 	LD	HL,K_STATE
 	BIT	2,(IY+$30)	; inside quotes?
-	JR	NZ,K_INSW	; jump, if so
+	RET	NZ		; return, if so
 	RST	$28
 	DEFW	L2C8D		; ALPHA
-	JR	C,K_INSW	; jump, if so
+	RET	C		; return, if so
 	LD	HL,TKETAB
 	LD	BC,$0006
 	CPIR
@@ -130,7 +192,7 @@ K_TKE:	LD	(IY-$2D),$80	; signal potential token end
 	LD	HL,K_STATE
 	SET	7,(HL)
 	SCF
-K_INSW:	JP	SWAP
+	RET
 
 K_ENT:	LD	HL,K_STATE
 	LD	(IY+DEFADD+1-ERR_NR),1	; TODO: this is an ugly hack
@@ -145,7 +207,7 @@ K_M_SPC:SET	3,(HL)		; turn off K mode
 
 K_INB:	BIT	3,(IY+$01)	; mode K?
 	JR	NZ,K_MDL	; jump, if not
-	LD	HL,K_MODE
+	LD	HL,K_MODE	; mode K translation
 	LD	C,A
 	CALL	INDEXER
 	LD	A,C
@@ -156,6 +218,7 @@ K_MDL:	CP	$20
 K_NSP:	LD	(K_DATA),A
 	CCF
 	JR	C,K_ING0	; regular key pressed
+; Control keys
 	CP	$0D
 	JR	Z,K_ENT		; ENTER pressed
 	CP	$10
@@ -200,11 +263,13 @@ TFLAGS2:LD	HL,FLAGS2
 
 KEY_MODE0:
 	CP	$0E
-	JP	C,SWAP
-	JR	NZ,KEY_MODE1
+	JR	C,KEY_CUR	; control keys below EXT
+	JR	NZ,KEY_MODE1	; EXT key?
 	BIT	5,(IY+$30)	; mode K suppressed?
-	JR	Z,KEY_MODE1	; jump, if not
+	JR	Z,KEY_MODE1	; jump, if not - toggle mode E
 ; EXT key in K suppressed-mode
+	CALL	EDITOR_MODE
+	RET	NZ		; exit, if not editing
 	LD	HL,(E_LINE)
 	LD	DE,(K_CUR)
 	AND	A
@@ -228,7 +293,7 @@ EXT_TS:	ADD	HL,BC
 	LD	(K_DATA),A
 	LD	A,$0C
 	SCF
-	JR	K_INR2
+	RET
 
 KEY_CONTR0:
 	LD	B,A
@@ -243,7 +308,7 @@ KEY_DATA0:
 	LD	HL,K_STATE
 	SET	7,(HL)
 	SCF
-	JR	K_INR2
+	RET
 
 KEY_MODE2:
 	SUB	$12
@@ -257,9 +322,30 @@ KEY_MODE1:
 
 KEY_FLAG0:
 	SET	3,(IY+2)
-K_INR3:	CP	A
-K_INR2:	JP	SWAP
+	CP	A
+	RET
 
+KEY_CUR:CALL	EDITOR_MODE	; editor mode?
+	RET	NZ		; all controls are passed on, if not
+	CP	$0B		; up arrow
+	SCF
+	JR	Z,K_HOME
+	CP	$0A		; down arrow
+	SCF
+	RET	NZ		; if neither, pass on the key
+	LD	HL,(K_CUR)
+	LD	A,$0D
+	CP	(HL)		; cursor on CR?
+	JR	Z,K_DOWN	; if so, pass on the down arrow
+	LD	BC,0		; set the cursor to the line endig CR
+	CPIR
+	DEC	HL
+	EX 	DE,HL
+	JR	K_UCUR
+
+K_DOWN:	LD	A,$0A
+	SCF
+	RET
 
 EXT_NT:	LD	A,(HL)
 	CP	"$"
@@ -279,7 +365,21 @@ EXT_NT:	LD	A,(HL)
 NOREL:	RST	$28
 	DEFW	L2C8D		; ALPHA
 	JR	C,EXT_N
-	JR	K_INR3
+	CP	A
+	RET
+
+K_HOME:	LD	HL,(E_LINE)
+	BIT	5,(IY+$37)	; BASIC editing?
+	JR	Z,KCUR_ED	; jump, if so
+	LD	HL,(WORKSP)
+KCUR_ED:EX	DE,HL
+	LD	HL,(K_CUR)
+	SBC	HL,DE		; CF is 1 at this point!
+	RET	C		; pass on the key, if at the beginning,
+K_UCUR:	LD	(K_CUR),DE	; put it there, if not
+	SET	3,(IY+$02)	; update cursor position
+	XOR	A		; return empty
+	RET
 
 EXT_NS:	LD	B,1
 	DEC	HL
@@ -297,7 +397,7 @@ K_INSTT:LD	HL,(K_CUR)
 	DEFW	L2C8D		; ALPHA
 	LD	A,B
 	CCF
-	JR	C,K_INR2
+	RET	C
 EXT_N:	LD	B,0
 	DEC	HL
 EXT_L:	INC	B
@@ -329,12 +429,14 @@ EXT_CNT:JR	C,K_INSF
 	CP	$0E
 	JR	Z,K_INST
 	SCF
-K_INR4:	JR	K_INR2
+	RET
 
 EXT_NF:	LD	A,(LAST_K)
 	CP	$0E
 	SCF
-	JR	NZ,K_INR4
+	RET	NZ
+	LD	HL,RETADDR
+	INC	(HL)
 	LD	HL,(K_CUR)
 	DEC	HL
 	LD	A,(HL)
@@ -372,7 +474,7 @@ K_INST:	LD	C,B
 	DEFW	L19E8		; RECLAIM-2
 	EX	AF,AF'
 	SCF
-	JR	K_INR4
+	RET
 
 ; K-MODE translation table
 K_MODE:	DEFB	POKE_T,PEEK_T
@@ -468,16 +570,33 @@ TOKEN2O:RST	$28
 	DEFW	L0C10
 	RET
 
-; channel K service routine
-K_OUT:	LD	HL,K_STATE
+K_SWAP:	LD	HL,ATTR_T
+	LD	DE,K_ATTR
+	JR	C,K_SAVE
+	EX	DE,HL
+K_SAVE:	LDI
+	LDI
+	LDI
+	RET
+
+; channel K output service routine
+K_OUT:	LD	HL,SWAP
+	PUSH	HL
+	LD	HL,K_STATE
 	JR	C,KS_OUT
 ; channel K ioctl
 	OR	A
-	JR	NZ,KS_NR
+	RET	NZ
 K_RST:	LD	(HL),A
 	RES	5,(IY+TV_FLAG-ERR_NR)	; no further clearing
 	RST	$28
 	DEFW	L0D4D		; TEMPS
+	SCF
+	CALL	K_SWAP
+	LD	HL,C_SPCC
+	LD	(HL),1
+	DEC	L
+	LD	(HL),1
 	LD	B,(IY+$31)	; fetch lower screen display file size DF_SZ
 	RST	$28
 	DEFW	L0E44		; CL-LINE
@@ -492,8 +611,11 @@ K_RST:	LD	(HL),A
 	RRCA
 	RRCA
 	RRCA
+	LD	B,A
 	AND	$E0
 	LD	C,A
+	XOR	B
+	LD	B,A
 	DEC	BC
 	LDDR
 K_RST0: LD	(IY+$31),$02	; now set DF_SZ lower screen to 2
@@ -501,14 +623,16 @@ K_RST0: LD	(IY+$31),$02	; now set DF_SZ lower screen to 2
 	LD	(RETADDR),BC
 S_IO_E:	RST	$28
 	DEFW	L0DD9		; CL-SET
-KS_NR:	JP	SWAP
+	RET
 
-; channel S service routine
-S_OUT:	LD	HL,S_STATE
+; channel S output service routine
+S_OUT:	LD	HL,SWAP
+	PUSH	HL
+	LD	HL,S_STATE
 	JR	C,KS_OUT
 ; channel S ioctl
 	OR	A
-	JR	NZ,KS_NR
+	RET	NZ
 S_RST:	LD	(HL),A
 	LD	H,A
 	LD	L,A		; Initialize plot coordinates.
@@ -527,8 +651,17 @@ POFETCH:EQU	L0B03 + 6
 POSTORE:EQU	L0ADC + 6
 CLSET:	EQU	L0DD9 + 9
 
-; channel K/S direct output for coroutines
+KS_CTRL:PUSH	BC
+	LD	C,A
+	LD	B,0
+	LD	HL,TCTRL
+	ADD	HL,BC
+	LD	C,(HL)
+	ADD	HL,BC
+	POP	BC
+	JP	(HL)
 
+; channel K/S direct output for coroutines
 KS_OUT:	BIT	0,(HL)		; direct output
 	JR	NZ,KS_IND
 	BIT	2,(HL)
@@ -554,7 +687,7 @@ COR_TK:	CP	$18
 	INC	(HL)
 PR_NQ:	EX	DE,HL
 PR_NC:	RST	$28
-	DEFW	L0B65	; PO-CHAR
+	DEFW	L0B65		; PO-CHAR
 	JR	TSTORE2
 
 ; channel K/S indirect output
@@ -567,17 +700,19 @@ KS_IND:	BIT	1,(HL)
 	LD	A,(HL)
 	INC	HL	; tv2
 	LD	H,(HL)
+	INC	SP		; TODO; proper handling in this ROM
+	INC	SP		; discard SWAP
 	PUSH	HL
-	LD	HL,XPOCONT	; TODO: proper handling in this ROM
+	LD	HL,XPOCONT
 	EX	(SP),HL
-KS_SW:	JP	SWAP
+	JP	SWAP
 
 KS_IND2:RES	1,(HL)
 	INC	HL	; width
 	INC	HL	; tv1
 	INC	HL	; tv2
 	LD	(HL),A
-	JR	KS_SW
+	RET
 
 P_GR_TK:CP	$90
 	JR	NC,PR_T_UDG
@@ -593,8 +728,6 @@ PR_T_UDG:
 	JR	TSTORE
 
 PR_TK:	EX	DE,HL
-	LD	BC,SWAP
-	PUSH	BC
 	BIT	3,(HL)
 	RES	2,(IY+$37)	; FLAGX, signal instruction token
 	JR	Z,PR_INST
@@ -605,16 +738,6 @@ PR_TK:	EX	DE,HL
 	LD	HL,C_SPCC
 	INC	(HL)
 PR_TK0:	JP	TOKEN_O
-
-KS_CTRL:PUSH	BC
-	LD	C,A
-	LD	B,0
-	LD	HL,TCTRL
-	ADD	HL,BC
-	LD	C,(HL)
-	ADD	HL,BC
-	POP	BC
-	JP	(HL)
 
 PR_GR_0:LD	C,A
 	AND	$06
@@ -646,7 +769,7 @@ PR_TK2:	JP	TOKEN_I
 
 E_QUEST:LD	HL,(X_PTR)
 	LD	(K_CUR),HL
-	JR	T_SWX
+	RET
 
 PR_GR_R:RR	E
 	RR	D
@@ -657,7 +780,7 @@ PR_GR_E:RST	$28
 	DEFW	X0B30		; generated graphics in PO_ANY
 TSTORE:	RST	$28
 	DEFW	POSTORE
-T_SWX:	JP	SWAP
+	RET
 
 ; draw editor header
 E_HEAD:	EX	DE,HL
@@ -683,9 +806,8 @@ K_HEAD:	LD	(RETADDR),BC
 	PUSH	BC
 	PUSH	DE
 	PUSH	HL
-	LD	HL,(ATTR_T)
-	LD	H,(IY + P_FLAG - ERR_NR)
-	PUSH	HL			; save ATTR_T and P_FLAG
+	SCF
+	CALL	K_SWAP
 	LD	HL,(FLAGS - 1)
 	LD	L,(IY+$30)
 	SET	2,(IY+$30)		; set quote mode
@@ -717,9 +839,8 @@ E_HEAD0:LD	A,$06			; tabulation
 	JP	PE,E_HEAD1
 	RES	2,(IY+$30)		; restore quote mode
 E_HEAD1:LD	(FLAGS),A
-	POP	HL
-	LD	(IY + ATTR_T - ERR_NR),L
-	LD	(IY + P_FLAG - ERR_NR),H
+	AND	A
+	CALL	K_SWAP
 	POP	HL
 	POP	DE
 	POP	BC
@@ -810,7 +931,7 @@ POFILL: RST	$28
 	LD	A,(DE)
 	DEC	A
 	AND	C
-	JR	Z,TNOP
+	RET	Z
 	LD	D,A
 	SET	0,(IY+01)
 POSPACE:LD	A," "
@@ -821,7 +942,7 @@ POSPACE:LD	A," "
 	POP	DE
 	DEC	D
 	JR	NZ,POSPACE
-TNOP:	JP	SWAP
+TNOP:	RET
 
 TBS:	INC	DE
 	LD	A,(DE)
@@ -831,15 +952,15 @@ TBS:	INC	DE
 	PUSH	HL
 	LD	HL,L0A23 + 3	; TODO: continue with PO_BACK_1
 	EX	(SP),HL
-	JR	TNOP
+	RET
 
 TCR:	PUSH	DE
 	CALL	TCR0
 	POP	HL
 	RES	3,(HL)
 TCR1:	LD	HL,CLSET
-	PUSH	HL
-TNOP2:	JR	TNOP
+	EX	(SP),HL
+	JP	(HL)
 
 TLF:	LD	A,C
 	PUSH	AF
@@ -873,16 +994,16 @@ TBLINK:	EX	DE,HL
 TBL_I:	LD	A,(HL)
 	RES	3,(HL)
 	AND	$04
-	JR	Z,TNOP2
+	RET	Z
 	SET	3,(HL)
-	JR	TNOP2
+	RET
 
 T1CTR:	EX	DE,HL
 TCTR:	SET	0,(HL)
 	INC	HL	; width
 	INC	HL	; tv1
 	LD	(HL),A
-	JR	TNOP2
+	RET
 
 T2CTR:	EX	DE,HL
 	SET	1,(HL)
@@ -890,7 +1011,7 @@ T2CTR:	EX	DE,HL
 
 TRST:	RST	$28
 	DEFW	L0D4D	; TEMPS
-	JP	SWAP
+	RET
 
 POSCR:	RST	$28	; TODO: take width into account
 	DEFW	L0C55	; PO-SCR
