@@ -133,13 +133,14 @@ ED_TAIL:AND	A
 	JR	NZ,ED_NBCK
 	SCF
 ED_ALL:	SET	0,(IY+$01)	; leading space suppression
+	PUSH	HL
+	CALL	R_SPCC
+	POP	HL
 	RST	$28		; from the very beginning
 	DEFW	L1195		; SET-DE
 ED_NBCK:BIT	6,(HL)		; print only to cursor position?
 	JR	Z,ED_ATC	; don't
 	RES	6,(HL)		; reset flag
-	LD	HL,(ECHO_E)
-	PUSH	HL		; save ECHO_E
 ED_CLP:	RST	$28
 	DEFW	L18E1		; OUT-CURS
 	LD	A,(DE)
@@ -156,10 +157,8 @@ ED_CLP:	RST	$28
 
 ED_DONE:RST	$28
 	DEFW	L18E1		; OUT-CURS
-	POP	HL		; restore ECHO_E
 	POP	DE
 	POP	DE
-	EX	(SP),HL		; put ECHO_E on the stack
 	LD	HL,L117C	; ED-C-DONE
 	JR	ED_FWD
 
@@ -678,6 +677,13 @@ K_SAVE:	LDI
 	LDI
 	RET
 
+; reset colon counters
+R_SPCC:	LD	HL,C_SPCC
+	LD	(HL),1
+	DEC	L
+	LD	(HL),1
+	RET
+
 ; channel K output service routine
 K_OUT:	LD	HL,SWAP
 	PUSH	HL
@@ -692,10 +698,7 @@ K_RST:	LD	(HL),A
 	DEFW	L0D4D		; TEMPS
 	SCF
 	CALL	K_SWAP
-	LD	HL,C_SPCC
-	LD	(HL),1
-	DEC	L
-	LD	(HL),1
+	CALL	R_SPCC
 	LD	B,(IY+$31)	; fetch lower screen display file size DF_SZ
 	RST	$28
 	DEFW	L0E44		; CL-LINE
@@ -765,7 +768,7 @@ KS_OUT:	BIT	0,(HL)		; direct output
 	JR	NZ,KS_IND
 	BIT	2,(HL)
 	PUSH	AF
-	EX	DE,HL
+	EX	DE,HL		; save HL into DE
 	RST	$28
 	DEFW	POFETCH
 	POP	AF
@@ -778,13 +781,13 @@ COR_TK:	CP	$18
 	JR	NC,P_GR_TK
 	CP	":"
 	JR	NZ,PR_NC	; pr-able except colon leaves mode unchanged
-	EX	DE,HL
+	EX	DE,HL		; restore K_STATE into HL and save screen address to DE
 	RES	3,(HL)		; colon sets instr. mode
 	BIT	2,(IY+$30)	; inside quotes?
 	JR	NZ,PR_NQ	; if so, jump over instr. count increment
 	LD	HL,C_SPCC
 	INC	(HL)
-PR_NQ:	EX	DE,HL
+PR_NQ:	EX	DE,HL		; restore screen address to HL
 PR_NC:	RST	$28
 	DEFW	L0B65		; PO-CHAR
 	JR	TSTORE2
@@ -826,18 +829,6 @@ PR_T_UDG:
 	DEFW	L0B52 + 4	; PO-T-UDG + 4, udg
 	JR	TSTORE
 
-PR_TK:	EX	DE,HL
-	BIT	3,(HL)
-	RES	2,(IY+$37)	; FLAGX, signal instruction token
-	JR	Z,PR_INST
-	SET	2,(IY+$37)	; FLAGX, signal operator token
-	CP	ELSE_T - RND_T
-	JR	NZ,PR_TK0
-	RES	3,(HL)
-	LD	HL,C_SPCC
-	INC	(HL)
-PR_TK0:	JP	TOKEN_O
-
 PR_GR_0:LD	C,A
 	AND	$06
 	LD	E,A
@@ -857,6 +848,18 @@ PR_GR_L:LD	(HL),E
 	RL	E
 	DJNZ	PR_GR_L
 	JR	PR_GR_E
+
+PR_TK:	EX	DE,HL
+	BIT	3,(HL)
+	RES	2,(IY+$37)	; FLAGX, signal instruction token
+	JR	Z,PR_INST
+	SET	2,(IY+$37)	; FLAGX, signal operator token
+	CP	ELSE_T - RND_T
+	JR	NZ,PR_TK0
+	RES	3,(HL)
+	LD	HL,C_SPCC
+	INC	(HL)
+PR_TK0:	JP	TOKEN_O
 
 PR_INST:CP	ELSE_T - RND_T
 	JR	Z,PR_TK1
