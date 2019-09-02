@@ -138,6 +138,8 @@ ED_ALL:	SET	0,(IY+$01)	; leading space suppression
 ED_NBCK:BIT	6,(HL)		; print only to cursor position?
 	JR	Z,ED_ATC	; don't
 	RES	6,(HL)		; reset flag
+	LD	HL,(ECHO_E)
+	PUSH	HL		; save ECHO_E
 ED_CLP:	RST	$28
 	DEFW	L18E1		; OUT-CURS
 	LD	A,(DE)
@@ -154,10 +156,10 @@ ED_CLP:	RST	$28
 
 ED_DONE:RST	$28
 	DEFW	L18E1		; OUT-CURS
+	POP	HL		; restore ECHO_E
 	POP	DE
 	POP	DE
-	LD	HL,(S_POSNL)
-	EX	(SP),HL
+	EX	(SP),HL		; put ECHO_E on the stack
 	LD	HL,L117C	; ED-C-DONE
 	JR	ED_FWD
 
