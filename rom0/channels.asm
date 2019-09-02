@@ -298,7 +298,7 @@ K_INB:	BIT	3,(IY+$01)	; mode K?
 	LD	A,C
 	JR	NC,K_MDL
 	LD	A,(HL)
-K_MDL:	CP	$20
+K_MDL:	CP	" "
 	JR	Z,KEY_M_K0	; jump, if space
 K_NSP:	LD	(K_DATA),A
 	CCF
@@ -320,30 +320,29 @@ K_NSP:	LD	(K_DATA),A
 	JR	KEY_DATA0
 
 KEY_M_K0:
-	LD	HL,K_STATE
-	BIT	6,(HL)
-	JR	Z,K_NSP
+	CALL	EDITOR_MODE
+	JR	NZ,K_NSP	; outside of editor mode, space is a regular key
 	RST	$28
-	DEFW	X1F5A		; CAPS SHIFT?
-	LD	A," "
+	DEFW	X1F5A		; CAPS SHIFT ?
+	LD	A," "		; restore A
 	CCF
-	JR	C,K_TRAD
 	LD	HL,FLAGS
+	JR	C,K_TRAD	; in editor mode, BREAK toggles K mode suppression
 	BIT	3,(HL)		; mode K?
-	JR	Z,K_M_SPC	; jump, if so
+	JR	Z,K_M_SPC	; jump, if so (suppress mode K)
 	LD	HL,MODE
 	BIT	0,(HL)		; mode E?
 	JR	Z,K_NSP		; jump back, if not
 	DEC	(HL)		; leave mode E
-K_TRAD:	LD	A,$20		; toggle bit 5
+K_TRAD:	LD	A,$20		; toggle bit 5 (K mode suppression)
 	JR	TFLAGS2
 
 KEY_M_CL0:
 	JR	NZ,KEY_MODE0
-	LD	A,$08
+	LD	A,$08		; toggle CAPS LOCK
 TFLAGS2:LD	HL,FLAGS2
 	XOR	(HL)
-	LD	(HL),A		; toggle CAPS LOCK
+	LD	(HL),A		; toggle mask in A
 	JR	KEY_FLAG0
 
 KEY_MODE0:
@@ -951,6 +950,7 @@ E_HEAD1:LD	(FLAGS),A
 	POP	AF			; restore channel flag content into A
 	POP	DE			; restore channel flag address into DE
 	LD	(DE),A
+	LD	(K_SAV2),A		; save channel flag content
 TSTORE3:JP	TSTORE
 
 E_HEADT:LD	DE,EDITOR_HEADERT
