@@ -23,6 +23,44 @@ FUNCTAB:DEFW	S_FREE		; FREE
 ;;	DEFW	F_STR0		; DATA
 ;;	DEFW	F_STR0		; >>
 
+F_BRACE:LD	(HL),$0D	; temporarily place an end-of-line marker
+	LD	HL,(ERR_SP)
+	PUSH	HL		; save ERR_SP
+	LD	HL,ERR_BRACE
+	PUSH	HL		; set error handler
+	LD	HL,SWAP
+	PUSH	HL		; in this ROM
+	LD	(ERR_SP),SP
+	LD	(CH_ADD),DE
+	PUSH	DE		; save beginning-of-expression
+	RST	$28
+	DEFW	L24FB		; SCANNING
+	CP	$0D
+	JP	NZ,ERROR_C
+	POP	HL		; restore beginning-of-expression
+	RST	$28
+	DEFW	L11A7		; REMOVE_FP
+	LD	(CH_ADD),HL
+	DEC	HL
+	LD	(HL),"}"	; restore closing brace
+	POP	HL
+	POP	HL		; discard error handler
+	POP	HL
+	LD	(ERR_SP),HL
+	JR	S_BRCE
+
+ERR_BRACE:
+	POP	HL
+	LD	(ERR_SP),HL
+	LD	SP,HL
+	LD	A,$0D
+	LD	HL,(X_PTR)
+	LD	BC,0
+	CPIR
+	DEC	HL
+	LD	(HL),"}"
+	JP	SWAP
+
 SCANFUNC2:
 	DEFB	CODE_T
 	DEFB	S_CODE - $
@@ -32,7 +70,36 @@ SCANFUNC2:
 	DEFB	S_STR - $
 	DEFB	"@"
 	DEFB	S_LBL - $
+	DEFB	"{"
+	DEFB	S_BRACE - $
 	DEFB	0
+
+S_BRACE:RST	$18		; HL = address of opening brace
+	PUSH	HL		; save beginning
+	LD	BC,$0000	; nesting depth
+S_BRCL1:INC	BC
+S_BRCL:	RST	$20
+	CP	$0D		; missing closing brace
+	JP	Z,ERROR_C
+	CP	"{"
+	JR	Z,S_BRCL1
+	CP	"}"
+	JR	NZ,S_BRCL
+	DEC	BC
+	LD	A,B
+	OR	C
+	JR	NZ,S_BRCL
+	POP	DE		; restore beginning
+	INC	DE		; step past opening brace
+	CALL	SYNTAX_Z
+	JR	Z,F_BRACE
+	XOR	A		; referenced string
+	SBC	HL,DE
+	LD	B,H
+	LD	C,L
+	RST	$20		; step past the closing brace
+S_BRCE:	LD	HL,L25DB	; S-STRING
+	JP	HLSWAP
 
 S_STR:	LD	BC,$106E	; actually STR$
 	PUSH	BC
