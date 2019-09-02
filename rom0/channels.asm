@@ -1050,10 +1050,12 @@ TBS:	INC	DE
 	INC	A
 	INC	A
 	INC	C
+	INC	SP		; TODO: continue with PO-BACK-1
+	INC	SP
 	PUSH	HL
-	LD	HL,L0A23 + 3	; TODO: continue with PO_BACK_1
+	LD	HL,L0A23 + 3	; PO-BACK-1 + 3
 	EX	(SP),HL
-	RET
+	JP	SWAP
 
 TCR:	PUSH	DE
 	CALL	TCR0
