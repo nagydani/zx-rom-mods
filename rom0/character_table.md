@@ -19,7 +19,7 @@
 | 0C | FF | clear screen
 | 0D | CR, enter | cursor to the first position of next row
 | 0E | blink | next character flashes
-| 0F | ? | TBD
+| 0F | mark | next character is inverted
 | 10 | ink | next byte selects foreground color
 | 11 | paper | next byte selects background color
 | 12 | flash | next byte selects flashing (0 off, 1 on)

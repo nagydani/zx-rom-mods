@@ -100,13 +100,13 @@ ECHO_CONT:
 ED_TAIL:AND	A
 	CALL	K_SWAP		; restore attributes
 	LD	HL,(K_SAV)
-	LD	DE,$F6FB
+	LD	DE,$FAFB
 	LD	A,(FLAGS)
 	AND	D
 	XOR	H
 	AND	D
 	XOR	H
-	LD	(FLAGS),A	; restore bits 0 and 3 of FLAGS
+	LD	(FLAGS),A	; restore bits 0 and 2 of FLAGS
 	LD	A,(FLAGS2)
 	AND	E
 	XOR	L
@@ -114,7 +114,7 @@ ED_TAIL:AND	A
 	XOR	L
 	LD	(FLAGS2),A	; restore bit 2 of FLAGS2
 	LD	A,(K_SAV2)
-	AND	8		; bit 3 of old K_STATE
+	AND	$08		; bit 3 of old K_STATE
 	LD	HL,K_STATE
 	RES	3,(HL)
 	OR	(HL)
@@ -135,7 +135,12 @@ ED_TAIL:AND	A
 ED_ALL:	SET	0,(IY+$01)	; leading space suppression
 	PUSH	HL
 	CALL	R_SPCC
-	POP	HL
+	LD	HL,FLAGS
+	RES	2,(HL)
+	BIT	5,(IY+FLAGX-ERR_NR)
+	JR	Z,ED_ALLE
+	SET	2,(HL)
+ED_ALLE:POP	HL
 	RST	$28		; from the very beginning
 	DEFW	L1195		; SET-DE
 ED_NBCK:BIT	6,(HL)		; print only to cursor position?
@@ -162,7 +167,7 @@ ED_DONE:RST	$28
 	LD	HL,L117C	; ED-C-DONE
 	JR	ED_FWD
 
-ED_ATC:	LD	HL,L1894	; OUT-LINE4
+ED_ATC:	LD	HL,OUT_LINE4
 ED_FWD:	PUSH	HL
 	JP	SWAP		; return to ROM1, the POP DE at L18B4 discards return address
 
@@ -245,9 +250,10 @@ K_INW:	CP	RND_T		; USR "V" +
 	JR	C,K_INB
 	BIT	1,(IY+$07)	; mode G?
 	JR	Z,K_INB
+	RES	1,(IY+$07)	; these turn mode G off
 	ADD	A,$100 - $A4	; transpose to 1..5, set CF
 K_ING0:	BIT	5,(IY+$30)	; mode K suppressed?
-	JR	Z,K_ING2	; jump, if not
+	JR	Z,K_ING1	; jump, if not
 	LD	C,A		; mode L translation
 	LD	HL,L_MODE
 	CALL	INDEXER
@@ -255,7 +261,6 @@ K_ING0:	BIT	5,(IY+$30)	; mode K suppressed?
 	JR	NC,K_ING1
 	LD	A,(HL)
 K_ING1:	SCF
-K_ING2:	RES	1,(IY+$07)
 K_ING3:	LD	HL,FLAGS2
 	BIT	5,(HL)		; mode K suppressed?
 	RET	Z		; return, if not
@@ -753,15 +758,17 @@ POFETCH:EQU	L0B03 + 6
 POSTORE:EQU	L0ADC + 6
 CLSET:	EQU	L0DD9 + 9
 
-KS_CTRL:PUSH	BC
+KS_CTRL:PUSH	HL		; save display address
+	PUSH	BC		; save coordinates
 	LD	C,A
 	LD	B,0
 	LD	HL,TCTRL
 	ADD	HL,BC
 	LD	C,(HL)
 	ADD	HL,BC
-	POP	BC
-	JP	(HL)
+	POP	BC		; restore coordinates
+	EX	(SP),HL		; restore display address, stack destination
+	RET
 
 ; channel K/S direct output for coroutines
 KS_OUT:	BIT	0,(HL)		; direct output
@@ -938,6 +945,9 @@ E_HEAD0:LD	A,$06			; tabulation
 	RST	$10
 	POP	AF			; restore cursor character
 	RST	$10			; and print it
+	BIT	5,(IY+FLAGS2-ERR_NR)	; check K mode suppression
+	LD	A,"+"
+	CALL	NZ,$0010		; and indicate it
 	LD	DE,EDITOR_HEADER1
 	CALL	MESSAGE
 	POP	AF			; restore FLAGS to A and FLAGS2 to F
@@ -991,7 +1001,7 @@ TCTRL:	DEFB	TNOP - $	; $00 does nothing
 	DEFB	TFF - $		; $0C clear screen
 	DEFB	TCR - $		; $0D ENTER
 	DEFB	TBLINK - $	; $0E cursor character
-	DEFB	TQUEST - $	; $0F prints question mark
+	DEFB	T1CTR - $	; $0F prints inverted character
 	DEFB	T1CTR - $	; $10 INK
 	DEFB	T1CTR - $	; $11 PAPER
 	DEFB	T1CTR - $	; $12 FLASH
@@ -1021,7 +1031,7 @@ TFF:	XOR	A
 	JP	S_RST
 
 TQUEST:	LD	A,"?"
-	JP	PR_NQ
+	JP	PR_NC
 
 TCOMMA:	INC	DE
 	EX	AF,AF'
@@ -1092,8 +1102,11 @@ TUP:	INC	B
 	DEC	B
 	JR	TCR1
 
-TBLINK:	EX	DE,HL
-	SET	2,(HL)
+TBLINK:	BIT	0,(IY+TV_FLAG-ERR_NR)
+	JR	Z,T1CTR
+	RET	Z
+	EX	DE,HL
+	SET	2,(HL)	; set blinking or inverse
 	BIT	3,(HL)
 	LD	HL,FLAGX
 	RES	4,(HL)

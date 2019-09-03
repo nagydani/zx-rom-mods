@@ -49,7 +49,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 01-SEP-2019
+; Last updated: 03-SEP-2019
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -3185,7 +3185,7 @@ L0A11:  DEFB    PO_COMMA - $	; 06d offset $4E to Address: PO-COMMA
         DEFB    PO_QUEST - $	; 12d offset $52 to Address: PO-QUEST
         DEFB    PO_ENTER - $    ; 13d offset $37 to Address: PO-ENTER
         DEFB    PO_1_OPER - $	; 14d offset $50 to Address: PO-1-OPER
-        DEFB    PO_QUEST - $	; 15d offset $4F to Address: PO-QUEST
+        DEFB    PO_1_OPER - $	; 15d offset $4F to Address: PO-1-OPER
         DEFB    PO_1_OPER - $	; 16d offset $5F to Address: PO-1-OPER
         DEFB    PO_1_OPER - $	; 17d offset $5E to Address: PO-1-OPER
         DEFB    PO_1_OPER - $	; 18d offset $5D to Address: PO-1-OPER
@@ -4818,7 +4818,9 @@ L0F38:  CALL    L15D4           ; routine WAIT-KEY gets key possibly
         CP      $18             ; range 24 to 255 ?
         JR      NC,L0F81	; forward to ADD-CHAR if so.
 
-        CP      $07             ; lower than 7 ?
+;;; BUGFIX: proper handling of CHR$ 6
+	CP	$06
+;;;	CP      $07             ; lower than 7 ?
         JR      C,L0F81		; forward to ADD-CHAR also.
                                 ; Note. This is a 'bug' and chr$ 6, the comma
                                 ; control character, should have had an
@@ -4841,7 +4843,7 @@ L0F38:  CALL    L15D4           ; routine WAIT-KEY gets key possibly
 
         INC     BC              ; if it was AT/TAB - 3 locations required
         BIT     7,(IY+$37)      ; test FLAGX  - Is this INPUT LINE ?
-        JP      Z,L101E         ; jump to ED-IGNORE if not, else
+        JP      Z,ED_IGNORE	; jump to ED-IGNORE if not, else
 
         CALL    L15D4           ; routine WAIT-KEY - input address is KEY-NEXT
                                 ; but is reset to KEY-INPUT
@@ -4907,7 +4909,9 @@ L0F8B:  LD      (DE),A          ; load current character to last new location.
 ;; ED-KEYS
 L0F92:  LD      E,A             ; character to E.
         LD      D,$00           ; prepare to add.
-        LD      HL,L0FA0 - 7    ; base address of editing keys table. $0F99
+;;; BUGFIX: proper handling of CHR$ 6
+	LD	HL,ED_KEYS - 6
+;;;	LD      HL,L0FA0 - 7    ; base address of editing keys table. $0F99
         ADD     HL,DE           ; add E
         LD      E,(HL)          ; fetch offset to E
         ADD     HL,DE           ; add offset for address of handling routine.
@@ -4924,15 +4928,17 @@ L0F92:  LD      E,A             ; character to E.
 ; entry for chr$ 6 with offset to ed-symbol.
 
 ;; ed-keys-t
-L0FA0:  DEFB    L0FA9 - $  ; 07d offset $09 to Address: ED-EDIT
-        DEFB    L1007 - $  ; 08d offset $66 to Address: ED-LEFT
-        DEFB    L100C - $  ; 09d offset $6A to Address: ED-RIGHT
-        DEFB    L0FF3 - $  ; 10d offset $50 to Address: ED-DOWN
-        DEFB    L1059 - $  ; 11d offset $B5 to Address: ED-UP
-        DEFB    L1015 - $  ; 12d offset $70 to Address: ED-DELETE
-        DEFB    L1024 - $  ; 13d offset $7E to Address: ED-ENTER
-        DEFB    L1076 - $  ; 14d offset $CF to Address: ED-SYMBOL
-        DEFB    L107C - $  ; 15d offset $D4 to Address: ED-GRAPH
+;;;L0FA0:
+ED_KEYS:DEFB	ED_ENTER - $	; 06d
+	DEFB    ED_EDIT - $	; 07d
+        DEFB    ED_LEFT - $	; 08d
+        DEFB    ED_RIGHT - $	; 09d
+        DEFB    ED_DOWN - $	; 10d
+        DEFB    ED_UP - $	; 11d
+        DEFB    ED_DELETE - $	; 12d
+        DEFB    ED_ENTER - $	; 13d
+        DEFB    ED_SYMBOL - $	; 14d
+        DEFB    ED_GRAPH - $	; 15d
 
 ; ---------------
 ; Handle EDIT key
@@ -4942,7 +4948,9 @@ L0FA0:  DEFB    L0FA9 - $  ; 07d offset $09 to Address: ED-EDIT
 ; Alternatively ...
 
 ;; ED-EDIT
-L0FA9:  LD      HL,(E_PPC)      ; fetch E_PPC the last line number entered.
+;;;L0FA9:
+ED_EDIT:
+	LD      HL,(E_PPC)      ; fetch E_PPC the last line number entered.
                                 ; Note. may not exist and may follow program.
         BIT     5,(IY+$37)      ; test FLAGX  - input mode ?
         JP      NZ,L1097        ; jump forward to CLEAR-SP if not in editor.
@@ -5003,10 +5011,6 @@ L0FA9:  LD      HL,(E_PPC)      ; fetch E_PPC the last line number entered.
         POP     HL              ; restore the address of CURCHL.
 ;;; BUFGIX: tail call, baby!
 	JP	L1615
-;;; Zero stream definition
-ZIN:	XOR	A
-	SCF
-ZOUT:	RET
 ;;;     CALL    L1615           ; routine CHAN-FLAG sets flags for it.
 ;;;     RET                     ; RETURN to ED-LOOP.
 
@@ -5018,8 +5022,10 @@ ZOUT:	RET
 ;   With INPUT LINE, this key must be used instead of entering STOP.
 
 ;; ED-DOWN
-L0FF3:  BIT     5,(IY+$37)      ; test FLAGX  - Input Mode ?
-        JR      NZ,L1001        ; skip to ED-STOP if so
+;;;L0FF3:
+ED_DOWN:
+	BIT     5,(IY+$37)      ; test FLAGX  - Input Mode ?
+        JR      NZ,ED_STOP	; skip to ED-STOP if so
 
         LD      HL,E_PPC        ; address E_PPC - 'current line'
         CALL    L190F           ; routine LN-FETCH fetches number of next
@@ -5030,8 +5036,10 @@ L0FF3:  BIT     5,(IY+$37)      ; test FLAGX  - Input Mode ?
 ; ---
 
 ;; ED-STOP
-L1001:  LD      (IY+$00),$10    ; set ERR_NR to 'STOP in INPUT' code
-        JR      L1024           ; forward to ED-ENTER to produce error.
+;;;L1001:
+ED_STOP:
+	LD      (IY+$00),$10    ; set ERR_NR to 'STOP in INPUT' code
+        JR      ED_ENTER           ; forward to ED-ENTER to produce error.
 
 ; -------------------
 ; Cursor left editing
@@ -5040,8 +5048,10 @@ L1001:  LD      (IY+$00),$10    ; set ERR_NR to 'STOP in INPUT' code
 ; editing and input mode.
 
 ;; ED-LEFT
-L1007:  CALL    L1031           ; routine ED-EDGE moves left if possible
-        JR      L1011           ; forward to ED-CUR to update K-CUR
+;;;L1007:
+ED_LEFT:
+	CALL    ED_EDGE		; routine ED-EDGE moves left if possible
+        JR      ED_CUR		; forward to ED-CUR to update K-CUR
                                 ; and return to ED-LOOP.
 
 ; --------------------
@@ -5051,14 +5061,21 @@ L1007:  CALL    L1031           ; routine ED-EDGE moves left if possible
 ; mode and moves it to the right.
 
 ;; ED-RIGHT
-L100C:  LD      A,(HL)          ; fetch addressed character.
+;;;L100C:
+ED_RIGHT:
+	LD      A,(HL)          ; fetch addressed character.
         CP      $0D             ; is it carriage return ?
         RET     Z               ; return if so to ED-LOOP
-
-        INC     HL              ; address next character
+	INC	HL
+	LD	E,D
+	SBC	HL,DE
+	CP	$18
+	ADC	HL,DE
 
 ;; ED-CUR
-L1011:  LD      (K_CUR),HL      ; update K_CUR system variable
+;;;L1011:
+ED_CUR:
+	LD      (K_CUR),HL      ; update K_CUR system variable
         RET                     ; return to ED-LOOP
 
 ; --------------
@@ -5071,9 +5088,14 @@ L1011:  LD      (K_CUR),HL      ; update K_CUR system variable
 ; to delete these second characters.
 
 ;; ED-DELETE
-L1015:  CALL    L1031           ; routine ED-EDGE moves cursor to left.
-        LD      BC,$0001        ; of character to be deleted.
-        JP      L19E8           ; to RECLAIM-2 reclaim the character.
+;;;L1015:
+ED_DELETE:
+	CALL    ED_EDGE; routine ED-EDGE moves cursor to left.
+;;; BUGFIX: delete whole control sequence
+	EX	DE,HL
+	JP	L19E5		; to RECLAIM-1
+;;;     LD      BC,$0001        ; of character to be deleted.
+;;;     JP      L19E8           ; to RECLAIM-2 reclaim the character.
 
 ; ------------------------------------------
 ; Ignore next 2 codes from key-input routine
@@ -5086,7 +5108,9 @@ L1015:  CALL    L1031           ; routine ED-EDGE moves cursor to left.
 ; and this one is interpreting input #15; a$.
 
 ;; ED-IGNORE
-L101E:  CALL    L15D4           ; routine WAIT-KEY to ignore keystroke.
+;;;L101E:
+ED_IGNORE:
+	CALL    L15D4           ; routine WAIT-KEY to ignore keystroke.
         CALL    L15D4           ; routine WAIT-KEY to ignore next key.
 
 ; -------------
@@ -5095,11 +5119,14 @@ L101E:  CALL    L15D4           ; routine WAIT-KEY to ignore keystroke.
 ; The enter key has been pressed to have BASIC line or input accepted.
 
 ;; ED-ENTER
-L1024:  POP     HL              ; discard address ED-LOOP
+;;;L1024:
+ED_ENTER:
+	POP     HL              ; discard address ED-LOOP
         POP     HL              ; drop address ED-ERROR
 
 ;; ED-END
-L1026:  POP     HL              ; the previous value of ERR_SP
+;;;L1026:
+ED_END:	POP     HL              ; the previous value of ERR_SP
         LD      (ERR_SP),HL      ; is restored to ERR_SP system variable
         BIT     7,(IY+$00)      ; is ERR_NR $FF (= 'OK') ?
         RET     NZ              ; return if so
@@ -5120,7 +5147,9 @@ L1026:  POP     HL              ; the previous value of ERR_SP
 ; legitimate leftmost position is in DE.
 
 ;; ED-EDGE
-L1031:  SCF                     ; carry flag must be set to call the nested
+;;;L1031:
+ED_EDGE:
+	SCF                     ; carry flag must be set to call the nested
         CALL    L1195           ; subroutine SET-DE.
                                 ; if input   then DE=WORKSP
                                 ; if editing then DE=E_LINE
@@ -5137,7 +5166,9 @@ L1031:  SCF                     ; carry flag must be set to call the nested
                                 ; at this point DE addresses start of line.
 
 ;; ED-EDGE-1
-L103E:  LD      H,D             ; transfer DE - leftmost pointer
+;;;L103E:
+ED_EDGE_1:
+	LD      H,D             ; transfer DE - leftmost pointer
         LD      L,E             ; to HL
         INC     HL              ; address next leftmost character to
                                 ; advance position each time.
@@ -5145,7 +5176,7 @@ L103E:  LD      H,D             ; transfer DE - leftmost pointer
         AND     $F0             ; lose the low bits
         CP      $10             ; is it INK to TAB $10-$1F ?
                                 ; that is, is it followed by a parameter ?
-        JR      NZ,L1051        ; to ED-EDGE-2 if not
+        JR      NZ,ED_EDGE_2	; to ED-EDGE-2 if not
                                 ; HL has been incremented once
         INC     HL              ; address next as at least one parameter.
 
@@ -5156,10 +5187,8 @@ L103E:  LD      H,D             ; transfer DE - leftmost pointer
         LD      A,(DE)          ; reload leftmost character
 ;;; BUGFIX: no need to check for AT or TAB, but do not treat $18..$F as controls
 	CP	$18		; check $18..$1F
-	JR	C,L1051		; jump forward, if not in this range
+	JR	C,ED_EDGE_2	; jump forward, if not in this range
 	DEC	HL		; go back with HL
-	NOP
-	NOP
 ;;;        SUB     $17             ; decimal 23 ('tab')
 ;;;        ADC     A,$00           ; will be 0 for 'tab' and 'at'.
 ;;;        JR      NZ,L1051        ; forward to ED-EDGE-2 if not
@@ -5167,7 +5196,9 @@ L103E:  LD      H,D             ; transfer DE - leftmost pointer
 ;;;        INC     HL              ; increment a third time for 'at'/'tab'
 
 ;; ED-EDGE-2
-L1051:  AND     A               ; prepare for true subtraction
+L1051:
+ED_EDGE_2:
+	AND     A               ; prepare for true subtraction
         SBC     HL,BC           ; subtract cursor address from pointer
         ADD     HL,BC           ; and add back
                                 ; Note when HL matches the cursor position BC,
@@ -5176,7 +5207,7 @@ L1051:  AND     A               ; prepare for true subtraction
         EX      DE,HL           ; transfer result to DE if looping again.
                                 ; transfer DE to HL to be used as K-CUR
                                 ; if exiting loop.
-        JR      C,L103E         ; back to ED-EDGE-1 if cursor not matched.
+        JR      C,ED_EDGE_1	; back to ED-EDGE-1 if cursor not matched.
 
         RET                     ; return.
 
@@ -5188,7 +5219,8 @@ L1051:  AND     A               ; prepare for true subtraction
 ; This has no alternative use in input mode.
 
 ;; ED-UP
-L1059:  BIT     5,(IY+$37)      ; test FLAGX  - input mode ?
+;;;L1059:
+ED_UP:	BIT     5,(IY+$37)      ; test FLAGX  - input mode ?
         RET     NZ              ; return if not in editor - to ED-LOOP.
 
         LD      HL,(E_PPC)      ; get current line from E_PPC
@@ -5227,16 +5259,25 @@ L106E:  CALL    L1795           ; routine AUTO-LIST lists to upper screen
 
 ; This is chr$ 14.
 ;; ED-SYMBOL
-L1076:  BIT     7,(IY+$37)      ; test FLAGX - is this INPUT LINE ?
-        JR      Z,L1024         ; back to ED-ENTER if not to treat as if
+;;;L1076:
+;;;	BIT     7,(IY+$37)      ; test FLAGX - is this INPUT LINE ?
+;;;	JR      Z,ED_ENTER         ; back to ED-ENTER if not to treat as if
                                 ; enter had been pressed.
                                 ; else continue and add code to buffer.
+ED_SYMBOL:
+	JP	L15D4		; Ignore the flashing cursor character
+
 
 ; Next is chr$ 15
 ; Note that ADD-CHAR precedes the table so we can't offset to it directly.
 
 ;; ED-GRAPH
-L107C:  JP      L0F81           ; jump back to ADD-CHAR
+;;;L107C:
+ED_GRAPH:
+	JP      L0F81           ; jump back to ADD-CHAR
+
+;; Spare bytes
+	DEFS	$107F-$
 
 ; --------------------
 ; Editor error routine
@@ -5246,7 +5287,7 @@ L107C:  JP      L0F81           ; jump back to ADD-CHAR
 
 ;; ED-ERROR
 L107F:  BIT     4,(IY+$30)      ; test FLAGS2  - is K channel in use ?
-        JR      Z,L1026         ; back to ED-END if not.
+        JR      Z,ED_END	; back to ED-END if not.
 
 ; but as long as we're editing lines or inputting from the keyboard, then
 ; we've run out of memory so give a short rasp.
@@ -5460,9 +5501,9 @@ L111D:  CALL    L0D4D           ; routine TEMPS sets temporary attributes.
                                 ; if in edit  DE = E_LINE
         EX      DE,HL           ; start address to HL
 
-        CALL    L187D           ; routine OUT-LINE2 outputs entire line up to
-                                ; carriage return including initial
-                                ; characterized line number when present.
+	CALL    OUT_LINE2	; routine OUT-LINE2 outputs entire line up to
+				; carriage return including initial
+				; characterized line number when present.
 ECHOER:	EX	DE,HL		; transfer new address to DE
         CALL    OUT_CURS	; routine OUT-CURS considers a
                                 ; terminating cursor.
@@ -7388,7 +7429,6 @@ L1855:  LD      BC,(E_PPC)      ; fetch E_PPC the current line which may be
 	LD	DE,$0000
 	CALL	Z,LIST_CURSOR
 	RL	E
-	NOP
 ;;;	LD      D,">"           ; prepare cursor '>' in D.
 ;;;	JR      Z,L1865         ; to OUT-LINE1 if matched or line after
 ;;;	LD      DE,$0000        ; put zero in D, to suppress line cursor.
@@ -7396,7 +7436,8 @@ L1855:  LD      BC,(E_PPC)      ; fetch E_PPC the current line which may be
                                 ; leave E zero if same or after.
 
 ;; OUT-LINE1
-L1865:	LD      (IY+$2D),E      ; save flag in BREG which is spare.
+;;;	L1865:
+	LD      (IY+$2D),E      ; save flag in BREG which is spare.
 ;;; BUGFIX: check set range end
 	CALL	LIST_TO
 ;;;     LD      A,(HL)          ; get high byte of line number.
@@ -7413,38 +7454,47 @@ L1865:	LD      (IY+$2D),E      ; save flag in BREG which is spare.
 	RES     0,(IY+$01)      ; update FLAGS - signal leading space required.
 	LD      A,D             ; fetch the cursor.
 	AND     A               ; test for zero.
-	JR      Z,L1881         ; to OUT-LINE3 if zero.
+	JR      Z,OUT_LINE3	; to OUT-LINE3 if zero.
+	CALL	OUT_INV
 
-	RST     10H             ; PRINT-A prints '>' the current line cursor.
+;;;	RST     10H             ; PRINT-A prints '>' the current line cursor.
 
 ; this entry point is called from ED-COPY
 
 ;; OUT-LINE2
-L187D:  SET     0,(IY+$01)      ; update FLAGS - suppress leading space.
+;;;L187D:
+OUT_LINE2:
+	SET     0,(IY+$01)      ; update FLAGS - suppress leading space.
 
 ;; OUT-LINE3
-L1881:  PUSH    DE              ; save flag E for a return value.
+;;;L1881:
+OUT_LINE3:
+	PUSH    DE              ; save flag E for a return value.
         EX      DE,HL           ; save HL address in DE.
         RES     2,(IY+$30)      ; update FLAGS2 - signal NOT in QUOTES.
 
         LD      HL,FLAGS        ; point to FLAGS.
         RES     2,(HL)          ; signal 'K' mode. (starts before keyword)
         BIT     5,(IY+$37)      ; test FLAGX - input mode ?
-        JR      Z,L1894         ; forward to OUT-LINE4 if not.
+        JR      Z,OUT_LINE4	; forward to OUT-LINE4 if not.
 
         SET     2,(HL)          ; signal 'L' mode. (used for input)
 
 ;; OUT-LINE4
-L1894:  LD      HL,(X_PTR)      ; fetch X_PTR - possibly the error pointer
+;;;L1894:
+OUT_LINE4:
+	LD      HL,(X_PTR)      ; fetch X_PTR - possibly the error pointer
                                 ; address.
         AND     A               ; clear the carry flag.
         SBC     HL,DE           ; test if an error address has been reached.
-        JR      NZ,L18A1        ; forward to OUT-LINE5 if not.
+;;;	JR      NZ,OUT_LINE5	; forward to OUT-LINE5 if not.
         LD      A,"?"           ; load A with '?' the error marker.
-        CALL	OUT_FLASH	; routine OUT-FLASH to print flashing marker.
+        CALL	Z,OUT_FLASH	; routine OUT-FLASH to print flashing marker.
 
 ;; OUT-LINE5
-L18A1:  CALL	OUT_CURS	; routine OUT-CURS will print the cursor if
+;;;L18A1:
+OUT_LINE5:
+	CALL	OUT_CURS	; routine OUT-CURS will print the cursor if
                                 ; this is the right position.
         EX      DE,HL           ; restore address pointer to HL.
         LD      A,(HL)          ; fetch the addressed character.
@@ -7452,15 +7502,15 @@ L18A1:  CALL	OUT_CURS	; routine OUT-CURS will print the cursor if
                                 ; point number if present.
         INC     HL              ; now increment the pointer.
         CP      $0D             ; is character end-of-line ?
-        JR      Z,L18B4         ; to OUT-LINE6, if so, as line is finished.
+        JR      Z,L18B4		; to OUT-LINE6, if so, as line is finished.
 
         EX      DE,HL           ; save the pointer in DE.
         CALL    L1937           ; routine OUT-CHAR to output character/token.
 
-        JR      L1894           ; back to OUT-LINE4 until entire line is done.
+        JR      OUT_LINE4	; back to OUT-LINE4 until entire line is done.
 
 ; ---
-
+	DEFS	$18B4-$
 ;; OUT-LINE6
 L18B4:  POP     DE              ; bring back the flag E, zero if current
                                 ; line printed else 1 if still to print.
@@ -7596,6 +7646,7 @@ OUT_C_1:LD      HL,FLAGS        ; Address FLAGS
 OUT_FLASH:
 	PUSH	AF
 	LD	A,$0E		; ASCII SO
+OUT_INV_1:
 	RST	$10
 	POP	AF
 	RST	$10
@@ -8570,7 +8621,6 @@ L1B55:  LD      A,(HL)          ; pick up the parameter.
 
         DEC     B               ; reset the zero flag - the initial state
                                 ; for all class routines.
-
         RET                     ; and make an indirect jump to routine
                                 ; and then SCAN-LOOP (also on stack).
 
@@ -12471,8 +12521,10 @@ L2573:  POP     HL              ; restore the last bitmap start
         LD      C,B             ; B is now zero, so BC now zero.
 ; No character found
 	RET			; Saves 2 bytes
-				; Total savings: 6 bytes
-	DEFS	3		; 3 used for diversion
+; Zero channel service routines
+ZIN:	XOR	A
+	SCF
+ZOUT:	RET
 ;; S-SCR-STO
 ;;;L257D:  JP      L2AB2           ; to STK-STO-$ to store the string in
                                 ; workspace or a string with zero length.
@@ -19792,17 +19844,34 @@ DOMOD:	LD	(SEED),HL
 	CALL	STACKBC
 	JP	RESTACK
 
-; Consider flashing character output (14 bytes)
+; Consider flashing and inverse character output (31 bytes)
 CO_TEMP_5A:
-	CP	$0E		; ASCII SO, FLASHing character
+	SUB	A,$0E		; ASCII SO, FLASHing character
 	JR	Z,FLASH_CHAR
-	SUB	A,$11
+	DEC	A
+	JR	Z,INV_CHAR
+	SUB	A,$02
 	ADC	A,0
 	RET
 FLASH_CHAR:
 	POP	AF		; discard return address
 	LD	A,D		; restore character code
 	JP	OUT_FLASH_0
+INV_CHAR:
+	POP	AF		; discard return address
+	CALL	INV_TG
+	LD	A,D
+	CALL	L09F4		; direct output
+INV_TG:	LD	A,$04
+	LD	HL,P_FLAG
+	XOR	(HL)
+	LD	(HL),A
+	RET
+
+; Print inverse character (6 bytes)
+OUT_INV:PUSH	AF
+	LD	A,$0F
+	JP	OUT_INV_1
 
 ; LIST interval check (9 bytes)
 LIST_TO:LD	BC,(MEMBOT+28)
@@ -19898,31 +19967,6 @@ SETFX4:	SET	4,(IY+$37)
 SFLAGX4:SET	4,(IY+$37)
 	JR	SSTMTL1
 
-; Infix operators on non-standard types (5 bytes)
-INFIX:	CALL	INFIX_HOOK
-	RST	$08
-	DEFB	$0B		; C Nonsense in BASIC
-
-; LET substitute for FOR (6 bytes)
-FOR_LET:CALL	FOR_HOOK
-	JP	L2AFF		; LET
-
-; LOOK-VARS for loop variables (6 bytes)
-LOOP_VARS:
-	CALL	LV_HOOK
-	JP	L28B2		; LOOK-VARS
-
-; REPORT1, check for local variables first (5 bytes)
-REPORT1:CALL	NEXT_HOOK
-	RST	$08
-	DEFB	$00		; 1 NEXT without FOR
-
-; REPORT7, check for local variables first (6 bytes)
-REPORT7:CALL	RETURN_HOOK
-	PUSH	HL
-REP7:	RST	$08
-	DEFB	$06		; 7 RETURN without GOSUB
-
 ; POINTERS except DEST, if pointing to local variable (41 bytes)
 POINTERS:
 	LD	DE,(VARS)
@@ -19948,6 +19992,12 @@ CH_DEST:LD	HL,(DEST)
 	LD	(DEST),HL
 SK_DEST:EX	DE,HL
 	JP	L1664
+
+; ---------------------
+; THE 'SPARE' LOCATIONS
+; ---------------------
+
+	DEFS	$3C06 - $, $FF
 
 ; Find token in this ROM (128 bytes)
 ; Input: HL text to match, B length of text, DE token table, C number of tokens in the table
@@ -20025,12 +20075,6 @@ SPACEKW_R1:
 	JR	TESTKW2_R1
 
 
-; Find closing NEXT (6 bytes)
-LOOK_PROG_FOR:
-	CALL	SKIP_FOR_HOOK
-LOOK_PROG_R:
-	JP	L1D86		; LOOK-PROG
-
 ; Find next argument of PROC or DATA (9 bytes)
 LOOK_READ:
 	CP	"("
@@ -20040,181 +20084,61 @@ LOOK_READ:
 	RST	$08
 	DEFB	$19		; Q Parameter error
 
+; Find closing NEXT (6 bytes)
+LOOK_PROG_FOR:
+	CALL	SKIP_FOR_HOOK
+LOOK_PROG_R:
+	JP	L1D86		; LOOK-PROG
+
+
 ; Extensible STOP (5 bytes)
 ESTOP:	CALL	RUN_HOOK
 	RST	$08
 	DEFB	$08		; 9 STOP statement
 
-; Extensible ED-COPY (6 bytes)
+; Extensible ED-COPY (10 bytes)
 SET_DE:	CALL	ECHO_HOOK
 	JP	L1195
 
-; ---------------------
-; THE 'SPARE' LOCATIONS
-; ---------------------
+; Infix operators on non-standard types (5 bytes)
+INFIX:	CALL	INFIX_HOOK
+	RST	$08
+	DEFB	$0B		; C Nonsense in BASIC
 
-;; spare
-;;;L386E:  DEFB    $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF;	, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-        DEFB    $FF;	, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
-;;;        DEFB    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF;
+; LET substitute for FOR (6 bytes)
+FOR_LET:CALL	FOR_HOOK
+	JP	L2AFF		; LET
 
-; 116 bytes used before the character set
+; REPORT1, check for local variables first (5 bytes)
+REPORT1:CALL	NEXT_HOOK
+	RST	$08
+	DEFB	$00		; 1 NEXT without FOR
+
+; REPORT7, check for local variables first (6 bytes)
+REPORT7:CALL	RETURN_HOOK
+	PUSH	HL
+REP7:	RST	$08
+	DEFB	$06		; 7 RETURN without GOSUB
+
+; LOOK-VARS for loop variables (6 bytes)
+LOOP_VARS:
+	CALL	LV_HOOK
+	JP	L28B2		; LOOK-VARS
 
 ; Local variables in 128k mode
 STK_F_ARG:
 	CALL	LOCAL_HOOK
 	JP	L2951		; STK_F_ARG
+
 ; Abstacted NEW routine
 NEW:	CALL	NEW_HOOK
 	JP	L11B7		; NEW
+
 ; Extended INDEXER
 INDEXER_2:
 	CALL	L16DC		; INDEXER
 	RET	C		; if code is found, return immediately
+
 INDEXER_HOOK:
 	CALL	NOPAGE
 INFIX_HOOK:
