@@ -946,8 +946,8 @@ E_HEAD0:LD	A,$06			; tabulation
 	POP	AF			; restore cursor character
 	RST	$10			; and print it
 	BIT	5,(IY+FLAGS2-ERR_NR)	; check K mode suppression
-	LD	A,"+"
-	CALL	NZ,$0010		; and indicate it
+	LD	A,"!"
+	CALL	Z,$0010		; and indicate it
 	LD	DE,EDITOR_HEADER1
 	CALL	MESSAGE
 	POP	AF			; restore FLAGS to A and FLAGS2 to F
