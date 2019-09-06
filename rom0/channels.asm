@@ -143,6 +143,7 @@ ED_ALL:	SET	0,(IY+$01)	; leading space suppression
 ED_ALLE:POP	HL
 	RST	$28		; from the very beginning
 	DEFW	L1195		; SET-DE
+	RES	2,(IY+$30)	; not in quotes
 ED_NBCK:BIT	6,(HL)		; print only to cursor position?
 	JR	Z,ED_ATC	; don't
 	RES	6,(HL)		; reset flag
@@ -261,13 +262,12 @@ K_ING0:	BIT	5,(IY+$30)	; mode K suppressed?
 	JR	NC,K_ING1
 	LD	A,(HL)
 K_ING1:	SCF
-K_ING3:	LD	HL,FLAGS2
-	BIT	5,(HL)		; mode K suppressed?
+K_ING3:	BIT	5,(IY+FLAGS2-ERR_NR)	; mode K suppressed?
 	RET	Z		; return, if not
 	CALL	EDITOR_MODE	; editing?
 	RET	NZ		; return, if not
+	LD	HL,K_SAV
 	BIT	2,(HL)		; inside quotes?
-	RES	2,(HL)
 	RET	NZ		; return, if so
 	RST	$28
 	DEFW	L2C8D		; ALPHA
@@ -339,7 +339,7 @@ KEY_M_K0:
 	JR	Z,K_M_SPC	; jump, if so (suppress mode K)
 	LD	HL,MODE
 	BIT	0,(HL)		; mode E?
-	JR	Z,K_NSP		; jump back, if not
+	JR	Z,K_NSP
 	DEC	(HL)		; leave mode E
 K_TRAD:	LD	A,$20		; toggle bit 5 (K mode suppression)
 	JR	TFLAGS2
