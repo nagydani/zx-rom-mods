@@ -35,7 +35,7 @@
 	DEFB	P_PLUG - $	; GS
 	DEFB	P_PLUG - $	; GT
 	DEFB	P_PLAY - $	; PLAY
-	DEFB	P_PLUG - $	; ET
+	DEFB	P_TURBO - $	; TURBO
 	DEFB	P_PLUG - $	; EN
 	DEFB	P_RENUM - $	; RENUM
 	DEFB	P_DEFPROC - $	; DEF PROC
@@ -159,6 +159,9 @@ P_ONERROR:
 
 P_YIELD:DEFB	$05
 	DEFW	YIELD
+
+P_TURBO:DEFB	$06,$00
+	DEFW	TURBO_X
 
 P_PLAY:
 ; unimplemented instruction, accepted w/o parameters, but not executed
@@ -2803,3 +2806,10 @@ YIELDX:	CALL	YIELD_X
 	LD	DE,$000B
 	JR	YIELD_N
 
+TURBO_X:RST	$28
+	DEFW	L1E94		; FIND_INT1
+	CP	$10
+	JP	NC,ERROR_B	; B Integer out of range
+	LD	BC,$8E3B	; ZX PRISM control port, also works with the ZX UNO
+	OUT	(C),A
+	JP	SWAP

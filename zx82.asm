@@ -407,7 +407,7 @@ L007D:  CP      $21             ; test if higher than space.
 ;; SKIPS
 L0090:  SCF                     ; set the carry flag
         LD      (CH_ADD),HL	; update the CH_ADD system variable.
-        RET                     ; return with carry set.
+X0094:	RET                     ; return with carry set.
 
 
 ; ------------------
@@ -1315,8 +1315,11 @@ BEEP_PIP:
 ;; BEEPER
 L03B5:  DI                      ; Disable Interrupts so they don't disturb timing
         LD      A,L             ;
-        SRL     L               ;
-        SRL     L               ; L = medium part of tone period
+;;; TURBO protection for ZX UNO
+	CALL	T_BEEPER
+	EX	AF,AF'		; restore AF saved by T_BEEPER
+;;;	SRL     L               ;
+;;;	SRL     L               ; L = medium part of tone period
         CPL                     ;
         AND     $03             ; A = 3 - fine part of tone period
         LD      C,A             ;
@@ -1645,11 +1648,13 @@ L04C2:  LD      HL,L053F        ; address: SA/LD-RET
 
 
 ;; SA-FLAG
-L04D0:  EX      AF,AF'          ; save flag
-        INC     DE              ; increase length by one.
-        DEC     IX              ; decrease start.
+L04D0:	EX      AF,AF'          ; save flag
+;;; TURBO protection for ZX UNO
+	CALL	T_SA_BYTES
+;;	INC     DE              ; increase length by one.
+;;	DEC     IX              ; decrease start.
+	DI                      ; disable interrupts
 
-        DI                      ; disable interrupts
 
         LD      A,$02           ; select red for border, microphone bit on.
         LD      B,A             ; also does as an initial slight counter value.
@@ -1861,10 +1866,12 @@ L0556:  INC     D               ; reset the zero flag without disturbing carry.
 
         DI                      ; disable interrupts
 
-        LD      A,$0F           ; make the border white and mic off.
-        OUT     ($FE),A         ; output to port.
+	LD      A,$0F           ; make the border white and mic off.
+	OUT     ($FE),A         ; output to port.
 
-        LD      HL,L053F        ; Address: SA/LD-RET
+;;; TURBO protection for ZX UNO
+	CALL	T_LD_BYTES
+;;;	LD      HL,L053F        ; Address: SA/LD-RET
         PUSH    HL              ; is saved on stack as terminating routine.
 
 ;   the reading of the EAR bit (D6) will always be preceded by a test of the
@@ -19992,6 +19999,55 @@ CH_DEST:LD	HL,(DEST)
 	LD	(DEST),HL
 SK_DEST:EX	DE,HL
 	JP	L1664
+
+; TURBO protection routines
+T_SA_BYTES:
+	INC	DE
+	DEC	IX
+	JR	TURBO
+T_LD_BYTES:
+	LD      HL,L053F        ; Address: SA/LD-RET
+	JR	TURBO
+
+; These must be FF for IM2 vectoring
+	DEFS	$3A01 - $, $FF
+
+T_BEEPER:
+	SRL	L
+	SRL	L
+	EX	AF,AF'		; save AF
+; TURBO off for bitbang
+TURBO:	LD	BC,$FC3B
+	LD	A,$0B
+	OUT	(C),A
+	INC	B
+	IN	B,(C)
+	INC	B		; ZX UNO present?
+	RET	Z		; return, if not
+	DEC	B
+	LD	A,$C0
+	AND	B		; is it in TURBO mode?
+	RET	Z		; return, if not
+	PUSH	BC		; save TURBO mode
+	XOR	B
+	LD	B,$FD
+	OUT	(C),A		; switch off TURBO mode
+	POP	AF		; get TURBO mode
+	POP	BC		; get return address
+	PUSH	AF		; save TURBO mode
+	PUSH	HL
+	LD	HL,RTURBO
+	EX	(SP),HL		; stack RTURBO
+	PUSH	BC
+	RET			; return
+RTURBO:	LD	BC,$FC3B
+	LD	A,$0B
+	OUT	(C),A
+	POP	HL		; get TURBO mode
+	INC	B
+	OUT	(C),H		; restore TURBO mode
+	RET
+
 
 ; ---------------------
 ; THE 'SPARE' LOCATIONS

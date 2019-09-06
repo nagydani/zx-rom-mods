@@ -83,20 +83,27 @@ NONMI:	POP	HL
 	POP	AF
 	RETN
 
-; This positions the compatibility switch to a guaranteed RET in ROM1
-	DEFS	$0074 - $
-
-SPECTRUM:
-	LD	A,$30		; ROM 1, RAM 0, paging disabled
-SPECTRUM_PAGE:
-	LD	BC,$7FFD
-	OUT	(C),A
-
 NEW128:	DI
 	XOR	A
 	LD	(BANK_M),A
 	LD	HL,(RAMTOP)
 	JP	STARTN
+
+; This positions the compatibility switch to a guaranteed RET in ROM1
+	DEFS	X0094 - $0015 - $
+SPECTRUM:
+	LD	A,$0B
+	LD	BC,$FC3B
+	OUT	(C),A
+	INC	B
+	IN	A,(C)
+	AND	$3F		; ZX UNO TURBO mode off
+	OUT	(C),A
+	LD	A,$30		; ROM 1, RAM 0, paging disabled
+SPECTRUM_PAGE:
+	LD	BC,$7FFD
+	OUT	(C),A
+SPECTRUM_END:	EQU	$
 
 INIT_5B00:	EQU	$
 
@@ -665,8 +672,8 @@ COPYRIGHT:
 	DEFM	" 2019 ePoint Systems Ltd"
 TOKENS1:DEFB	$8D
 ; instructions between $A5 and $CD
-	DEFM	"_E"
-	DEFB	$80+"T"
+	DEFM	"TURB"
+	DEFB	$80+"O"
 	DEFM	"_E"
 	DEFB	$80+"N"
 	DEFM	"RENU"

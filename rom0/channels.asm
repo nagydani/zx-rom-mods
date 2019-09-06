@@ -327,7 +327,8 @@ K_NSP:	LD	(K_DATA),A
 
 KEY_M_K0:
 	CALL	EDITOR_MODE
-	JR	NZ,K_NSP	; outside of editor mode, space is a regular key
+	SCF
+	RET	NZ		; outside of editor mode, space is a regular key
 	RST	$28
 	DEFW	X1F5A		; CAPS SHIFT ?
 	LD	A," "		; restore A
