@@ -14440,7 +14440,9 @@ L2ACD:  PUSH    DE              ; preserve DE register throughout.
 
         PUSH    AF              ; save the flag.
 
-        CALL    L1E99           ; routine FIND-INT2 fetches value from
+;;; BUGFIX: extensibility for Python-style negative indices
+	CALL	FIND_INT2A
+;;;	CALL    L1E99           ; routine FIND-INT2 fetches value from
                                 ; calculator stack to BC producing an error
                                 ; if too high.
 
@@ -14880,7 +14882,7 @@ L2C2D:  EX      DE,HL           ; save the element size in DE.
 L2C2E:  RST     20H             ; NEXT-CHAR
         LD      H,$FF           ; disable limit check by setting HL high
         CALL    L2ACC           ; routine INT-EXP1
-        JP      C,L2A20         ; to REPORT-3 if > 65280 and then some
+SUB_ER:	JP      C,L2A20         ; to REPORT-3 if > 65280 and then some
                                 ; 'Subscript out of range'
 
         POP     HL              ; pop dimension counter, array type
@@ -20048,12 +20050,22 @@ RTURBO:	LD	BC,$FC3B
 	OUT	(C),H		; restore TURBO mode
 	RET
 
+; Extensible FIND INT 2 that can handle negative subscripts in ROM0 (11 bytes)
+FIND_INT2A:
+	CALL	L2DA2		; FP-TO-BC
+	JR	C,REPORT_B_3
+	RET	Z
+	CALL	SUB_HOOK
+REPORT_B_3:
+	RST	$08
+	DEFB	$0A		; B Integer out of range
+
 
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
 
-	DEFS	$3C06 - $, $FF
+	DEFS	$3C03 - $, $FF
 
 ; Find token in this ROM (128 bytes)
 ; Input: HL text to match, B length of text, DE token table, C number of tokens in the table
@@ -20200,6 +20212,8 @@ INDEXER_HOOK:
 INFIX_HOOK:
 	CALL	NOPAGE
 ECHO_HOOK:
+	CALL	NOPAGE
+SUB_HOOK:
 	CALL	NOPAGE
 STRING_HOOK:
 	CALL	NOPAGE

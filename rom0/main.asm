@@ -1797,6 +1797,34 @@ SKQUOT:	CP	(HL)
 SKNUM:	ADD	HL,DE
 	JR	NX_CHR
 
+SUB_CONT:
+	LD	HL,$000A
+	ADD	HL,SP
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	LD	HL,SUB_ER
+	AND	A
+	SBC	HL,DE
+	JP	Z,SWAP		; Return, if called from DIM
+	POP	DE		; discard one return address
+	POP	DE		; discard other return address
+	POP	DE		; error reg in D
+	POP	HL		; limit in HL
+	PUSH	HL		; put it back
+	DEC	BC
+	AND	A
+	SBC	HL,BC
+	LD	B,H
+	LD	C,L		; BC = HL - (BC - 1)
+	POP	HL		; restore limit
+	LD	A,D		; error value in A
+	POP	DE		; restore DE
+	JR	Z,SUB_OOR
+	JP	NC,SWAP		; return, if we are in range
+SUB_OOR:SCF
+	DEC	A
+	JP	SWAP
 
 	INCLUDE "variables.asm"
 	INCLUDE	"instructions.asm"
@@ -1809,6 +1837,7 @@ C256:	DEFB	$00, $00, $00, $01, $00
 	JP	INDEX_CONT
 	JP	INFIX_CONT
 	JP	ECHO_CONT
+	JP	SUB_CONT
 	JP	STRNG_CONT
 	JP	DIGIT_CONT
 	JP	SCRN_CONT
