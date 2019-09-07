@@ -11129,9 +11129,11 @@ L2294:  CALL    L1E94           ; routine FIND-INT1
 
         OUT     ($FE),A         ; outputting to port effects an immediate
                                 ; change.
-        RLCA                    ; shift the colour to
-        RLCA                    ; the paper bits setting the
-        RLCA                    ; ink colour black.
+;;; BUGFIX: change BORDER in Timex HI-RES, too
+	CALL	BORDER
+;;;        RLCA                    ; shift the colour to
+;;;        RLCA                    ; the paper bits setting the
+;;;        RLCA                    ; ink colour black.
         BIT     5,A             ; is the number light coloured ?
                                 ; i.e. in the range green to white.
         JR      NZ,L22A6        ; skip to BORDER-1 if so
@@ -20060,6 +20062,17 @@ REPORT_B_3:
 	RST	$08
 	DEFB	$0A		; B Integer out of range
 
+; Change BORDER color in Timex HiRes mode as well (13 bytes)
+BORDER:	RLCA
+	RLCA
+	RLCA
+	LD	B,A
+	IN	A,($FF)
+	OR	$38
+	XOR	B
+	OUT	($FF),A
+	LD	A,B
+	RET
 
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
