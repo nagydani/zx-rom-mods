@@ -513,7 +513,7 @@ EXT_LS:	RST	$28
 	CP	" "
 	JR	NZ,EXT_SP
 	BIT	4,(IY+$37)	; instruction mode?
-	LD	A," "
+;;	LD	A," "
 	JR	Z,EXT_L		; instruction tokens might have spaces
 EXT_SP:	INC	HL
 	INC	HL
@@ -699,6 +699,7 @@ K_OUT:	LD	HL,SWAP
 	OR	A
 	RET	NZ
 K_RST:	LD	(HL),A
+	LD	(K_SAV2),A
 	RES	5,(IY+TV_FLAG-ERR_NR)	; no further clearing
 	RST	$28
 	DEFW	L0D4D		; TEMPS

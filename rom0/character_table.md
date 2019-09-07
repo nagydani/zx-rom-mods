@@ -134,6 +134,7 @@
 | DD | INVERSE
 | DE | OVER
 | DF | OCT
+| E0 | SQ
 | ... |
 | E2 | ><
 | E3 | <<
