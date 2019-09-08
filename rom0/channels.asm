@@ -10,7 +10,7 @@
 ; bit 7:	K channel input from K_DATA
 ;
 ; byte 1:
-; width of display (defaults to 32)
+; width of display + 1 (defaults to 33)
 ;
 ; byte 2:
 ; control character saved (see TV_DATA)
@@ -778,7 +778,11 @@ KS_OUT:	BIT	0,(HL)		; direct output
 	BIT	2,(HL)
 	PUSH	AF
 	EX	DE,HL		; save HL into DE
-	RST	$28
+	LD	HL,S_MODE
+	BIT	1,(HL)
+	JR	Z,KS_COL
+	LD	(IY+MASK_T-ERR_NR),$FF	; do not touch attributes in mono mode
+KS_COL:	RST	$28
 	DEFW	POFETCH
 	POP	AF
 	JP	NZ,E_HEAD
@@ -799,7 +803,7 @@ COR_TK:	CP	$18
 PR_NQ:	EX	DE,HL		; restore screen address to HL
 PR_NC:	RST	$28
 	DEFW	L0B65		; PO-CHAR
-	JR	TSTORE2
+	JP	TSTOREA
 
 ; channel K/S indirect output
 KS_IND:	BIT	1,(HL)
@@ -829,14 +833,14 @@ P_GR_TK:CP	$90
 	JR	NC,PR_T_UDG
 	RST	$28
 	DEFW	L0B24 + 8	; block graphics
-TSTORE2:JR	TSTORE
+	JR	TSTOREA
 
 PR_T_UDG:
 	SUB	RND_T
 	JR	NC,PR_TK
 	RST	$28
 	DEFW	L0B52 + 4	; PO-T-UDG + 4, udg
-	JR	TSTORE
+	JR	TSTOREA
 
 PR_GR_0:LD	C,A
 	AND	$06
@@ -889,6 +893,32 @@ PR_GR_R:RR	E
 	DJNZ	PR_GR_R
 PR_GR_E:RST	$28
 	DEFW	X0B30		; generated graphics in PO_ANY
+TSTOREA:EX	AF,AF'
+	LD	A,(S_MODE)
+	DEC	A
+	JR	NZ,TSTORE
+	EX	AF,AF'
+	DEC	HL
+	SET	5,H
+	LD	(HL),A
+	INC	H
+	LD	(HL),A
+	INC	H
+	LD	(HL),A
+	INC	H
+	LD	(HL),A
+	INC	H
+	LD	(HL),A
+	INC	H
+	LD	(HL),A
+	INC	H
+	LD	(HL),A
+	INC	H
+	LD	(HL),A
+	LD	A,H
+	SUB	$27
+	LD	H,A
+	INC	HL
 TSTORE:	RST	$28
 	DEFW	POSTORE
 	RET
@@ -1047,7 +1077,7 @@ POFILL: RST	$28
 	DEC	A
 	LD	C,A
 	LD	A,(DE)
-	DEC	A
+	SUB	A,2
 	AND	C
 	RET	Z
 	LD	D,A
@@ -1091,7 +1121,6 @@ TLF:	LD	A,C
 
 TCR0:	INC	DE
 	LD	A,(DE)
-	INC	A
 	LD	C,A
 	CALL	POSCR
 	DEC	B
