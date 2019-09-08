@@ -64,11 +64,12 @@ SCR_MC:	LD	E,L
 	LD	D,H
 	INC	DE
 	LD	(HL),0
-	LD	C,$1F
+	LD	BC,$001F
 	LDIR
 	SET	5,H
 	LD	E,L
 	LD	D,H
+	DEC	DE
 	LD	(HL),A
 	LD	C,$1F
 	LDDR

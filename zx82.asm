@@ -3453,7 +3453,7 @@ PO_FILL:CALL    L0B03           ; routine PO-FETCH, HL-addr, BC=line/column.
         AND     $1F             ; make range 0 - 31d
         RET     Z               ; return if result zero
 
-        LD      D,A             ; Counter to D
+	LD      D,A             ; Counter to D
         SET     0,(IY+$01)      ; update FLAGS  - signal suppress leading space.
 
 ;; PO-SPACE
@@ -19877,7 +19877,8 @@ INV_CHAR:
 	POP	AF		; discard return address
 	CALL	INV_TG
 	LD	A,D
-	CALL	L09F4		; direct output
+	CALL	L0C3B		; PO-SAVE
+;;;	CALL	L09F4		; direct output
 INV_TG:	LD	A,$04
 	LD	HL,P_FLAG
 	XOR	(HL)

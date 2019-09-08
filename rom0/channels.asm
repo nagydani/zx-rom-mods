@@ -744,7 +744,8 @@ K_RST0:	LD	HL,$5ABF	; attribute at 21,31
 	DEC	BC
 	LDDR
 K_RST2: LD	(IY+$31),$02	; now set DF_SZ lower screen to 2
-	LD	BC,$1721	; TODO: depends on mode; line 23 for lower screen
+	LD	BC,(K_WIDTH)
+	LD	B,$17	; line 23 for lower screen
 	LD	(RETADDR),BC
 S_IO_E:	JP	CLSET
 
@@ -764,21 +765,8 @@ S_RST:	LD	(HL),A
 	RST	$28
 	DEFW	L0D4D		; TEMPS
 	LD	B,$18		; 24 lines
-	RST	$28
-	DEFW	L0E44		; CL-LINE
-	LD	A,(S_MODE)
-	OR	A
-	JR	Z,R_RST0
-	DEC	A
-	JR	Z,R_RST1
-	LD	HL,$6000
-	LD	DE,$6001
-	LD	BC,$17FF
-	LD	(HL),$00
-	LDIR
-	JR	R_RST0
-R_RST1:	CALL	DISP01A
-R_RST0:	LD	(IY+$52),$01	; set SCR_CT - scroll count - to default.
+	CALL	CLLINE
+	LD	(IY+$52),$01	; set SCR_CT - scroll count - to default.
 	LD	BC,(S_WIDTH)
 	LD	B,$18		; line 24 for upper screen
 	JR	S_IO_E
@@ -805,9 +793,13 @@ K_OUT:	LD	HL,SWAP
 	JP	NC,K_IOCTL
 ; channel K/S direct output for coroutines
 KS_OUT:	BIT	0,(HL)		; direct output
-	JR	NZ,KS_IND
-	BIT	2,(HL)
+	JP	NZ,KS_IND
+KS_DCT:	BIT	2,(HL)
 	PUSH	AF
+	INC	L
+	LD	A,(HL)
+	DEC	L
+	LD	(MEMBOT+8),A	; WIDTH
 	EX	DE,HL		; save HL into DE
 	LD	HL,S_MODE
 	BIT	1,(HL)
@@ -834,9 +826,7 @@ COR_TK:	CP	$18
 	INC	(HL)
 	POP	HL
 PR_NQ:	EX	DE,HL		; restore screen address to HL
-PR_NC:	;;RST	$28
-	;;DEFW	L0B65		; PO-CHAR
-	PUSH	BC
+PR_NC:	PUSH	BC
 	LD	BC,(CHARS)
 PR_CH2:	EX	DE,HL
 	LD	HL,FLAGS
@@ -854,8 +844,7 @@ PR_CH3:	LD	H,$00
 	EX	DE,HL
 PR_ALL:	LD	A,C
 	DEC	A
-	ld	a,(S_WIDTH)	; TODO: get WIDTH into MEMBOT + 8
-;;	LD	A,(MEMBOT+8)
+	LD	A,(MEMBOT+8)
 	JR	NZ,PRALL1
 	DEC	B
 	LD	C,A
@@ -865,124 +854,6 @@ PRALL1:	CP	C
 	POP	DE
 	RST	$28
 	DEFW	X0B99
-	JP	TSTOREA
-
-; channel K/S indirect output
-KS_IND:	BIT	1,(HL)
-	JR	NZ,KS_IND2
-	RES	0,(HL)
-	INC	HL	; width
-	EX	AF,AF'
-	LD	A,(HL)
-	EX	AF,AF'
-	INC	HL	; tv1
-	LD	D,A
-	LD	A,(HL)
-	INC	HL	; tv2
-	LD	H,(HL)
-	CP	$16
-	JR	C,COTEMP5
-	JR	NZ,COTEMP5
-	LD	B,H
-	LD	C,D
-	EX	AF,AF'
-	SUB	$02
-	SUB	C
-	JR	C,PATERR
-	ADD	$02
-	LD	C,A
-	LD	A,$16
-	SUB	B
-PATERR:	JP	C,ERROR_B
-	INC	A
-	LD	B,A
-	INC	B
-	BIT	0,(IY+$02)
-	JP	NZ,POSCR
-	CP	(IY+$31)
-	JP	C,ERROR_5
-	JP	CLSET
-
-COTEMP5:INC	SP		; TODO; proper handling in this ROM
-	INC	SP		; discard SWAP
-	PUSH	HL
-	LD	HL,L2211
-	JR	C,NOTAB
-	LD	HL,PO_TAB
-NOTAB:	EX	(SP),HL
-	JP	SWAP
-
-KS_IND2:RES	1,(HL)
-	INC	HL	; width
-	INC	HL	; tv1
-	INC	HL	; tv2
-	LD	(HL),A
-	RET
-
-P_GR_TK:CP	$90
-	JR	NC,PR_T_UDG
-	RST	$28
-	DEFW	L0B24 + 8	; block graphics
-	JR	TSTOREA
-
-PR_T_UDG:
-	SUB	RND_T
-	JR	NC,PR_TK
-	RST	$28
-	DEFW	L0B52 + 4	; PO-T-UDG + 4, udg
-	JR	TSTOREA
-
-PR_GR_0:LD	C,A
-	AND	$06
-	LD	E,A
-	LD	D,0
-	LD	HL,GR_TAB
-	ADD	HL,DE
-	LD	E,(HL)
-	INC	HL
-	LD	D,(HL)
-	LD	HL,MEMBOT
-	LD	B,8
-	RR	C
-	JR	C,PR_GR_R
-PR_GR_L:LD	(HL),E
-	INC	L
-	RL	D
-	RL	E
-	DJNZ	PR_GR_L
-	JR	PR_GR_E
-
-PR_TK:	EX	DE,HL
-	BIT	3,(HL)
-	RES	2,(IY+$37)	; FLAGX, signal instruction token
-	JR	Z,PR_INST
-	SET	2,(IY+$37)	; FLAGX, signal operator token
-	CP	ELSE_T - RND_T
-	JR	NZ,PR_TK0
-	RES	3,(HL)
-	LD	HL,C_SPCC
-	INC	(HL)
-PR_TK0:	JP	TOKEN_O
-
-PR_INST:CP	ELSE_T - RND_T
-	JR	Z,PR_TK1
-	SET	3,(HL)
-	JR	PR_TK2
-PR_TK1:	LD	HL,C_SPCC
-	INC	(HL)
-PR_TK2:	JP	TOKEN_I
-
-E_QUEST:LD	HL,(X_PTR)
-	LD	(K_CUR),HL
-	RET
-
-PR_GR_R:RR	E
-	RR	D
-	LD	(HL),D
-	INC	L
-	DJNZ	PR_GR_R
-PR_GR_E:RST	$28
-	DEFW	X0B30		; generated graphics in PO_ANY
 TSTOREA:EX	AF,AF'
 	LD	A,(S_MODE)
 	DEC	A
@@ -1012,6 +883,7 @@ TSTOREA:EX	AF,AF'
 TSTORE:	RST	$28
 	DEFW	POSTORE
 	RET
+
 TSTORET:LD	A,(S_MODE)
 	DEC	A
 TSTOREX:DEC	A
@@ -1023,6 +895,129 @@ TSTOREX:DEC	A
 	JR	Z,TSTORE
 	DEC	HL
 	JR	TSTORE
+
+; channel K/S indirect output
+KS_IND:	BIT	1,(HL)
+	JR	NZ,KS_IND2
+	RES	0,(HL)
+	INC	HL	; width
+	EX	AF,AF'
+	LD	A,(HL)
+	EX	AF,AF'
+	INC	HL	; tv1
+	LD	D,A
+	LD	A,(HL)
+	INC	HL	; tv2
+	LD	H,(HL)
+	CP	$16
+	JR	C,COTEMP5
+	JR	NZ,PRTAB
+	LD	B,H
+	LD	C,D
+	EX	AF,AF'
+	SUB	$02
+	SUB	C
+	JR	C,PATERR
+	ADD	$02
+	LD	C,A
+	LD	A,$16
+	SUB	B
+PATERR:	JP	C,ERROR_B
+	INC	A
+	LD	B,A
+	INC	B
+	BIT	0,(IY+$02)
+	JP	NZ,POSCR
+	CP	(IY+$31)
+	JP	C,ERROR_5
+	JP	CLSET
+
+COTEMP5:INC	SP		; TODO; proper handling in this ROM
+	INC	SP		; discard SWAP
+	PUSH	HL
+	LD	HL,L2211	; CO-TEMP-5
+PRTABC:	EX	(SP),HL
+	JP	SWAP
+
+PRTAB:	LD	DE,MEMBOT+8
+	LD	A,H
+	JP	POFILL
+
+KS_IND2:RES	1,(HL)
+	INC	HL	; width
+	INC	HL	; tv1
+	INC	HL	; tv2
+	LD	(HL),A
+	RET
+
+P_GR_TK:CP	$90
+	JR	NC,PR_T_UDG
+	LD	B,A
+	RST	$28
+	DEFW	L0B38		; PO-GR-1 mosaic
+	JR	PR_GR_E
+
+PR_T_UDG:
+	SUB	RND_T
+	JR	NC,PR_TK
+	ADD	A,$15
+	PUSH	BC
+	LD	BC,(UDG)
+	JP	PR_CH2
+
+PR_GR_0:LD	C,A
+	AND	$06
+	LD	E,A
+	LD	D,0
+	LD	HL,GR_TAB
+	ADD	HL,DE
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	LD	HL,MEMBOT
+	LD	B,8
+	RR	C
+	JR	C,PR_GR_R
+PR_GR_L:LD	(HL),E
+	INC	L
+	RL	D
+	RL	E
+	DJNZ	PR_GR_L
+	JR	PR_GR_E
+
+PR_GR_R:RR	E
+	RR	D
+	LD	(HL),D
+	INC	L
+	DJNZ	PR_GR_R
+PR_GR_E:RST	$28
+	DEFW	POFETCH
+	LD	DE,MEMBOT
+	JP	PR_ALL
+
+PR_TK:	EX	DE,HL
+	BIT	3,(HL)
+	RES	2,(IY+$37)	; FLAGX, signal instruction token
+	JR	Z,PR_INST
+	SET	2,(IY+$37)	; FLAGX, signal operator token
+	CP	ELSE_T - RND_T
+	JR	NZ,PR_TK0
+	RES	3,(HL)
+	LD	HL,C_SPCC
+	INC	(HL)
+PR_TK0:	JP	TOKEN_O
+
+PR_INST:CP	ELSE_T - RND_T
+	JR	Z,PR_TK1
+	SET	3,(HL)
+	JR	PR_TK2
+PR_TK1:	LD	HL,C_SPCC
+	INC	(HL)
+PR_TK2:	JP	TOKEN_I
+
+E_QUEST:LD	HL,(X_PTR)
+	LD	(K_CUR),HL
+	RET
 
 ; draw editor header
 E_HEAD:	EX	DE,HL
@@ -1299,8 +1294,7 @@ EDITOR_HEADER0:
 	DEFM	"BASIC"
 	DEFB	$80 + ":"
 EDITOR_HEADER1:
-;;	DEFB	$17,$FA,$FF,$10,$02,$18,$11,$06,$1A
-	DEFB	$17,$1A,$00,$11,$02,$18,$10,$06,$1A
+	DEFB	$17,$7A,$00,$11,$02,$18,$10,$06,$1A
 	DEFB	$11,$04,$18,$10,$05,$1A,$11,$00,$18
 	DEFB	$10,$00,$9A
 EDITOR_HEADERT:
