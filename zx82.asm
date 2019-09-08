@@ -3694,7 +3694,7 @@ L0B93:  CP      C               ; this test is really for screen - new line ?
         CALL    Z,L0C55         ; routine PO-SCR considers scrolling
 
         POP     DE              ; restore source
-        PUSH    BC              ; save line/column
+X0B99:	PUSH    BC              ; save line/column
         PUSH    HL              ; and destination
         LD      A,(P_FLAG)       ; fetch P_FLAG to accumulator
         LD      B,$FF           ; prepare OVER mask in B.
@@ -5539,15 +5539,20 @@ L1150:  LD      A,(S_POSNL + 1)	; fetch SPOSNL_hi is current line
 ;;; BUGFIX: use hard blank, in case of alternate character set
 L115E:  LD      A,$80		; prepare a hard blank.
 ;;; L115E:  LD      A," "           ; prepare a space.
-        PUSH    DE              ; save old line/column.
-        CALL    L09F4           ; routine PRINT-OUT prints a space over
+	PUSH    DE              ; save old line/column.
+;;;	CALL    L09F4           ; routine PRINT-OUT prints a space over
                                 ; any text from previous print.
                                 ; Note. Since the blanking only occurs when
                                 ; using $09F4 to print to the lower screen,
                                 ; there is no need to vector via a RST 10
                                 ; and we can use this alternate set.
-        POP     DE              ; restore the old line column.
+	EXX
+	RST	$10
+	EXX
+	POP     DE              ; restore the old line column.
         JR      L1150           ; back to ED-BLANK until all old text blanked.
+;;; ---
+	DEFS	$1167 - $
 
 ; -------------------------------
 ; THE 'EDITOR-FULL' ERROR ROUTINE

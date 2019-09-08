@@ -120,8 +120,7 @@ ED_TAIL:AND	A
 	OR	(HL)
 	LD	(HL),A		; restore bit 3 of K_STATE
 	LD	BC,(RETADDR)
-	RST	$28
-	DEFW	L0DD9		; CL-SET to cursor position
+	CALL	CLSET
 	LD	DE,(K_CUR)	; cursor position
 	LD	HL,TV_FLAG
 	BIT	2,(HL)		; step back?
@@ -608,8 +607,7 @@ PCURSOR:PUSH	AF
 	PUSH	HL
 	LD	BC,(RETADDR)
 	LD	(IY + MASK_T - ERR_NR),$FF	; INK, PAPER, BRIGHT, FLASH 8
-	RST	$28
-	DEFW	L0DD9		; CL-SET
+	CALL	CLSET
 	LD	(IY + P_FLAG - ERR_NR),$01	; OVER 1
 	LD	A,$8F		; full block
 	RST	$10
@@ -690,13 +688,8 @@ R_SPCC:	LD	HL,C_SPCC
 	LD	(HL),1
 	RET
 
-; channel K output service routine
-K_OUT:	LD	HL,SWAP
-	PUSH	HL
-	LD	HL,K_STATE
-	JR	C,KS_OUT
 ; channel K ioctl
-	OR	A
+K_IOCTL:OR	A
 	RET	NZ
 K_RST:	LD	(HL),A
 	LD	(K_SAV2),A
@@ -707,32 +700,53 @@ K_RST:	LD	(HL),A
 	CALL	K_SWAP
 	CALL	R_SPCC
 	LD	B,(IY+$31)	; fetch lower screen display file size DF_SZ
-	RST	$28
-	DEFW	L0E44		; CL-LINE
+	CALL	CLLINE
+	LD	A,(S_MODE)
+	CP	2
+	JR	Z,K_RST2
 	DEC	B
 	DEC	B
-	JR	Z,K_RST0
-	LD	HL,$5ABF	; attribute at 21,31
-	LD	DE,$5ABE	; attribute at 21,30
+	JR	Z,K_RST2
+	OR	A
 	LD	A,(ATTR_P)
+	JR	Z,K_RST0
+	PUSH	BC
+	LD	HL,$70A0
+K_RST1L:PUSH	BC
+K_RST1:	LD	BC,$001F
+	ADD	HL,BC
+	LD	(HL),A
+	LD	D,H
+	LD	E,L
+	DEC	DE
+	LDDR
+	INC	H
+	LD	C,A
+	LD	A,$07
+	AND	H
+	JR	NZ,K_RST1
+	LD	A,$20
+	ADD	A,L
+	LD	L,A
+	JR	C,K_RST1R
+	LD	A,H
+	SUB	8
+	LD	H,A
+K_RST1R:LD	A,C
+	POP	BC
+	DJNZ	K_RST1L
+	POP	BC
+K_RST0:	LD	HL,$5ABF	; attribute at 21,31
+	LD	DE,$5ABE	; attribute at 21,30
 	LD	(HL),A
 	LD	A,B
-	RRCA
-	RRCA
-	RRCA
-	LD	B,A
-	AND	$E0
-	LD	C,A
-	XOR	B
-	LD	B,A
+	CALL	BC32A
 	DEC	BC
 	LDDR
-K_RST0: LD	(IY+$31),$02	; now set DF_SZ lower screen to 2
+K_RST2: LD	(IY+$31),$02	; now set DF_SZ lower screen to 2
 	LD	BC,$1721	; TODO: depends on mode; line 23 for lower screen
 	LD	(RETADDR),BC
-S_IO_E:	RST	$28
-	DEFW	L0DD9		; CL-SET
-	RET
+S_IO_E:	JP	CLSET
 
 ; channel S output service routine
 S_OUT:	LD	HL,SWAP
@@ -752,8 +766,21 @@ S_RST:	LD	(HL),A
 	LD	B,$18		; 24 lines
 	RST	$28
 	DEFW	L0E44		; CL-LINE
-	LD	(IY+$52),$01	; set SCR_CT - scroll count - to default.
-	LD	BC,$1821	; TODO: depends on mode; line 24 for upper screen
+	LD	A,(S_MODE)
+	OR	A
+	JR	Z,R_RST0
+	DEC	A
+	JR	Z,R_RST1
+	LD	HL,$6000
+	LD	DE,$6001
+	LD	BC,$17FF
+	LD	(HL),$00
+	LDIR
+	JR	R_RST0
+R_RST1:	CALL	DISP01A
+R_RST0:	LD	(IY+$52),$01	; set SCR_CT - scroll count - to default.
+	LD	BC,(S_WIDTH)
+	LD	B,$18		; line 24 for upper screen
 	JR	S_IO_E
 
 POFETCH:EQU	L0B03 + 6
@@ -771,6 +798,11 @@ KS_CTRL:PUSH	HL		; save display address
 	EX	(SP),HL		; restore display address, stack destination
 	RET
 
+; channel K output service routine
+K_OUT:	LD	HL,SWAP
+	PUSH	HL
+	LD	HL,K_STATE
+	JP	NC,K_IOCTL
 ; channel K/S direct output for coroutines
 KS_OUT:	BIT	0,(HL)		; direct output
 	JR	NZ,KS_IND
@@ -788,20 +820,51 @@ KS_COL:	RST	$28
 COR_TK:	CP	$18
 	JR	C,KS_CTRL
 	CP	$20
-	JR	C,PR_GR_0
+	JP	C,PR_GR_0
 	CP	$80
-	JR	NC,P_GR_TK
+	JP	NC,P_GR_TK
 	CP	":"
 	JR	NZ,PR_NC	; pr-able except colon leaves mode unchanged
-	EX	DE,HL		; restore K_STATE into HL and save screen address to DE
+	EX	DE,HL		; restore S/K_STATE into HL and save screen address to DE
 	RES	3,(HL)		; colon sets instr. mode
 	BIT	2,(IY+$30)	; inside quotes?
 	JR	NZ,PR_NQ	; if so, jump over instr. count increment
+	PUSH	HL
 	LD	HL,C_SPCC
 	INC	(HL)
+	POP	HL
 PR_NQ:	EX	DE,HL		; restore screen address to HL
-PR_NC:	RST	$28
-	DEFW	L0B65		; PO-CHAR
+PR_NC:	;;RST	$28
+	;;DEFW	L0B65		; PO-CHAR
+	PUSH	BC
+	LD	BC,(CHARS)
+PR_CH2:	EX	DE,HL
+	LD	HL,FLAGS
+	RES	0,(HL)
+	CP	" "
+	JR	NZ,PR_CH3
+	SET	0,(HL)
+PR_CH3:	LD	H,$00
+	ADD	A,A
+	LD	L,A
+	ADD	HL,HL
+	ADD	HL,HL
+	ADD	HL,BC
+	POP	BC
+	EX	DE,HL
+PR_ALL:	LD	A,C
+	DEC	A
+	ld	a,(S_WIDTH)	; TODO: get WIDTH into MEMBOT + 8
+;;	LD	A,(MEMBOT+8)
+	JR	NZ,PRALL1
+	DEC	B
+	LD	C,A
+PRALL1:	CP	C
+	PUSH	DE
+	CALL	Z,POSCR
+	POP	DE
+	RST	$28
+	DEFW	X0B99
 	JP	TSTOREA
 
 ; channel K/S indirect output
@@ -1226,9 +1289,9 @@ TRST:	RST	$28
 	DEFW	L0D4D	; TEMPS
 	RET
 
-POSCR:	RST	$28	; TODO: take width into account
-	DEFW	L0C55	; PO-SCR
-	RET
+;;POSCR:	RST	$28	; TODO: take width into account
+;;	DEFW	L0C55	; PO-SCR
+;;	RET
 
 EDITOR_HEADER0:
 	DEFB	$14,$01,$16,$00,$00,$13,$01,$10,$00
@@ -1414,3 +1477,5 @@ EXTTAB_O:
 	DEFB	$E5		; << followed by >>
 	DEFB	$D2		; DATA followed by DPEEK
 	DEFB	$E2		; >> followed by ><
+
+	INCLUDE	"timexscr.asm"
