@@ -18,21 +18,6 @@
 ; byte 3:
 ; first argument saved (see TV_DATA + 1)
 
-; check editor mode
-; Output: Z is 1 in editor mode, 0 otherwise, CF set
-; Corrupts: HL, DE, F
-EDITOR_MODE:
-	LD	HL,(ERR_SP)
-	LD	E,(HL)
-	INC	HL
-	LD	D,(HL)
-	EX	DE,HL
-	LD	DE,L107F		; ED-ERROR
-	AND	A
-	SBC	HL,DE
-	SCF
-	RET
-
 ; Determine whether or not to suppress the leading space at the cursor position
 ; Pollutes: AF, HL, B
 ; Output: DE cursor pointer or one before depending on BIT 2,(TV_FLAG)
@@ -89,10 +74,7 @@ POPHL:	POP	HL
 
 ECHO_CONT:
 	POP	HL
-	POP	HL
-	LD	HL,ECHOER
-	PUSH	HL
-	PUSH	HL			; set up return address
+	POP	HL		; discard two return addresses
 	LD	HL,TV_FLAG
 	BIT	1,(HL)		; printing tail only?
 	JR	Z,ED_ALL
@@ -124,12 +106,12 @@ ED_TAIL:AND	A
 	LD	DE,(K_CUR)	; cursor position
 	LD	HL,TV_FLAG
 	BIT	2,(HL)		; step back?
-	JR	Z,ED_NBCK	; don't.
+	JR	Z,ED_CLP	; don't.
 	RES	2,(HL)		; reset flag
 	LD	DE,(K_CUR_S)	; old cursor position
 	LD	A,D
 	OR	E
-	JR	NZ,ED_NBCK
+	JR	NZ,ED_CLP
 	SCF
 ED_ALL:	SET	0,(IY+$01)	; leading space suppression
 	PUSH	HL
@@ -143,33 +125,61 @@ ED_ALLE:POP	HL
 	RST	$28		; from the very beginning
 	DEFW	L1195		; SET-DE
 	RES	2,(IY+$30)	; not in quotes
-ED_NBCK:BIT	6,(HL)		; print only to cursor position?
-	JR	Z,ED_ATC	; don't
-	RES	6,(HL)		; reset flag
 ED_CLP:	RST	$28
 	DEFW	L18E1		; OUT-CURS
 	LD	A,(DE)
+	LD	HL,TV_FLAG
+	BIT	6,(HL)		; print only to cursor position?
+	JR	Z,ED_ATC	; don't
 	LD	HL,(K_CUR)
 	AND	A
 	SBC	HL,DE
-	INC	DE
 	JR	Z,ED_DONE
+ED_ATC:	INC	DE
 	CP	$0D
-	JR	Z,ED_DONE	; TODO: may be unnecessay
+	JR	Z,ED_FIN
 	RST	$28
 	DEFW	L1937		; OUT-CHAR
 	JR	ED_CLP
 
+ED_FIN:	RST	$28
+	DEFW	L18E1		; OUT-CURS
+	LD	HL,(S_POSNL)
+	EX	(SP),HL
+	EX	DE,HL
+	RST	$28
+	DEFW	L0D4D		; TEMPS
+ED_BLANK:
+	LD	A,(S_POSNL + 1)
+	SUB	D
+	JR	C,ED_CDN
+	JR	NZ,ED_SPC
+	LD	A,E
+	SUB	(IY+$50)
+	JR	NC,ED_CDN
+ED_SPC:	LD	A,$80
+	PUSH	DE
+	CALL	PR_GR
+	POP	DE
+	JR	ED_BLANK
+
+
 ED_DONE:RST	$28
 	DEFW	L18E1		; OUT-CURS
+ED_CDN:	LD	HL,TV_FLAG
+	RES	6,(HL)
 	POP	DE
-	POP	DE
-	LD	HL,L117C	; ED-C-DONE
-	JR	ED_FWD
-
-ED_ATC:	LD	HL,OUT_LINE4
-ED_FWD:	PUSH	HL
-	JP	SWAP		; return to ROM1, the POP DE at L18B4 discards return address
+	POP	HL
+	POP	HL
+	LD	(ERR_SP),HL
+	POP	BC
+	PUSH	DE
+	CALL	CLSET
+	POP	HL
+	LD	(ECHO_E),HL
+	LD	(IY+$26),$00
+	POP	HL		; discard SWAP
+	RET
 
 ; channel K input service routine
 K_IN:	LD	HL,SWAP
@@ -595,6 +605,21 @@ L_MODE:	DEFB	$E2,"~"
 	DEFB	$AC,$7F		; copyright
 	DEFB	0
 
+; check editor mode
+; Output: Z is 1 in editor mode, 0 otherwise, CF set
+; Corrupts: HL, DE, F
+EDITOR_MODE:
+	LD	HL,(ERR_SP)
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	EX	DE,HL
+	LD	DE,L107F		; ED-ERROR
+	AND	A
+	SBC	HL,DE
+	SCF
+	RET
+
 ; print flashing cursor (invert character)
 PCURSOR:PUSH	AF
 	RST	$28
@@ -699,60 +724,30 @@ K_RST:	LD	(HL),A
 	SCF
 	CALL	K_SWAP
 	CALL	R_SPCC
-	LD	B,(IY+$31)	; fetch lower screen display file size DF_SZ
+	LD	HL,DF_SZ
+	LD	B,(HL)		; fetch lower screen line count
+	LD	(HL),$02	; now set DF_SZ to 2
+	RES	0,(IY+$02)	; clean hidden upper part
 	CALL	CLLINE
-	LD	A,(S_MODE)
-	CP	2
-	JR	Z,K_RST2
-	DEC	B
-	DEC	B
-	JR	Z,K_RST2
-	OR	A
-	LD	A,(ATTR_P)
-	JR	Z,K_RST0
-	PUSH	BC
-	LD	HL,$70A0
-K_RST1L:PUSH	BC
-K_RST1:	LD	BC,$001F
-	ADD	HL,BC
-	LD	(HL),A
-	LD	D,H
-	LD	E,L
-	DEC	DE
-	LDDR
-	INC	H
-	LD	C,A
-	LD	A,$07
-	AND	H
-	JR	NZ,K_RST1
-	LD	A,$20
-	ADD	A,L
-	LD	L,A
-	JR	C,K_RST1R
-	LD	A,H
-	SUB	8
-	LD	H,A
-K_RST1R:LD	A,C
-	POP	BC
-	DJNZ	K_RST1L
-	POP	BC
-K_RST0:	LD	HL,$5ABF	; attribute at 21,31
-	LD	DE,$5ABE	; attribute at 21,30
-	LD	(HL),A
-	LD	A,B
-	CALL	BC32A
-	DEC	BC
-	LDDR
-K_RST2: LD	(IY+$31),$02	; now set DF_SZ lower screen to 2
+	SET	0,(IY+$02)	; clean lower part
+	LD	B,2
+	CALL	CLLINE
 	LD	BC,(K_WIDTH)
-	LD	B,$17	; line 23 for lower screen
+	LD	B,$17		; line 23 for lower screen
 	LD	(RETADDR),BC
 S_IO_E:	JP	CLSET
 
 ; channel S output service routine
 S_OUT:	LD	HL,SWAP
 	PUSH	HL
-	LD	HL,S_STATE
+	BIT	4,(IY+TV_FLAG-ERR_NR)	; auto-list?
+	JR	Z,S_OUT1
+	EX	AF,AF'
+	LD	A,(BANK_M)
+	AND	$07
+	RET	NZ			; no auto-list in X channel
+	EX	AF,AF'
+S_OUT1:	LD	HL,S_STATE
 	JR	C,KS_OUT
 ; channel S ioctl
 	OR	A
@@ -952,7 +947,7 @@ KS_IND2:RES	1,(HL)
 
 P_GR_TK:CP	$90
 	JR	NC,PR_T_UDG
-	LD	B,A
+PR_GR:	LD	B,A
 	RST	$28
 	DEFW	L0B38		; PO-GR-1 mosaic
 	JR	PR_GR_E
@@ -1094,7 +1089,7 @@ E_HEAD1:LD	(FLAGS),A
 	POP	DE			; restore channel flag address into DE
 	LD	(DE),A
 	LD	(K_SAV2),A		; save channel flag content
-TSTORE3:JP	TSTORET
+TSTORE3:JP	TSTORE
 
 E_HEADT:LD	DE,EDITOR_HEADERT
 	CALL	MESSAGE
@@ -1162,11 +1157,11 @@ TQUEST:	LD	A,"?"
 	JP	PR_NC
 
 TCOMMA:	INC	DE
-	EX	AF,AF'
-	LD	A,C
-	DEC	A
-	DEC	A
-	AND	$10
+	EX	AF,AF'		; ???
+	LD	A,(DE)
+	SUB	C
+	OR	$0F
+	INC	A
 POFILL: RST	$28
 	DEFW	POFETCH
 	ADD	A,C

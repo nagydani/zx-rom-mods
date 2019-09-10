@@ -25,6 +25,7 @@
 ; RND sped up considerably
 ; PIP set to zero means no keyclicks [POKE 23609,0]
 ; LIST, LLIST fixed, does not print cursor, accepts range [LIST 10 TO 20]
+; "scroll?" prompt fixed [PRINT #0;1'2'3'4: FOR i=1 TO 30: PRINT i: NEXT i]
 ; I/O abstraction layer significantly improved
 ; - PIP moved to KEY_INPUT, no clicking during INPUT from other channels
 ; - INKEY$#0 fixed [10 PRINT INKEY$#0;: GO TO 10]
@@ -49,7 +50,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 03-SEP-2019
+; Last updated: 10-SEP-2019
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -3079,7 +3080,7 @@ MSG_WAIT:
 	PUSH	IX
 	PUSH	DE
 	LD	A,$FD
-	CALL	$1601
+	CALL	RESET_STREAM_SAVE
 	POP	DE
 	XOR	A
 	JP	MSG_WAIT2
@@ -5540,19 +5541,14 @@ L1150:  LD      A,(S_POSNL + 1)	; fetch SPOSNL_hi is current line
 L115E:  LD      A,$80		; prepare a hard blank.
 ;;; L115E:  LD      A," "           ; prepare a space.
 	PUSH    DE              ; save old line/column.
-;;;	CALL    L09F4           ; routine PRINT-OUT prints a space over
+	CALL    L09F4           ; routine PRINT-OUT prints a space over
                                 ; any text from previous print.
                                 ; Note. Since the blanking only occurs when
                                 ; using $09F4 to print to the lower screen,
                                 ; there is no need to vector via a RST 10
                                 ; and we can use this alternate set.
-	EXX
-	RST	$10
-	EXX
 	POP     DE              ; restore the old line column.
         JR      L1150           ; back to ED-BLANK until all old text blanked.
-;;; ---
-	DEFS	$1167 - $
 
 ; -------------------------------
 ; THE 'EDITOR-FULL' ERROR ROUTINE
