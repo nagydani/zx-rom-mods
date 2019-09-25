@@ -7,6 +7,7 @@
 ; 4 - in execution: last IF's outcome is false
 ; 4 - in syntax check: after THEN token
 ; 4 - in editing: operator mode before the cursor
+; 6 - temporary stuff
 
 ; FLAGS2 unused bits
 ; 5 - suppress K mode, if set

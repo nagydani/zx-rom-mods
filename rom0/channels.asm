@@ -125,11 +125,17 @@ ED_ALLE:POP	HL
 	RST	$28		; from the very beginning
 	DEFW	L1195		; SET-DE
 	RES	2,(IY+$30)	; not in quotes
-ED_CLP:	RST	$28
+ED_CLP:	LD	HL,(X_PTR)
+	AND	A
+	SBC	HL,DE
+	JR	NZ,ED_CLPC
+	LD	A,"?"
+	RST	$28
+	DEFW	OUT_FLASH
+ED_CLPC:RST	$28
 	DEFW	L18E1		; OUT-CURS
 	LD	A,(DE)
-	LD	HL,TV_FLAG
-	BIT	6,(HL)		; print only to cursor position?
+	BIT	6,(IY+TV_FLAG-ERR_NR)	; print only to cursor position?
 	JR	Z,ED_ATC	; don't
 	LD	HL,(K_CUR)
 	AND	A
@@ -292,7 +298,12 @@ K_TKE:	LD	(IY-$2D),$80	; signal potential token end
 	SCF
 	RET
 
-K_ENT:	LD	HL,0
+K_ENT:	LD	HL,TV_FLAG
+	LD	A,(HL)
+	AND	$B5 		; reset bits 1,2 and 6 to echo full line (potential errors)
+	LD	(HL),A
+	LD	A,$0D		; restore A
+	LD	HL,0
 	LD	(K_CUR_S),HL	; reset old cursor position
 	LD	HL,K_STATE
 	LD	(IY+DEFADD+1-ERR_NR),1	; TODO: this is an ugly hack
@@ -300,10 +311,6 @@ K_ENT:	LD	HL,0
 K_ENTP:	RES	4,(IY+$37)	; allow ELSE
 	SCF
 	JR	K_ING3
-
-K_M_SPC:SET	3,(HL)		; turn off K mode
-	SET	5,(IY+$30)	; suppress K mode
-	JR	K_NSP
 
 K_INB:	BIT	3,(IY+$01)	; mode K?
 	JR	NZ,K_MDL	; jump, if not
@@ -342,10 +349,7 @@ KEY_M_K0:
 	DEFW	X1F5A		; CAPS SHIFT ?
 	LD	A," "		; restore A
 	CCF
-	LD	HL,FLAGS
 	JR	C,K_TRAD	; in editor mode, BREAK toggles K mode suppression
-	BIT	3,(HL)		; mode K?
-	JR	Z,K_M_SPC	; jump, if so (suppress mode K)
 	LD	HL,MODE
 	BIT	0,(HL)		; mode E?
 	JR	Z,K_NSP
@@ -797,7 +801,7 @@ KS_DCT:	BIT	2,(HL)
 	LD	(MEMBOT+8),A	; WIDTH
 	EX	DE,HL		; save HL into DE
 	LD	HL,S_MODE
-	BIT	1,(HL)
+	BIT	4,(HL)
 	JR	Z,KS_COL
 	LD	(IY+MASK_T-ERR_NR),$FF	; do not touch attributes in mono mode
 KS_COL:	RST	$28
@@ -824,6 +828,12 @@ PR_NQ:	EX	DE,HL		; restore screen address to HL
 PR_NC:	PUSH	BC
 	LD	BC,(CHARS)
 PR_CH2:	EX	DE,HL
+	EX	AF,AF'
+	LD	A,L
+	ADD	A,4
+	LD	L,A
+	LD	A,(HL)
+	EX	AF,AF'
 	LD	HL,FLAGS
 	RES	0,(HL)
 	CP	" "
@@ -851,7 +861,8 @@ PRALL1:	CP	C
 	DEFW	X0B99
 TSTOREA:EX	AF,AF'
 	LD	A,(S_MODE)
-	DEC	A
+	AND	$F8
+	SUB	$08
 	JR	NZ,TSTOREX
 	EX	AF,AF'
 	DEC	HL
@@ -879,9 +890,7 @@ TSTORE:	RST	$28
 	DEFW	POSTORE
 	RET
 
-TSTORET:LD	A,(S_MODE)
-	DEC	A
-TSTOREX:DEC	A
+TSTOREX:SUB	$08
 	JR	NZ,TSTORE
 	LD	A,H
 	XOR	$20
@@ -1218,8 +1227,8 @@ CLSET3:	SUB	C
 	LD	E,A
 	LD	D,0
 	LD	A,(S_MODE)
-	CP	2
-	JR	NZ,CLSET4
+	CP	$10
+	JR	C,CLSET4
 	SRL	E
 	JR	NC,CLSET4
 	SET	5,H
