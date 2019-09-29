@@ -577,21 +577,9 @@ K_INSF:	EX	AF,AF'
 	JR	Z,K_INSX
 	INC	HL
 	DEC	B
-K_INSX:	LD	A,(LAST_K)
-	CP	$0E
-	JR	Z,K_INST
-	CP	" "
-	JR	Z,K_INST
-	LD	A,(K_STATE)
-	OR	$80
-	LD	(K_STATE),A
-K_INST:	LD	C,B
-	LD	B,0
-	RST	$28
-	DEFW	L19E8		; RECLAIM-2
-	EX	AF,AF'
-	SCF
-	RET
+	JR	K_INSX
+
+; This area must be a data table not to trigger the SAVE trap
 
 ; K-MODE translation table
 K_MODE:	DEFB	POKE_T,PEEK_T
@@ -608,6 +596,22 @@ L_MODE:	DEFB	$E2,"~"
 	DEFB	$C5,"]"
 	DEFB	$AC,$7F		; copyright
 	DEFB	0
+
+K_INSX:	LD	A,(LAST_K)
+	CP	$0E
+	JR	Z,K_INST
+	CP	" "
+	JR	Z,K_INST
+	LD	A,(K_STATE)
+	OR	$80
+	LD	(K_STATE),A
+K_INST:	LD	C,B
+	LD	B,0
+	RST	$28
+	DEFW	L19E8		; RECLAIM-2
+	EX	AF,AF'
+	SCF
+	RET
 
 ; check editor mode
 ; Output: Z is 1 in editor mode, 0 otherwise, CF set
