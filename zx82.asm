@@ -3255,17 +3255,15 @@ L0A3A:  JP      L0DD9           ; to CL-SET and PO-STORE to save new
 ;; PO-RIGHT
 L0A3D:
 ;;; BUGFIX: Shorter version
-	LD	HL,P_FLAG
-	LD	A,(HL)
-	LD	(HL),$01
-	PUSH	AF
-	PUSH	HL
-	LD	A,$80		; hard blank
-	CALL	L0AD9
-	POP	HL
-	POP	AF
-	LD	(HL),A
-	RET
+	PUSH	HL		; save screen/printer position
+        BIT     1,(IY+$01)      ; test FLAGS  - is printer in use ?
+        CALL    Z,L0BDB         ; if not, call routine PO-ATTR to update
+	POP	HL		; restore screen/printer position
+	DEC	C		; move column to right
+	INC	HL		; increase screen/printer position
+	JP	L0ADC		; exit via PO-STORE to update the relevant
+				; system variables
+
 ;;; ---
 ;;;	LD      A,(P_FLAG)      ; fetch P_FLAG value
 ;;;	PUSH    AF              ; and save it on stack.
@@ -3380,6 +3378,9 @@ POCHANGE:
         RET                     ; return.
 
 ; ---
+
+	; 3 spare bytes
+	DEFS	3
 
 ;; PO-CONT
 ;;; BUGFIX: Check if channel is being reset
