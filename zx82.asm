@@ -50,7 +50,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 10-SEP-2019
+; Last updated: 28-OCT-2019
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -1590,8 +1590,8 @@ L046E:  DEFB    $89, $02, $D0, $12, $86;  261.625565290         C
 ; default service routine for K, S and P channel output
 PRINT_OUT:
 	JP	C,L09F4
-	OR	A
-	RET	NZ
+	CP	2
+	RET	NC		; ignore all controls except 0 and 1
 
 ; Reset current system channel state
 CH_RESET:
@@ -3184,24 +3184,28 @@ L09F4:  CALL    L0B03           ; routine PO-FETCH fetches print position
 ;   follows the table.
 
 ;; ctlchrtab
-L0A11:  DEFB    PO_COMMA - $	; 06d offset $4E to Address: PO-COMMA
-        DEFB    PO_QUEST - $	; 07d offset $57 to Address: PO-QUEST
-        DEFB    L0A23 - $       ; 08d offset $10 to Address: PO-BACK-1
-        DEFB    L0A3D - $       ; 09d offset $29 to Address: PO-RIGHT
-        DEFB    PO_QUEST - $	; 10d offset $54 to Address: PO-QUEST
-        DEFB    PO_QUEST - $	; 11d offset $53 to Address: PO-QUEST
-        DEFB    PO_QUEST - $	; 12d offset $52 to Address: PO-QUEST
-        DEFB    PO_ENTER - $    ; 13d offset $37 to Address: PO-ENTER
-        DEFB    PO_1_OPER - $	; 14d offset $50 to Address: PO-1-OPER
-        DEFB    PO_1_OPER - $	; 15d offset $4F to Address: PO-1-OPER
-        DEFB    PO_1_OPER - $	; 16d offset $5F to Address: PO-1-OPER
-        DEFB    PO_1_OPER - $	; 17d offset $5E to Address: PO-1-OPER
-        DEFB    PO_1_OPER - $	; 18d offset $5D to Address: PO-1-OPER
-        DEFB    PO_1_OPER - $	; 19d offset $5C to Address: PO-1-OPER
-        DEFB    PO_1_OPER - $	; 20d offset $5B to Address: PO-1-OPER
-        DEFB    PO_1_OPER - $	; 21d offset $5A to Address: PO-1-OPER
-        DEFB    PO_2_OPER - $	; 22d offset $54 to Address: PO-2-OPER
-        DEFB    PO_2_OPER - $	; 23d offset $53 to Address: PO-2-OPER
+L0A11:  DEFB    PO_COMMA - $	; 06d offset to Address: PO-COMMA
+        DEFB    PO_QUEST - $	; 07d offset to Address: PO-QUEST
+        DEFB    L0A23 - $       ; 08d offset to Address: PO-BACK-1
+        DEFB    L0A3D - $       ; 09d offset to Address: PO-RIGHT
+;;; BUGFIX: we can move the cursor in any direction and clear the screen
+        DEFB    PO_DOWN - $	; 10d offset to Address: PO-DOWN
+	DEFB	PO_UP - $	; 11d offset to Address: PO-UP
+	DEFB	PO_CLR - $	; 12d offset to Address: PO-CLR
+;;;	DEFB    PO_QUEST - $	; 10d offset to Address: PO-QUEST
+;;;	DEFB    PO_QUEST - $	; 11d offset to Address: PO-QUEST
+;;;	DEFB    PO_QUEST - $	; 12d offset to Address: PO-QUEST
+        DEFB    PR_ENTER - $    ; 13d offset to Address: PO-ENTER
+        DEFB    PO_1_OPER - $	; 14d offset to Address: PO-1-OPER
+        DEFB    PO_1_OPER - $	; 15d offset to Address: PO-1-OPER
+        DEFB    PO_1_OPER - $	; 16d offset to Address: PO-1-OPER
+        DEFB    PO_1_OPER - $	; 17d offset to Address: PO-1-OPER
+        DEFB    PO_1_OPER - $	; 18d offset to Address: PO-1-OPER
+        DEFB    PO_1_OPER - $	; 19d offset to Address: PO-1-OPER
+        DEFB    PO_1_OPER - $	; 20d offset to Address: PO-1-OPER
+        DEFB    PO_1_OPER - $	; 21d offset to Address: PO-1-OPER
+        DEFB    PO_2_OPER - $	; 22d offset to Address: PO-2-OPER
+        DEFB    PO_2_OPER - $	; 23d offset to Address: PO-2-OPER
 
 
 ; -------------------------
@@ -3254,15 +3258,10 @@ L0A3A:  JP      L0DD9           ; to CL-SET and PO-STORE to save new
 
 ;; PO-RIGHT
 L0A3D:
-;;; BUGFIX: Shorter version
-	PUSH	HL		; save screen/printer position
-        BIT     1,(IY+$01)      ; test FLAGS  - is printer in use ?
-        CALL    Z,L0BDB         ; if not, call routine PO-ATTR to update
-	POP	HL		; restore screen/printer position
-	DEC	C		; move column to right
-	INC	HL		; increase screen/printer position
-	JP	L0ADC		; exit via PO-STORE to update the relevant
-				; system variables
+;;; BUGFIX: move cursor
+	LD	A,C
+	CP	2
+	JP	NZ,PR_RIGHT
 
 ;;; ---
 ;;;	LD      A,(P_FLAG)      ; fetch P_FLAG value
@@ -3283,7 +3282,7 @@ L0A3D:
 
 ;; PO-ENTER
 ;;;L0A4F:
-PO_ENTER:
+PR_ENTER:
 	BIT     1,(IY+$01)      ; test FLAGS  - is printer in use ?
         JP      NZ,L0ECD        ; to COPY-BUFF if so, to flush buffer and reset
                                 ; the print position.
@@ -3294,6 +3293,15 @@ PO_ENTER:
 ;;; BUGFIX: save 1 byte
 	JR	PO_AT_SET
 ;;;	JP      L0DD9           ; jump forward to CL-SET to store new position.
+
+;;; BUGFIX: other cursor movements
+;; PO-DOWN
+PO_DOWN:LD	A,C
+	PUSH	AF
+	JP	PR_DOWN
+PO_UP:	JP	PR_UP
+PO_CLR:	JP	CH_RESET
+
 
 ; -----------
 ; Print comma
@@ -3378,9 +3386,6 @@ POCHANGE:
         RET                     ; return.
 
 ; ---
-
-	; 3 spare bytes
-	DEFS	3
 
 ;; PO-CONT
 ;;; BUGFIX: Check if channel is being reset
@@ -20024,7 +20029,10 @@ T_BEEPER:
 	SRL	L
 	EX	AF,AF'		; save AF
 ; TURBO off for bitbang
-TURBO:	LD	BC,$FC3B
+TURBO:	IN	A,($FB)		; read ZX Printer port
+	ADD	A,A		; test for ZX Printer's presence
+	RET	P		; return, if present (clashes with ZX UNO)
+	LD	BC,$FC3B
 	LD	A,$0B
 	OUT	(C),A
 	INC	B
@@ -20075,6 +20083,35 @@ BORDER:	RLCA
 	XOR	B
 	OUT	($FF),A
 	LD	A,B
+	RET
+
+
+; Move cursor forward
+PR_RIGHT:
+	DEC	C
+	JR	NZ,CL_SCR
+	DEC	B
+	CALL	PR_ENTER
+	INC	B
+	JR	PR_RIGHT
+
+; Move cursor down
+PR_DOWN:CALL	PR_ENTER
+	POP	AF
+	CP	C
+	RET	Z
+	LD	C,A
+CL_SCR:	CALL	L0C55
+CL_SET2:JP	L0DD9		; CL-SET
+
+; Move cursor up
+PR_UP:	BIT	1,(IY+$01)	; ZX Printer ?
+	RET	NZ		; Cannot move the paper backwards
+	INC	B		; Move one line up
+	LD	A,$19
+	CP	B		; Top of screen reached?
+	JR	NZ,CL_SET2	; Set position, if not
+	DEC	B		; Do nothing
 	RET
 
 ; ---------------------
