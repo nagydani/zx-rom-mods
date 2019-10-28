@@ -3953,7 +3953,7 @@ L0C55:  BIT     1,(IY+$01)      ; test FLAGS  - is printer in use ?
 
         LD      A,B             ; transfer the line to A.
         BIT     0,(IY+$02)      ; test TV_FLAG - lower screen in use ?
-        JP      NZ,L0D02        ; jump forward to PO-SCR-4 if so.
+        JP      NZ,L0D02	; jump forward to PO-SCR-4 if so.
 
         CP      (IY+$31)        ; greater than DF_SZ display file size ?
         JR      C,L0C86         ; forward to REPORT-5 if less.
@@ -3966,7 +3966,7 @@ L0C55:  BIT     1,(IY+$01)      ; test FLAGS  - is printer in use ?
 
         LD      E,(IY+$2D)      ; fetch BREG - the count of scroll lines to E.
         DEC     E               ; decrease and jump
-        JR      Z,L0CD2         ; to PO-SCR-3 if zero and scrolling required.
+        JR      Z,POSCR3	; to PO-SCR-3 if zero and scrolling required.
 
         LD      A,$00           ; explicit - select channel zero.
         CALL    L1601           ; routine CHAN-OPEN opens it.
@@ -3989,7 +3989,7 @@ L0C86:  RST     08H             ; ERROR-1
 
 ;; PO-SCR-2
 L0C88:  DEC     (IY+$52)        ; decrease SCR_CT
-        JR      NZ,L0CD2        ; forward to PO-SCR-3 to scroll display if
+        JR      NZ,POSCR3	; forward to PO-SCR-3 to scroll display if
                                 ; result not zero.
 
 ; now produce prompt.
@@ -4042,7 +4042,7 @@ L0C88:  DEC     (IY+$52)        ; decrease SCR_CT
                                 ; been printed.
 
 ;; PO-SCR-3
-L0CD2:  CALL    L0DFE           ; routine CL-SC-ALL to scroll whole display
+POSCR3:	CALL    L0DFE           ; routine CL-SC-ALL to scroll whole display
         LD      B,(IY+$31)      ; fetch DF_SZ to B
         INC     B               ; increase to address last line of display
         LD      C,$21           ; set C to $21 (was $21 from above routine)
@@ -4065,11 +4065,11 @@ L0CD2:  CALL    L0DFE           ; routine CL-SC-ALL to scroll whole display
         EX      DE,HL           ; swap the pointers.
 
 ;; PO-SCR-3A
-L0CF0:  LD      (DE),A          ; transfer
+POSCR3A:LD      (DE),A          ; transfer
         LD      (HL),C          ; attributes.
         INC     DE              ; address next.
         INC     HL              ; address next.
-        DJNZ    L0CF0           ; loop back to PO-SCR-3A for all adjacent
+        DJNZ    POSCR3A		; loop back to PO-SCR-3A for all adjacent
                                 ; attribute lines.
 
         POP     BC              ; restore the line/column.
@@ -4380,28 +4380,32 @@ RESET_P:EX	AF,AF'
 ; or the column for printer.
 
 ;; CL-SET
-L0DD9:  LD      HL,$5B00        ; the base address of printer buffer
+L0DD9:
+;;; BUGFIX: Movable printer buffer
+;;;	LD      HL,$5B00        ; the base address of printer buffer
         BIT     1,(IY+$01)      ; test FLAGS  - is printer in use ?
-        JR      NZ,L0DF4        ; forward to CL-SET-2 if so.
-
+;;; BUGFIX: Movable printer buffer
+	JP	NZ,CLSETP
+;;;	JR      NZ,L0DF4        ; forward to CL-SET-2 if so.
         LD      A,B             ; transfer line to A.
         BIT     0,(IY+$02)      ; test TV_FLAG  - lower screen in use ?
-        JR      Z,L0DEE         ; skip to CL-SET-1 if handling upper part
+        JR      Z,CLSET1	; skip to CL-SET-1 if handling upper part
 
         ADD     A,(IY+$31)      ; add DF_SZ for lower screen
         SUB     $18             ; and adjust.
 
 ;; CL-SET-1
-L0DEE:  PUSH    BC              ; save the line/column.
+;;;L0DEE:
+CLSET1:	PUSH    BC              ; save the line/column.
         LD      B,A             ; transfer line to B
                                 ; (adjusted if lower screen)
 
         CALL    L0E9B           ; routine CL-ADDR calculates address at left
                                 ; of screen.
         POP     BC              ; restore the line/column.
-
 ;; CL-SET-2
-L0DF4:  LD      A,$21           ; the column $01-$21 is reversed
+;;;L0DF4:
+CLSET2:	LD      A,$21           ; the column $01-$21 is reversed
         SUB     C               ; to range $00 - $20
         LD      E,A             ; now transfer to DE
         LD      D,$00           ; prepare for addition
@@ -4409,6 +4413,10 @@ L0DF4:  LD      A,$21           ; the column $01-$21 is reversed
 
         JP      L0ADC           ; exit via PO-STORE to update the relevant
                                 ; system variables.
+
+;;; Spare bytes
+	DEFS	$0DFE - $
+
 ; ----------------
 ; Handle scrolling
 ; ----------------
@@ -4662,7 +4670,9 @@ L0EC9:  DJNZ    L0EB2           ; back to COPY-1 for all lines.
 
 ;; COPY-BUFF
 L0ECD:  DI                      ; disable interrupts
-        LD      HL,$5B00        ; the base address of the Printer Buffer.
+;;; BUGFIX: Movable printer buffer
+	CALL	PRBUF_ADD
+;;;	LD      HL,$5B00        ; the base address of the Printer Buffer.
         LD      B,$08           ; set count to 8 lines of 32 bytes.
 
 ;; COPY-3
@@ -4698,19 +4708,33 @@ L0EDA:  LD      A,$04           ; output value 4 to port
 ; of PR_CC_hi.
 
 ;; CLEAR-PRB
-L0EDF:  LD      HL,$5B00        ; the location of the buffer.
-        LD      (IY+$46),L      ; update PR_CC_lo - set to zero - superfluous.
-        XOR     A               ; clear the accumulator.
-        LD      B,A             ; set count to 256 bytes.
+L0EDF:
+;;; BUGFIX: Movable printer buffer
+	LD	HL,(PR_CC)
+;;;	LD      HL,$5B00        ; the location of the buffer.
+;;;	LD      (IY+$46),L      ; update PR_CC_lo - set to zero - superfluous.
+	XOR     A               ; clear the accumulator.
+	LD      B,A             ; set count to 256 bytes.
 
 ;; PRB-BYTES
-L0EE7:  LD      (HL),A          ; set addressed location to zero.
-        INC     HL              ; address next byte - Note. not INC L.
-        DJNZ    L0EE7           ; back to PRB-BYTES. repeat for 256 bytes.
+;;;L0EE7:  LD      (HL),A          ; set addressed location to zero.
+PRB_BYTES:
+	LD	L,B
+	LD	(HL),A
+	DJNZ	PRB_BYTES
+;;;	INC     HL              ; address next byte - Note. not INC L.
+;;;	DJNZ    L0EE7           ; back to PRB-BYTES. repeat for 256 bytes.
 
         RES     1,(IY+$30)      ; set FLAGS2 - signal printer buffer is clear.
-        LD      C,$21           ; set the column position .
-        JP      L0DD9           ; exit via CL-SET and then PO-STORE.
+	JP	L0A38
+;;;	LD      C,$21           ; set the column position.
+;;;	JP      L0DD9           ; exit via CL-SET and then PO-STORE.
+
+;;; Extensible STOP (5 bytes)
+ESTOP:	CALL	RUN_HOOK
+	RST	$08
+	DEFB	$08		; 9 STOP statement
+;;;
 
 ; -----------------
 ; Copy line routine
@@ -5912,7 +5936,9 @@ NEW_CONT:
         LDIR                    ; from ROM to RAM.
 
         SET     1,(IY+$01)      ; update FLAGS  - signal printer in use.
-        CALL    L0EDF           ; call routine CLEAR-PRB to initialize system
+;;; BUGFIX: Movable printer buffer
+	CALL	RESET_PRB
+;;;     CALL    L0EDF           ; call routine CLEAR-PRB to initialize system
                                 ; variables associated with printer.
                                 ; The buffer is clear.
 
@@ -18434,6 +18460,9 @@ L356B:  POP     BC              ; pop the second length off stack.
                                 ; manipulated so that this is success path.
         JR      L3588           ; forward to leave via STR-TEST
 
+;;; Spare bytes
+	DEFS	$3572 - $
+
 ; ---
 ; the branch was here with a match
 
@@ -18506,7 +18535,6 @@ L358C:  POP     AF              ; pop carry  - will be set if eql/neql
         CALL    NC,L3501        ; apply a terminal NOT if so.
         RET                     ; return.
 
-	DEFS	4
 ; ------------------------------------
 ; THE 'STRING CONCATENATION' OPERATION
 ; ------------------------------------
@@ -19887,11 +19915,6 @@ INV_TG:	LD	A,$04
 	LD	(HL),A
 	RET
 
-; Print inverse character (6 bytes)
-OUT_INV:PUSH	AF
-	LD	A,$0F
-	JP	OUT_INV_1
-
 ; LIST interval check (9 bytes)
 LIST_TO:LD	BC,(MEMBOT+28)
 	CALL	L1980		; CP-LINES
@@ -20085,7 +20108,6 @@ BORDER:	RLCA
 	LD	A,B
 	RET
 
-
 ; Move cursor forward
 PR_RIGHT:
 	DEC	C
@@ -20114,11 +20136,28 @@ PR_UP:	BIT	1,(IY+$01)	; ZX Printer ?
 	DEC	B		; Do nothing
 	RET
 
+; Movable printer buffer
+PRBUF_ADD:
+	CP	A
+CLSETP:	LD	HL,(PR_CC)
+	LD	L,0
+	RET	Z
+	JP	CLSET2
+
+RESET_PRB:
+	LD	(IY+PR_CC+1-ERR_NR),$5B
+	JP	L0EDF		; CLEAR-PRB
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
 
-	DEFS	$3C03 - $, $FF
+	DEFS	$3C02 - $, $FF
+
+; Print inverse character (6 bytes)
+OUT_INV:PUSH	AF
+	LD	A,$0F
+	JP	OUT_INV_1
 
 ; Find token in this ROM (128 bytes)
 ; Input: HL text to match, B length of text, DE token table, C number of tokens in the table
@@ -20210,12 +20249,6 @@ LOOK_PROG_FOR:
 	CALL	SKIP_FOR_HOOK
 LOOK_PROG_R:
 	JP	L1D86		; LOOK-PROG
-
-
-; Extensible STOP (5 bytes)
-ESTOP:	CALL	RUN_HOOK
-	RST	$08
-	DEFB	$08		; 9 STOP statement
 
 ; Extensible ED-COPY (10 bytes)
 SET_DE:	CALL	ECHO_HOOK
