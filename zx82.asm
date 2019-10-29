@@ -3966,7 +3966,7 @@ L0C55:  BIT     1,(IY+$01)      ; test FLAGS  - is printer in use ?
 
         LD      E,(IY+$2D)      ; fetch BREG - the count of scroll lines to E.
         DEC     E               ; decrease and jump
-        JR      Z,POSCR3	; to PO-SCR-3 if zero and scrolling required.
+        JR      Z,PO_SCR3	; to PO-SCR-3 if zero and scrolling required.
 
         LD      A,$00           ; explicit - select channel zero.
         CALL    L1601           ; routine CHAN-OPEN opens it.
@@ -3989,7 +3989,7 @@ L0C86:  RST     08H             ; ERROR-1
 
 ;; PO-SCR-2
 L0C88:  DEC     (IY+$52)        ; decrease SCR_CT
-        JR      NZ,POSCR3	; forward to PO-SCR-3 to scroll display if
+        JR      NZ,PO_SCR3	; forward to PO-SCR-3 to scroll display if
                                 ; result not zero.
 
 ; now produce prompt.
@@ -4042,7 +4042,7 @@ L0C88:  DEC     (IY+$52)        ; decrease SCR_CT
                                 ; been printed.
 
 ;; PO-SCR-3
-POSCR3:	CALL    L0DFE           ; routine CL-SC-ALL to scroll whole display
+PO_SCR3:CALL    L0DFE           ; routine CL-SC-ALL to scroll whole display
         LD      B,(IY+$31)      ; fetch DF_SZ to B
         INC     B               ; increase to address last line of display
         LD      C,$21           ; set C to $21 (was $21 from above routine)
@@ -4389,14 +4389,14 @@ L0DD9:
 ;;;	JR      NZ,L0DF4        ; forward to CL-SET-2 if so.
         LD      A,B             ; transfer line to A.
         BIT     0,(IY+$02)      ; test TV_FLAG  - lower screen in use ?
-        JR      Z,CLSET1	; skip to CL-SET-1 if handling upper part
+        JR      Z,CL_SET1	; skip to CL-SET-1 if handling upper part
 
         ADD     A,(IY+$31)      ; add DF_SZ for lower screen
         SUB     $18             ; and adjust.
 
 ;; CL-SET-1
 ;;;L0DEE:
-CLSET1:	PUSH    BC              ; save the line/column.
+CL_SET1:PUSH    BC              ; save the line/column.
         LD      B,A             ; transfer line to B
                                 ; (adjusted if lower screen)
 
@@ -4405,7 +4405,8 @@ CLSET1:	PUSH    BC              ; save the line/column.
         POP     BC              ; restore the line/column.
 ;; CL-SET-2
 ;;;L0DF4:
-CLSET2:	LD      A,$21           ; the column $01-$21 is reversed
+CL_SET_2:
+	LD      A,$21           ; the column $01-$21 is reversed
         SUB     C               ; to range $00 - $20
         LD      E,A             ; now transfer to DE
         LD      D,$00           ; prepare for addition
@@ -20111,7 +20112,7 @@ BORDER:	RLCA
 ; Move cursor forward
 PR_RIGHT:
 	DEC	C
-	JR	NZ,CL_SCR
+	JR	NZ,CL_SCRL
 	DEC	B
 	CALL	PR_ENTER
 	INC	B
@@ -20123,7 +20124,7 @@ PR_DOWN:CALL	PR_ENTER
 	CP	C
 	RET	Z
 	LD	C,A
-CL_SCR:	CALL	L0C55
+CL_SCRL:CALL	L0C55
 CL_SET2:JP	L0DD9		; CL-SET
 
 ; Move cursor up
@@ -20142,7 +20143,7 @@ PRBUF_ADD:
 CLSETP:	LD	HL,(PR_CC)
 	LD	L,0
 	RET	Z
-	JP	CLSET2
+	JP	CL_SET_2
 
 RESET_PRB:
 	LD	(IY+PR_CC+1-ERR_NR),$5B
