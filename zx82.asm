@@ -12060,7 +12060,7 @@ L2439:  PUSH    BC              ; Preserve the arc counter on the machine stack.
         DEFB    $03             ;;subtract      ax, ay, Dx, ay-iy ( = Dy).
         DEFB    $38             ;;end-calc      ax, ay, Dx, Dy.
 
-        CALL    L24B7           ; Routine DRAW-LINE draws (Dx,Dy) relative to
+	CALL	DRAW_LINE	; Routine DRAW-LINE draws (Dx,Dy) relative to
                                 ; the last pixel plotted leaving absolute x
                                 ; and y on the calculator stack.
                                 ;               ax, ay.
@@ -12112,7 +12112,7 @@ L245F:  RST     28H             ;; FP-CALC      tx, ty, ax, ay.
 ;   Finally draw the last straight line.
 
 ;; LINE-DRAW
-L2477:  CALL    L24B7           ; routine DRAW-LINE draws to the relative
+L2477:	CALL	DRAW_LINE	; routine DRAW-LINE draws to the relative
                                 ; coordinates (rx, ry).
 
         JP      L0D4D           ; jump back and exit via TEMPS          >>>
@@ -20001,12 +20001,19 @@ PAUSE_D:PUSH	HL
 	JP	C,PAUSE_L
 	RET
 
+; Abstract straight line
+DRAW_LINE:
+	LD	A,3
+	AND	A
+OUT_SERV:
+	JP	L15F2		; output service routine
+
 ; Abstract COPY (10 bytes)
 S_COPY:	LD	A,3
 	CALL	L1601		; Open #3
 	XOR	A
 	INC	A		; A=1, CF=0
-	JP	L15F2		; output service routine
+	JR	OUT_SERV
 
 ; Branching of IF statement, with result recorded (22 bytes)
 C2FLAGX4:
@@ -20180,41 +20187,25 @@ IOCTL_S:EX	AF,AF'
 	LD	D,(HL)
 	EX	DE,HL
 	JP	(HL)
-IOS_TAB:DEFW	RESET_S		; Channel RESET
-	DEFW	X0094		; COPY screen to itself (do nothing)
-	DEFW	PLOT
-	DEFW	L24B7		; DRAW-LINE
+IOS_TAB:DEFW	RESET_S		; 0: Channel RESET
+	DEFW	X0094		; 1: COPY screen to itself (do nothing)
+	DEFW	PLOT		; 2: PLOT
+	DEFW	L24B7		; 3: DRAW-LINE
 IOS_END:EQU	$
-
-; Find next argument of PROC or DATA (9 bytes)
-LOOK_READ:
-	CP	"("
-	RET	Z
-	CP	")"
-	JR	NZ,LOOK_PROG_R
-	RST	$08
-	DEFB	$19		; Q Parameter error
-
-; Find closing NEXT (6 bytes)
-LOOK_PROG_FOR:
-	CALL	SKIP_FOR_HOOK
-LOOK_PROG_R:
-	JP	L1D86		; LOOK-PROG
 
 ; LOOK-VARS for loop variables (6 bytes)
 LOOP_VARS:
 	CALL	LV_HOOK
 	JP	L28B2		; LOOK-VARS
 
+; LET substitute for FOR (6 bytes)
+FOR_LET:CALL	FOR_HOOK
+	JP	L2AFF		; LET
+
 ; REPORT1, check for local variables first (5 bytes)
 REPORT1:CALL	NEXT_HOOK
 	RST	$08
 	DEFB	$00		; 1 NEXT without FOR
-
-; Infix operators on non-standard types (5 bytes)
-INFIX:	CALL	INFIX_HOOK
-	RST	$08
-	DEFB	$0B		; C Nonsense in BASIC
 
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
@@ -20297,13 +20288,24 @@ SPACEKW_R1:
 	DEC	DE
 	JR	TESTKW2_R1
 
+; Find next argument of PROC or DATA (9 bytes)
+LOOK_READ:
+	CP	"("
+	RET	Z
+	CP	")"
+	JR	NZ,LOOK_PROG_R
+	RST	$08
+	DEFB	$19		; Q Parameter error
+
+; Find closing NEXT (6 bytes)
+LOOK_PROG_FOR:
+	CALL	SKIP_FOR_HOOK
+LOOK_PROG_R:
+	JP	L1D86		; LOOK-PROG
+
 ; Extensible ED-COPY (10 bytes)
 SET_DE:	CALL	ECHO_HOOK
 	JP	L1195
-
-; LET substitute for FOR (6 bytes)
-FOR_LET:CALL	FOR_HOOK
-	JP	L2AFF		; LET
 
 ; Local variables in 128k mode
 STK_F_ARG:
@@ -20316,20 +20318,20 @@ REPORT7:CALL	RETURN_HOOK
 REP7:	RST	$08
 	DEFB	$06		; 7 RETURN without GOSUB
 
-; Open stream #2 (or other) for class 9 attribute changes (high speed)
-STREAM2:BIT	4,(IY+FLAGS-ERR_NR)
-	JR	NZ,CL9_HOOK
-	CP	$D9
-	RET	C
-	CP	$DF
-	RET	NC
-	LD	HL,L21E2 + 4	; CO-TEMP-2 + 2
-	PUSH	HL
-	PUSH	AF
-	LD	A,2
+; Infix operators on non-standard types (5 bytes)
+INFIX:	CALL	INFIX_HOOK
+	RST	$08
+	DEFB	$0B		; C Nonsense in BASIC
+
+; Open system channel S (or other) for class 9 attribute changes
+STREAM2:CP	"#"
+	JR	Z,INFIX		; other streams only allowed in ROM1
+	EX	AF,AF'
+	LD	A,$FD
         CALL    L2530           ; routine SYNTAX-Z - checking syntax ?
         CALL    NZ,L1601        ; routine CHAN-OPEN if in run-time.
-	JP	L21FC - 2	; CO-TEMP-4 - 2 (RST $20, POP AF)
+	EX	AF,AF'
+	JP	L21E2		; CO-TEMP-2
 
 ; Abstracted PLOT routine (high speed)
 PLOT:	BIT	4,(IY+FLAGS-ERR_NR)
@@ -20345,8 +20347,6 @@ INDEXER_HOOK:
 	CALL	NOPAGE
 INFIX_HOOK:
 	CALL	NOPAGE
-CL9_HOOK:
-	CALL	$5B00		; SWAP
 PLOT_HOOK:
 	CALL	$5B00		; SWAP
 ECHO_HOOK:
