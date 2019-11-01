@@ -24,6 +24,9 @@
 ; SQR replaced by a faster and more accurate one [5<>SQR 25]
 ; RND sped up considerably
 ; PIP set to zero means no keyclicks [POKE 23609,0]
+; PLOT, DRAW and CIRCLE attributes select #2 [	POKE 23749,PEEK 23751
+;						POKE 23750,PEEK 23752
+;						LPRINT ;: CIRCLE INK 2;128,87,87]
 ; LIST, LLIST fixed, does not print cursor, accepts range [LIST 10 TO 20]
 ; "scroll?" prompt fixed [PRINT #0;1'2'3'4: FOR i=1 TO 30: PRINT i: NEXT i]
 ; I/O abstraction layer significantly improved
@@ -50,7 +53,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 28-OCT-2019
+; Last updated: 01-NOV-2019
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -1590,8 +1593,8 @@ L046E:  DEFB    $89, $02, $D0, $12, $86;  261.625565290         C
 ; default service routine for K, S and P channel output
 PRINT_OUT:
 	JP	C,L09F4
-	CP	2
-	RET	NC		; ignore all controls except 0 and 1
+	CP	$0D
+	RET	NC		; ignore all controls beyond $0C
 
 ; Reset current system channel state
 CH_RESET:
@@ -1600,7 +1603,7 @@ CH_RESET:
 	JP	Z,RESET_K	; If so, reset both service routines
 	LD	BC,$1821	; If not, pre-load top left corner's location
 	CP	"S"
-	JP	Z,RESET_S	; Jump to actual reset
+	JP	Z,IOCTL_S	; Jump to IOCTL
 	JP	RESET_P
 ZX81_NAME_E:
 	DEFS	$04C2 - $04AA + PRINT_OUT - ZX81_NAME_E
@@ -9160,7 +9163,10 @@ L1CBE:  CALL    L2530           ; routine SYNTAX-Z
         RST     18H             ; GET-CHAR
 
 ;; CL-09-1
-L1CD6:  CALL    L21E2           ; routine CO-TEMP-2 deals with any embedded
+L1CD6:
+;;; BUGFIX: Use channel 2
+	CALL	STREAM2
+;;;	CALL    L21E2           ; routine CO-TEMP-2 deals with any embedded
                                 ; colour items.
         JR      L1C7A           ; exit via EXPT-2NUM to check for x,y.
 
@@ -20160,6 +20166,56 @@ OUT_INV:PUSH	AF
 NEW:	CALL	NEW_HOOK
 	JP	L11B7		; NEW
 
+; S channel controls
+IOCTL_S:EX	AF,AF'
+	ADD	A,A
+	CP	IOS_END-IOS_TAB
+	JP	NC,RESET_S
+	LD	E,A
+	LD	D,0
+	LD	HL,IOS_TAB
+	ADD	HL,DE
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	EX	DE,HL
+	JP	(HL)
+IOS_TAB:DEFW	RESET_S		; Channel RESET
+	DEFW	X0094		; COPY screen to itself (do nothing)
+	DEFW	PLOT
+	DEFW	L24B7		; DRAW-LINE
+IOS_END:EQU	$
+
+; Find next argument of PROC or DATA (9 bytes)
+LOOK_READ:
+	CP	"("
+	RET	Z
+	CP	")"
+	JR	NZ,LOOK_PROG_R
+	RST	$08
+	DEFB	$19		; Q Parameter error
+
+; Find closing NEXT (6 bytes)
+LOOK_PROG_FOR:
+	CALL	SKIP_FOR_HOOK
+LOOK_PROG_R:
+	JP	L1D86		; LOOK-PROG
+
+; LOOK-VARS for loop variables (6 bytes)
+LOOP_VARS:
+	CALL	LV_HOOK
+	JP	L28B2		; LOOK-VARS
+
+; REPORT1, check for local variables first (5 bytes)
+REPORT1:CALL	NEXT_HOOK
+	RST	$08
+	DEFB	$00		; 1 NEXT without FOR
+
+; Infix operators on non-standard types (5 bytes)
+INFIX:	CALL	INFIX_HOOK
+	RST	$08
+	DEFB	$0B		; C Nonsense in BASIC
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
@@ -20241,38 +20297,18 @@ SPACEKW_R1:
 	DEC	DE
 	JR	TESTKW2_R1
 
-; Find next argument of PROC or DATA (9 bytes)
-LOOK_READ:
-	CP	"("
-	RET	Z
-	CP	")"
-	JR	NZ,LOOK_PROG_R
-	RST	$08
-	DEFB	$19		; Q Parameter error
-
-; Find closing NEXT (6 bytes)
-LOOK_PROG_FOR:
-	CALL	SKIP_FOR_HOOK
-LOOK_PROG_R:
-	JP	L1D86		; LOOK-PROG
-
 ; Extensible ED-COPY (10 bytes)
 SET_DE:	CALL	ECHO_HOOK
 	JP	L1195
-
-; Infix operators on non-standard types (5 bytes)
-INFIX:	CALL	INFIX_HOOK
-	RST	$08
-	DEFB	$0B		; C Nonsense in BASIC
 
 ; LET substitute for FOR (6 bytes)
 FOR_LET:CALL	FOR_HOOK
 	JP	L2AFF		; LET
 
-; REPORT1, check for local variables first (5 bytes)
-REPORT1:CALL	NEXT_HOOK
-	RST	$08
-	DEFB	$00		; 1 NEXT without FOR
+; Local variables in 128k mode
+STK_F_ARG:
+	CALL	LOCAL_HOOK
+	JP	L2951		; STK_F_ARG
 
 ; REPORT7, check for local variables first (6 bytes)
 REPORT7:CALL	RETURN_HOOK
@@ -20280,15 +20316,20 @@ REPORT7:CALL	RETURN_HOOK
 REP7:	RST	$08
 	DEFB	$06		; 7 RETURN without GOSUB
 
-; LOOK-VARS for loop variables (6 bytes)
-LOOP_VARS:
-	CALL	LV_HOOK
-	JP	L28B2		; LOOK-VARS
-
-; Local variables in 128k mode
-STK_F_ARG:
-	CALL	LOCAL_HOOK
-	JP	L2951		; STK_F_ARG
+; Open stream #2 (or other) for class 9 attribute changes (high speed)
+STREAM2:BIT	4,(IY+FLAGS-ERR_NR)
+	JR	NZ,CL9_HOOK
+	CP	$D9
+	RET	C
+	CP	$DF
+	RET	NC
+	LD	HL,L21E2 + 4	; CO-TEMP-2 + 2
+	PUSH	HL
+	PUSH	AF
+	LD	A,2
+        CALL    L2530           ; routine SYNTAX-Z - checking syntax ?
+        CALL    NZ,L1601        ; routine CHAN-OPEN if in run-time.
+	JP	L21FC - 2	; CO-TEMP-4 - 2 (RST $20, POP AF)
 
 ; Abstracted PLOT routine (high speed)
 PLOT:	BIT	4,(IY+FLAGS-ERR_NR)
@@ -20304,6 +20345,8 @@ INDEXER_HOOK:
 	CALL	NOPAGE
 INFIX_HOOK:
 	CALL	NOPAGE
+CL9_HOOK:
+	CALL	$5B00		; SWAP
 PLOT_HOOK:
 	CALL	$5B00		; SWAP
 ECHO_HOOK:
