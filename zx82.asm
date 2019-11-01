@@ -24,7 +24,7 @@
 ; SQR replaced by a faster and more accurate one [5<>SQR 25]
 ; RND sped up considerably
 ; PIP set to zero means no keyclicks [POKE 23609,0]
-; PLOT, DRAW and CIRCLE attributes select #2 [	POKE 23749,PEEK 23751
+; PLOT, DRAW and CIRCLE select "S" channel [	POKE 23749,PEEK 23751
 ;						POKE 23750,PEEK 23752
 ;						LPRINT ;: CIRCLE INK 2;128,87,87]
 ; LIST, LLIST fixed, does not print cursor, accepts range [LIST 10 TO 20]
