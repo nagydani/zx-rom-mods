@@ -176,9 +176,8 @@ L0020:  CALL    L0074           ; routine CH-ADD+1 fetches the next immediate
 L0028:  JP      L335B           ; jump forward to the CALCULATE routine.
 
 ; ---
-;;; BUGFIX: extensible instruction set
-REPORT_C_EXTRA:
-	CALL	RUN_HOOK
+; Infix operators on non-standard types (5 bytes)
+INFIX:	CALL	INFIX_HOOK
 	RST	$08
 	DEFB	$0B		; C Nonsense in BASIC
 ;;;	DEFB    $FF, $FF, $FF   ; spare - note that on the ZX81, space being a
@@ -3043,7 +3042,7 @@ L0958:  INC     HL              ; address next?
 L0970:  PUSH    HL              ; save start of data
 
 ;;; BUGFIX: Unified, correct wait with message
-;;;	LD      A,$FD	; select system channel 'S'
+;;;	LD      A,$FD		; select system channel 'K'
 ;;;	CALL    L1601		; routine CHAN-OPEN
 ;;;	XOR     A		; clear to address table directly
 	LD      DE,L09A1	; address: tape-msgs
@@ -20318,16 +20317,17 @@ REPORT7:CALL	RETURN_HOOK
 REP7:	RST	$08
 	DEFB	$06		; 7 RETURN without GOSUB
 
-; Infix operators on non-standard types (5 bytes)
-INFIX:	CALL	INFIX_HOOK
+; Extensible instruction set
+REPORT_C_EXTRA:
+	CALL	RUN_HOOK
 	RST	$08
 	DEFB	$0B		; C Nonsense in BASIC
 
 ; Open system channel S (or other) for class 9 attribute changes
 STREAM2:CP	"#"
-	JR	Z,INFIX		; other streams only allowed in ROM1
+	JR	Z,REPORT_C_EXTRA; other streams only allowed in ROM1
 	EX	AF,AF'
-	LD	A,$FD
+	LD	A,$FE		; system channel "S"
         CALL    L2530           ; routine SYNTAX-Z - checking syntax ?
         CALL    NZ,L1601        ; routine CHAN-OPEN if in run-time.
 	EX	AF,AF'
