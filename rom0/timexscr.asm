@@ -220,3 +220,89 @@ POSCR4B:CALL	CL_SCR
 	SET	0,(IY+$02)
 	POP	BC
 	RET
+
+PLOT_CONT:
+	LD	HL,SWAP
+	PUSH	HL
+	LD	HL,ORIGX
+	LD	(MEM),HL
+	CALL	CALCULATE
+	DEFB	$E3		; get SCALEY
+	DEFB	$04		; multiply
+	DEFB	$E1		; get ORIGY
+	DEFB	$0F		; add
+	DEFB	$C5		; store COORDY
+	DEFB	$01		; exchange
+	DEFB	$E2		; get SCALEX
+	DEFB	$04		; multiply
+	DEFB	$E0		; get ORIGX
+	DEFB	$0F		; add
+	DEFB	$C4		; store COORDX
+	DEFB	$38		; end
+	LD	HL,MEMBOT
+	LD	(MEM),HL
+	RST	$28
+	DEFW	L2DA2		; FP-TO-BC
+	RET	C
+	RET	NZ
+	PUSH	BC
+	RST	$28
+	DEFW	L2DA2		; FP-TO-BC
+	POP	DE
+	RET	C
+	RET	NZ
+	SRL	D
+	RR	E
+	SRL	D
+	RR	E
+	LD	A,(S_MODE)
+	CP	$0A
+	LD	A,B
+	JR	C,PLOT_0
+	SRL	D
+	JR	PLOT_X
+
+PLOT_0:	SRL	D
+	RR	E
+	AND	A
+PLOT_X:	RRA
+	SCF
+	RRA
+	AND	A
+	RRA
+	XOR	B
+	AND	$F8
+	XOR	B
+	LD	H,A
+
+	LD	A,B
+	AND	$38
+	ADD	A,A
+	ADD	A,A
+	ADD	A,D
+
+	LD	L,A
+	LD	A,E
+	RLCA
+	RLCA
+	RLCA
+	AND	$7
+	LD	B,A
+	INC	B
+	LD	A,$FE
+PLOT_L:	RRCA
+	DJNZ	PLOT_L
+	LD	B,A
+	LD	A,(HL)
+	LD	C,(IY+$57)
+	BIT	0,C
+	JR	NZ,PL_TINV
+	AND	B
+PL_TINV:BIT	2,C
+	JR	NZ,PL_END
+	XOR	B
+	CPL
+PL_END:	LD	(HL),A
+	RET
+
+	include "calculator.asm"

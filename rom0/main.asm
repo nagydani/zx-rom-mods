@@ -148,7 +148,15 @@ C_SPCC:	DEFB	1
 RCLINE:	DEFS	2		; current line being renumbered
 RCSTART:DEFW	10		; starting line number for renumbering
 RCSTEP:	DEFW	10		; step for renumbering
-STEPPPC:EQU	$
+; Origin
+ORIGX:	DEFB	$00,$00,$80,$00,$00	; 0.5 * $100
+ORIGY:	DEFB	$00,$00,$80,$AF,$00	; 175.5 * $100
+SCALEX:	DEFB	$00,$00,$00,$01,$00	; 1 * $100
+SCALEY:	DEFB	$00,$FF,$00,$FF,$00	; -1 * $100
+COORDX:	EQU	$
+COORDY:	EQU	COORDX+5
+COORDS2:EQU	COORDY+5
+STEPPPC:EQU	COORDS2+2
 STEPSUB:EQU	STEPPPC+2
 K_ATTR:	EQU	STEPSUB+1	; ATTR_T and MASK_T at cursor position
 K_PFLAG:EQU	K_ATTR+2	; P_FLAG at cursor position
@@ -1839,6 +1847,7 @@ C256:	DEFB	$00, $00, $00, $01, $00
 ; jump table from ROM1
 	JP	INDEX_CONT
 	JP	INFIX_CONT
+	JP	PLOT_CONT
 	JP	ECHO_CONT
 	JP	SUB_CONT
 	JP	STRNG_CONT

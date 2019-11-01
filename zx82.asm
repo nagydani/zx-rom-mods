@@ -8402,7 +8402,9 @@ L1AC1:  DEFB    $09             ; Class-09 - Two comma-separated numeric
                                 ; expressions required with optional colour
                                 ; items.
         DEFB    $00             ; Class-00 - No further operands.
-        DEFW    L22DC           ; Address: $22DC; Address: PLOT
+;;; BUGFIX: Abstracted PLOT
+	DEFW	PLOT
+;;;	DEFW    L22DC           ; Address: $22DC; Address: PLOT
 
 ;; P-PAUSE
 L1AC5:  DEFB    $06             ; Class-06 - A numeric expression must follow.
@@ -14519,7 +14521,7 @@ L2AEB:  POP     HL              ; restore the limit.
 ;; DE,(DE+1)
 L2AEE:  EX      DE,HL           ;
         INC     HL              ;
-        LD      E,(HL)          ;
+X2AF0:	LD      E,(HL)          ;
         INC     HL              ;
         LD      D,(HL)          ;
         RET                     ;
@@ -20149,16 +20151,20 @@ RESET_PRB:
 	LD	(IY+PR_CC+1-ERR_NR),$5B
 	JP	L0EDF		; CLEAR-PRB
 
+; Print inverse character (6 bytes)
+OUT_INV:PUSH	AF
+	LD	A,$0F
+	JP	OUT_INV_1
+
+; Abstracted NEW routine
+NEW:	CALL	NEW_HOOK
+	JP	L11B7		; NEW
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
 
 	DEFS	$3C02 - $, $FF
-
-; Print inverse character (6 bytes)
-OUT_INV:PUSH	AF
-	LD	A,$0F
-	JP	OUT_INV_1
 
 ; Find token in this ROM (128 bytes)
 ; Input: HL text to match, B length of text, DE token table, C number of tokens in the table
@@ -20235,7 +20241,6 @@ SPACEKW_R1:
 	DEC	DE
 	JR	TESTKW2_R1
 
-
 ; Find next argument of PROC or DATA (9 bytes)
 LOOK_READ:
 	CP	"("
@@ -20285,9 +20290,10 @@ STK_F_ARG:
 	CALL	LOCAL_HOOK
 	JP	L2951		; STK_F_ARG
 
-; Abstacted NEW routine
-NEW:	CALL	NEW_HOOK
-	JP	L11B7		; NEW
+; Abstracted PLOT routine (high speed)
+PLOT:	BIT	4,(IY+FLAGS-ERR_NR)
+	JP	Z,L22DC		; PLOT
+	JR	PLOT_HOOK
 
 ; Extended INDEXER
 INDEXER_2:
@@ -20298,6 +20304,8 @@ INDEXER_HOOK:
 	CALL	NOPAGE
 INFIX_HOOK:
 	CALL	NOPAGE
+PLOT_HOOK:
+	CALL	$5B00		; SWAP
 ECHO_HOOK:
 	CALL	NOPAGE
 SUB_HOOK:
