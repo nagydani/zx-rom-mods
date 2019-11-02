@@ -13,9 +13,8 @@ RST00L:	DEC	BC
 	DEFS	$10 - $
 
 ; Print a character
-RST10:	RST	$28
-	DEFW	$0010
-	RET
+RST10:	SCF
+	JP	CHOUT
 	DEFS	$18 - $
 
 ; Collect a character
@@ -78,7 +77,7 @@ NMI:	PUSH	AF
 	LD	HL,(NMIADD)
 	LD	A,H
 	JR	Z,NONMI
-	JP	(HL)
+JP_HL:	JP	(HL)
 NONMI:	POP	HL
 	POP	AF
 	RETN
@@ -149,10 +148,10 @@ RCLINE:	DEFS	2		; current line being renumbered
 RCSTART:DEFW	10		; starting line number for renumbering
 RCSTEP:	DEFW	10		; step for renumbering
 ; Origin
-ORIGX:	DEFB	$00,$00,$80,$00,$00	; 0.5 * $100
-ORIGY:	DEFB	$00,$00,$80,$AF,$00	; 175.5 * $100
-SCALEX:	DEFB	$00,$00,$00,$01,$00	; 1 * $100
-SCALEY:	DEFB	$00,$FF,$00,$FF,$00	; -1 * $100
+ORIGX:	DEFB	$00,$00,$00,$00,$00	; 0.0
+ORIGY:	DEFB	$00,$00,$AF,$00,$00	; 175.0
+SCALEX:	DEFB	$00,$00,$01,$00,$00	; 1.0
+SCALEY:	DEFB	$00,$FF,$FF,$FF,$00	; -1.0
 COORDX:	EQU	$
 COORDY:	EQU	COORDX+5
 COORDS2:EQU	COORDY+5
@@ -163,7 +162,7 @@ K_PFLAG:EQU	K_ATTR+2	; P_FLAG at cursor position
 K_SAV:	EQU	K_PFLAG+1	; FLAGS and FLAGS2 at cursor position
 K_SAV2:	EQU	K_SAV+2		; K_STATE at cursor position
 K_CUR_S:EQU	K_SAV2+1	; old K_CUR value
-S_MODE:	EQU	K_CUR_S+2	; video mode
+S_MODE:	EQU	K_CUR_S+2	; video mode: b7..b3 - resolution, b2..b0 - palette
 
 INIT_5B00_L:	EQU	$ - $5B00
 
@@ -465,9 +464,17 @@ INFIX_CONT:
 	JR	C,INFIX_T
 	JR	DSWAP2
 
+CL9_CONT:
+	RST	$28
+	DEFW	L2070 + 4	; STR-ALTER + 4
+	RST	$28
+	DEFW	L21E2 + 4	; CO-TEMP-2 + 4
+	JP	SWAP
+
 RUN_CONT:
 	POP	HL		; discard return to REPORT C
 	INC	B		; B=$00 for instruction mismatch and B=$1B for separator mismatch
+	JR	Z,CL9_CONT
 	DJNZ	SEP_MISM
 
 	DEC	B		; B becomes FF here
@@ -1836,6 +1843,43 @@ SUB_CONT:
 SUB_OOR:SCF
 	DEC	A
 	JP	SWAP
+
+PLOT_CONT:
+	LD	A,2
+	AND	A
+	LD	HL,SWAP
+	PUSH	HL
+
+; Call current channel's output service routine
+CHOUT:	EXX
+	PUSH	HL
+	LD	HL,(CURCHL)
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	EX	DE,HL
+	EX	AF,AF'
+	LD	A,H
+	CP	$3C
+	JR	Z,CHOUT0	; In this ROM
+	EX	AF,AF'
+	RST	$28
+	DEFW	L162C
+	POP	HL
+	EXX
+	RET
+CHOUT0:	EX	AF,AF'
+	INC	HL
+	INC	HL
+	INC	HL
+	CALL	SWJPHL
+	POP	HL
+	EXX
+	RET
+SWJPHL:	PUSH	HL
+	LD	HL,SWAP
+	EX	(SP),HL
+	JP	(HL)
 
 	INCLUDE "variables.asm"
 	INCLUDE	"instructions.asm"

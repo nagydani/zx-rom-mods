@@ -758,9 +758,19 @@ S_OUT:	LD	HL,SWAP
 S_OUT1:	LD	HL,S_STATE
 	JR	C,KS_OUT
 ; channel S ioctl
-	OR	A
-	RET	NZ
-S_RST:	LD	(HL),A
+	EX	DE,HL
+	LD	HL,S_IOCTL
+	ADD	A,A
+	LD	C,A
+	LD	B,0
+	ADD	HL,BC
+	LD	A,(HL)
+	INC	HL
+	LD	H,(HL)
+	LD	L,A
+	JP	(HL)
+S_RST:	EX	DE,HL
+	LD	(HL),A
 	LD	H,A
 	LD	L,A		; Initialize plot coordinates.
 	LD	(COORDS),HL	; Set system variable COORDS to 0,0.
@@ -1295,6 +1305,11 @@ TRST:	RST	$28
 ;;POSCR:	RST	$28	; TODO: take width into account
 ;;	DEFW	L0C55	; PO-SCR
 ;;	RET
+
+S_IOCTL:DEFW	S_RST	; reset S channel (clear screen, etc.)
+	DEFW	TNOP	; COPY screen to itself (i.e. do nothing)
+	DEFW	PLOT1	; PLOT a single point
+	defw	TNOP	; DRAW straight line
 
 EDITOR_HEADER0:
 	DEFB	$14,$01,$16,$00,$00,$13,$01,$10,$00
