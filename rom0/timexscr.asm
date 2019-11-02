@@ -238,6 +238,8 @@ PLOT1:	LD	HL,ORIGX
 	DEFB	$38		; end
 	LD	HL,MEMBOT
 	LD	(MEM),HL
+	XOR	A
+	LD	(COORDS),A	; delete mask to identify clipped point
 	LD	A,(S_MODE)
 	CP	$10
 	JR	NC,PLOT_HIRES
@@ -296,6 +298,8 @@ SETPIX:	LD	B,A
 	LD	A,$FE
 PIXL:	RRCA
 	DJNZ	PIXL
+	LD	(COORDS),A	; save mask for DRAW
+MASKPIX:LD	(COORDS2),HL
 	LD	B,A
 	LD	A,(HL)
 	LD	C,(IY+$57)
@@ -336,6 +340,221 @@ PIXADD:	LD	A,E
 	LD	L,A
 	LD	A,E
 	AND	$07
+	RET
+
+DRAW2:	LD	HL,ORIGX
+	LD	(MEM),HL
+	CALL	CALCULATE
+	DEFB	$E3		; get SCALEY
+	DEFB	$04		; multiply
+	DEFB	$01		; exchange
+	DEFB	$E2		; get SCALEX
+	DEFB	$04		; multiply
+	DEFB	$38		; end
+	LD	BC,2*5		; dup2
+	RST	$28
+	DEFW	$1F05
+	LD	HL,(STKEND)
+	LD	E,L
+	LD	D,H
+	ADD	HL,BC
+	LD	(STKEND),HL
+	EX	DE,HL
+	DEC	HL
+	DEC	DE
+	LDDR
+	CALL	CALCULATE
+	DEFB	$E4		; get COORDX
+	DEFB	$0F		; add
+	DEFB	$E4		; get COORDX
+	DEFB	$27		; int
+	DEFB	$01		; exchange
+	DEFB	$C4		; store COORDX
+	DEFB	$27		; int
+	DEFB	$03		; subtract: pixel-based DX on stack
+	DEFB	$01		; exchange
+	DEFB	$E5		; get COORDY
+
+	DEFB	$31		; duplicate
+	DEFB	$A2		; stk-half
+	DEFB	$0F		; add
+	DEFB	$1B		; negate
+	DEFB	$31		; duplicate
+	DEFB	$27		; int
+	DEFB	$03		; subtract frac(0.5-Y)
+	DEFB	$38		; end
+	LD	DE,MEMBOT
+	LD	BC,5
+	LDIR
+	CALL	CALCULATE
+	DEFB	$02		; delete
+
+	DEFB	$0F		; add
+	DEFB	$E5		; get COORDY
+	DEFB	$27		; int
+	DEFB	$01		; exchange
+	DEFB	$C5		; store COORDY
+	DEFB	$27		; int
+	DEFB	$03		; subtract: pixel-based DY on stack
+	DEFB	$38		; end
+	LD	BC,MEMBOT
+	LD	(MEM),BC
+
+	RST	$28
+	DEFW	L2DA2		; FP-TO-BC
+	; TODO: overflow, negative	
+	PUSH	BC
+	RST	$28
+	DEFW	L2DA2		; FP-TO-BC
+	; TODO: overflow, negative	
+	POP	HL
+	; TODO: no starting point	
+	AND	A
+	SBC	HL,BC
+	ADD	HL,BC
+	JR	C,LDRNSW
+	LD	C,L
+	LD	B,H
+	; TODO: proper swap	
+LDRNSW:	LD	HL,PXRIGHT
+	LD	DE,PXDOWN
+	PUSH	BC
+	PUSH	HL
+	PUSH	DE
+
+	RST	$28
+	DEFW	L35BF		; STK-PNTRS
+	CALL	STEPBACK
+	RST	$28
+	DEFW	L3293		; RE-ST-TWO
+
+	LD	A,(HL)
+	INC	HL
+	LD	B,(HL)
+	SET	7,B		; disregard sign
+	INC	HL
+	LD	C,(HL)
+
+	EX	DE,HL
+
+	SUB	(HL)
+	INC	HL
+	LD	D,(HL)
+	SET	7,D		; disregard sign
+	INC	HL
+	LD	E,(HL)
+
+	JR	Z,NSHFTDR
+	CP	$F0
+	JR	C,TRANS0
+DSHFTL:	SRL	B
+	RR	C
+	INC	A
+	JR	NZ,DSHFTL
+NSHFTDR:PUSH	BC
+	PUSH	DE
+	LD	C,E
+	LD	B,D
+	RST	$28
+	DEFW	L2D2B + 4	; STACK-BC + 4
+	CALL	CALCULATE
+	DEFB	$E0		; get M0
+	DEFB	$04		; multiply
+	DEFB	$38		; end
+	RST	$28
+	DEFW	L2DA2		; FP-TO-BC
+	LD	L,C
+	LD	H,B
+	POP	DE
+	POP	BC
+	EXX
+	POP	DE
+	POP	HL
+	POP	BC
+
+; BC=length in pixels
+; DE=transversal step pointer
+; HL=longitudal step pointer
+; BC'=transversal difference
+; DE'=longitudal difference
+; HL'=remainder
+BRESEN:	EXX
+	AND	A
+	SBC	HL,BC
+	JR	NC,STRGHT
+	ADD	HL,DE
+	PUSH	HL
+	CALL	PXTRV
+	LD	(COORDS2),HL
+	POP	HL
+STRGHT:	PUSH	HL
+	CALL	PXLON
+	LD	A,(COORDS)
+	PUSH	BC
+	CALL	MASKPIX
+	POP	BC
+	POP	HL
+	EXX
+	DEC	BC
+	LD	A,B
+	OR	C
+	JR	NZ,BRESEN
+	EXX
+
+	LD	A,(S_MODE)
+	CP	$10
+	RET	NC		; no attribute manipulation in HiRes
+	LD	HL,(COORDS2)
+	CP	$08
+	JR	NC,BRESMC	; MultiColor
+	RST	$28
+	DEFW	L0BDB		; PO-ATTR
+	RET
+
+TRANS0:	LD	BC,$0000
+	JR	NSHFTDR
+
+BRESMC:	SET	5,H
+	RST	$28
+	DEFW	X0BE4		; set attribute
+	RET
+
+PXTRV:	LD	HL,(COORDS2)
+	EXX
+	PUSH	DE
+	EXX
+	RET
+
+PXLON:	LD	HL,(COORDS2)
+	EXX
+	PUSH	HL
+	EXX
+	RET
+
+PXDOWN:	INC	H
+	LD	A,H
+	AND	$07
+	RET	NZ
+	LD	A,L
+	ADD	$20
+	LD	L,A
+	RET	C
+	LD	A,H
+	SUB	A,$08
+	LD	H,A
+	RET
+
+PXRIGHT:RRC	(IY+COORDS-ERR_NR)
+	RET	C
+	LD	A,(S_MODE)
+	CP	$10
+	JR	C,PXRLR
+	BIT	5,H
+	JR	NZ,PXRHR
+	SET	5,H
+	RET
+PXRHR:	RES	5,H
+PXRLR:	INC	L
 	RET
 
 	include "calculator.asm"

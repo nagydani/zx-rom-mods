@@ -770,10 +770,13 @@ S_OUT1:	LD	HL,S_STATE
 	LD	L,A
 	JP	(HL)
 S_RST:	EX	DE,HL
+	XOR	A
 	LD	(HL),A
-	LD	H,A
-	LD	L,A		; Initialize plot coordinates.
-	LD	(COORDS),HL	; Set system variable COORDS to 0,0.
+	LD	HL,COORDX
+	LD	DE,COORDX+1
+	LD	BC,2*5-1
+	LD	(HL),A
+	LDIR			; clear last PLOT coordinates
 	RES	0,(IY+$30)	; update FLAGS2 - signal main screen is clear.
 	RST	$28
 	DEFW	L0D4D		; TEMPS
@@ -1309,7 +1312,7 @@ TRST:	RST	$28
 S_IOCTL:DEFW	S_RST	; reset S channel (clear screen, etc.)
 	DEFW	TNOP	; COPY screen to itself (i.e. do nothing)
 	DEFW	PLOT1	; PLOT a single point
-	defw	TNOP	; DRAW straight line
+	DEFW	DRAW2	; DRAW straight line
 
 EDITOR_HEADER0:
 	DEFB	$14,$01,$16,$00,$00,$13,$01,$10,$00
