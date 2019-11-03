@@ -342,7 +342,11 @@ PIXADD:	LD	A,E
 	AND	$07
 	RET
 
-DRAW2:	LD	HL,ORIGX
+DRAW2:	LD	HL,COORDX
+	LD	DE,MEMBOT
+	LD	BC,2*5
+	LDIR			; save first point
+	LD	HL,ORIGX
 	LD	(MEM),HL
 	CALL	CALCULATE
 	DEFB	$E3		; get SCALEY
@@ -351,6 +355,22 @@ DRAW2:	LD	HL,ORIGX
 	DEFB	$E2		; get SCALEX
 	DEFB	$04		; multiply
 	DEFB	$38		; end
+	CALL	STEPBACK
+	INC	HL
+	LD	BC,PXDOWN
+	BIT	7,(HL)
+	JR	Z,DDOWN
+	LD	BC,PXUP
+	SET	7,(IY+MEMBOT+6-ERR_NR)
+DDOWN:	PUSH	BC
+	EX	DE,HL
+	INC	HL
+	LD	BC,PXRIGHT
+	BIT	7,(HL)
+	JR	Z,DRIGHT
+	LD	BC,PXLEFT
+	SET	7,(IY+MEMBOT+1-ERR_NR)
+DRIGHT:	PUSH	BC
 	LD	BC,2*5		; dup2
 	RST	$28
 	DEFW	$1F05
@@ -374,21 +394,6 @@ DRAW2:	LD	HL,ORIGX
 	DEFB	$03		; subtract: pixel-based DX on stack
 	DEFB	$01		; exchange
 	DEFB	$E5		; get COORDY
-
-	DEFB	$31		; duplicate
-	DEFB	$A2		; stk-half
-	DEFB	$0F		; add
-	DEFB	$1B		; negate
-	DEFB	$31		; duplicate
-	DEFB	$27		; int
-	DEFB	$03		; subtract frac(0.5-Y)
-	DEFB	$38		; end
-	LD	DE,MEMBOT
-	LD	BC,5
-	LDIR
-	CALL	CALCULATE
-	DEFB	$02		; delete
-
 	DEFB	$0F		; add
 	DEFB	$E5		; get COORDY
 	DEFB	$27		; int
@@ -397,30 +402,36 @@ DRAW2:	LD	HL,ORIGX
 	DEFB	$27		; int
 	DEFB	$03		; subtract: pixel-based DY on stack
 	DEFB	$38		; end
-	LD	BC,MEMBOT
-	LD	(MEM),BC
+	LD	HL,MEMBOT
+	LD	(MEM),HL
 
 	RST	$28
 	DEFW	L2DA2		; FP-TO-BC
-	; TODO: overflow, negative	
-	PUSH	BC
+	; TODO: overflow, negative, clipping	
+	PUSH	BC		; save DY
 	RST	$28
 	DEFW	L2DA2		; FP-TO-BC
-	; TODO: overflow, negative	
-	POP	HL
-	; TODO: no starting point	
+	; TODO: overflow, negative, clipping	
+	POP	HL		; restore DX
 	AND	A
 	SBC	HL,BC
 	ADD	HL,BC
 	JR	C,LDRNSW
+	; swap directions
 	LD	C,L
-	LD	B,H
-	; TODO: proper swap	
-LDRNSW:	LD	HL,PXRIGHT
-	LD	DE,PXDOWN
+	LD	B,H		; pixel length is DY instead of DX
 	PUSH	BC
-	PUSH	HL
-	PUSH	DE
+	CALL	CALCULATE
+	DEFB	$01		; exchange	: swap DX and DY
+	DEFB	$E0		; get M0
+	DEFB	$C1		; store M1
+	DEFB	$02		; delete	; move M0 to M1
+	DEFB	$38		; end
+	POP	BC		; COORDX is the basis of subpixel accuracy
+	POP	HL
+	EX	(SP),HL
+	PUSH	HL		; swap longitudal and transversal steps
+LDRNSW:	PUSH	BC
 
 	RST	$28
 	DEFW	L35BF		; STK-PNTRS
@@ -457,20 +468,42 @@ NSHFTDR:PUSH	BC
 	LD	B,D
 	RST	$28
 	DEFW	L2D2B + 4	; STACK-BC + 4
+	BIT	7,(IY+MEMBOT+6-ERR_NR)
+	PUSH	AF				; save ZF
+	JR	Z,DRPOS
+	RES	7,(IY+MEMBOT+6-ERR_NR)
 	CALL	CALCULATE
-	DEFB	$E0		; get M0
+	DEFB	$A2		; stk-half
+	DEFB	$E1		; get M1
+	DEFB	$0F		; addition
+	DEFB	$33		; jump
+	DEFB	DRFRAC - $
+DRPOS:	CALL	CALCULATE
+	DEFB	$A2		; stk-half
+	DEFB	$E1		; get M1
+	DEFB	$03		; subtract
+DRFRAC:	DEFB	$31		; duplicate
+	DEFB	$27		; int
+	DEFB	$03		; subtract
 	DEFB	$04		; multiply
 	DEFB	$38		; end
 	RST	$28
 	DEFW	L2DA2		; FP-TO-BC
 	LD	L,C
 	LD	H,B
-	POP	DE
+	POP	AF
+	JR	NZ,DRNON0
+	LD	A,H
+	OR	L
+	JR	NZ,DRNON0
+	POP	HL
+	PUSH	HL
+DRNON0:	POP	DE
 	POP	BC
 	EXX
-	POP	DE
-	POP	HL
 	POP	BC
+	POP	HL
+	POP	DE
 
 ; BC=length in pixels
 ; DE=transversal step pointer
@@ -544,6 +577,19 @@ PXDOWN:	INC	H
 	LD	H,A
 	RET
 
+PXUP:	LD	A,H
+	DEC	H
+	AND	$07
+	RET	NZ
+	LD	A,L
+	SUB	$20
+	LD	L,A
+	RET	C
+	LD	A,H
+	ADD	A,$08
+	LD	H,A
+	RET
+
 PXRIGHT:RRC	(IY+COORDS-ERR_NR)
 	RET	C
 	LD	A,(S_MODE)
@@ -555,6 +601,19 @@ PXRIGHT:RRC	(IY+COORDS-ERR_NR)
 	RET
 PXRHR:	RES	5,H
 PXRLR:	INC	L
+	RET
+
+PXLEFT:	RLC	(IY+COORDS-ERR_NR)
+	RET	C
+	LD	A,(S_MODE)
+	CP	$10
+	JR	C,PXLLR
+	BIT	5,H
+	JR	Z,PXLHR
+	RES	5,H
+	RET
+PXLHR:	SET	5,H
+PXLLR:	DEC	L
 	RET
 
 	include "calculator.asm"

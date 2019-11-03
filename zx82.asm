@@ -17619,7 +17619,7 @@ L33DE:  ADD     A,$50           ; now add $50 to form actual exponent
         INC     DE              ; increment destination
 ;;;        LD      B,$00           ; prepare to copy
         LDIR                    ; copy C bytes
-
+STK_DATA_CONT:
 ;;;        POP     BC              ; restore 5 counter to BC ??.
 
         EX      (SP),HL         ; put HL on stack as next literal pointer
