@@ -73,6 +73,9 @@ POPHL:	POP	HL
 	RET
 
 ECHO_CONT:
+	LD	A,C
+	OR	A		; check if called from INPUT cmd
+	JP	NZ,SWAP
 	POP	HL
 	POP	HL		; discard two return addresses
 	LD	HL,TV_FLAG
