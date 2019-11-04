@@ -5536,9 +5536,7 @@ L111D:  CALL    L0D4D           ; routine TEMPS sets temporary attributes.
         PUSH    HL              ; and push also
 
         SCF                     ; set carry flag to control SET-DE
-;;; BUGFIX: extensible for faster editor
-	CALL	SET_DE
-;;;	CALL    L1195           ; call routine SET-DE
+	CALL    L1195           ; call routine SET-DE
                                 ; if in input DE = WORKSP
                                 ; if in edit  DE = E_LINE
         EX      DE,HL           ; start address to HL
@@ -20193,11 +20191,6 @@ IOS_TAB:DEFW	RESET_S		; 0: Channel RESET
 	DEFW	L24B7		; 3: DRAW-LINE
 IOS_END:EQU	$
 
-; LOOK-VARS for loop variables (6 bytes)
-LOOP_VARS:
-	CALL	LV_HOOK
-	JP	L28B2		; LOOK-VARS
-
 ; LET substitute for FOR (6 bytes)
 FOR_LET:CALL	FOR_HOOK
 	JP	L2AFF		; LET
@@ -20211,7 +20204,7 @@ REPORT1:CALL	NEXT_HOOK
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
 
-	DEFS	$3C02 - $, $FF
+	DEFS	$3C05 - $, $FF
 
 ; Find token in this ROM (128 bytes)
 ; Input: HL text to match, B length of text, DE token table, C number of tokens in the table
@@ -20303,9 +20296,10 @@ LOOK_PROG_FOR:
 LOOK_PROG_R:
 	JP	L1D86		; LOOK-PROG
 
-; Extensible ED-COPY (10 bytes)
-SET_DE:	CALL	ECHO_HOOK
-	JP	L1195
+; LOOK-VARS for loop variables (6 bytes)
+LOOP_VARS:
+	CALL	LV_HOOK
+	JP	L28B2		; LOOK-VARS
 
 ; Local variables in 128k mode
 STK_F_ARG:
@@ -20350,8 +20344,6 @@ INFIX_HOOK:
 	CALL	NOPAGE
 PLOT_HOOK:
 	CALL	$5B00		; SWAP
-ECHO_HOOK:
-	CALL	NOPAGE
 SUB_HOOK:
 	CALL	NOPAGE
 STRING_HOOK:

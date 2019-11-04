@@ -68,16 +68,22 @@ ED_COPY:PUSH	HL		; save K_STATE address
 	SET	6,(HL)		; flashing cursor ON
 	RES	3,(HL)		; begin with instructions
 	RST	$28
-	DEFW	L111D		; ED-COPY
-POPHL:	POP	HL
-	RET
+	DEFW	L0D4D		; TEMPS set temporary attributes
+        RES     3,(IY+$02)      ; update TV_FLAG  - signal no change in mode
+        RES     5,(IY+$02)      ; update TV_FLAG  - signal don't clear lower
+                                ; screen.
+        LD      HL,(S_POSNL)      ; fetch SPOSNL
+        PUSH    HL              ; and save on stack.
 
-ECHO_CONT:
-	LD	A,C
-	OR	A		; check if called from INPUT cmd
-	JP	NZ,SWAP
-	POP	HL
-	POP	HL		; discard two return addresses
+        LD      HL,(ERR_SP)      ; fetch ERR_SP
+        PUSH    HL              ; and save also
+        LD      HL,L1167        ; address: ED-FULL
+        PUSH    HL              ; is pushed as the error routine
+        LD      (ERR_SP),SP      ; and ERR_SP made to point to it.
+
+        LD      HL,(ECHO_E)      ; fetch ECHO_E
+        PUSH    HL              ; and push also
+
 	LD	HL,TV_FLAG
 	BIT	1,(HL)		; printing tail only?
 	JR	Z,ED_ALL
