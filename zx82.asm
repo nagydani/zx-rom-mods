@@ -20065,7 +20065,10 @@ T_BEEPER:
 	SRL	L
 	EX	AF,AF'		; save AF
 ; TURBO off for bitbang
-TURBO:	IN	A,($FB)		; read ZX Printer port
+TURBO:	LD	C,$FB
+	IN	A,(C)		; read ZX Printer port
+	IN	B,(C)		; read it again after 12 T cycles to avoid floating bus
+	OR	B		; both should agree on low bits
 	ADD	A,A		; test for ZX Printer's presence
 	RET	P		; return, if present (clashes with ZX UNO)
 	LD	BC,$FC3B
