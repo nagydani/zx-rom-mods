@@ -373,7 +373,7 @@ DDOWN:	PUSH	BC
 DRIGHT:	PUSH	BC
 	LD	BC,2*5		; dup2
 	RST	$28
-	DEFW	$1F05
+	DEFW	L1F05		; TEST-ROOM
 	LD	HL,(STKEND)
 	LD	E,L
 	LD	D,H
@@ -387,18 +387,26 @@ DRIGHT:	PUSH	BC
 	DEFB	$E4		; get COORDX
 	DEFB	$0F		; add
 	DEFB	$E4		; get COORDX
+	DEFB	$A2		; stk-half
+	DEFB	$0F		; add
 	DEFB	$27		; int
 	DEFB	$01		; exchange
 	DEFB	$C4		; store COORDX
+	DEFB	$A2		; stk-half
+	DEFB	$0F		; add
 	DEFB	$27		; int
 	DEFB	$03		; subtract: pixel-based DX on stack
 	DEFB	$01		; exchange
 	DEFB	$E5		; get COORDY
 	DEFB	$0F		; add
 	DEFB	$E5		; get COORDY
+	DEFB	$A2		; stk-half
+	DEFB	$0F		; add
 	DEFB	$27		; int
 	DEFB	$01		; exchange
 	DEFB	$C5		; store COORDY
+	DEFB	$A2		; stk-half
+	DEFB	$0F		; add
 	DEFB	$27		; int
 	DEFB	$03		; subtract: pixel-based DY on stack
 	DEFB	$38		; end
@@ -412,11 +420,13 @@ DRIGHT:	PUSH	BC
 	RST	$28
 	DEFW	L2DA2		; FP-TO-BC
 	; TODO: overflow, negative, clipping	
+
 	POP	HL		; restore DX
 	AND	A
 	SBC	HL,BC
 	ADD	HL,BC
 	JR	C,LDRNSW
+	JR	Z,LDRNSW
 	; swap directions
 	LD	C,L
 	LD	B,H		; pixel length is DY instead of DX
@@ -450,7 +460,9 @@ LDRNSW:	PUSH	BC
 
 	SUB	(HL)
 	INC	HL
-	LD	D,(HL)
+	JR	Z,TRANS2
+	JR	NC,TRANS1
+TRANS2:	LD	D,(HL)
 	SET	7,D		; disregard sign
 	INC	HL
 	LD	E,(HL)
@@ -543,6 +555,10 @@ STRGHT:	PUSH	HL
 	RST	$28
 	DEFW	L0BDB		; PO-ATTR
 	RET
+
+TRANS1:	LD	E,C
+	LD	D,B
+	JR	NSHFTDR
 
 TRANS0:	LD	BC,$0000
 	JR	NSHFTDR
