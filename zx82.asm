@@ -11670,11 +11670,14 @@ L238D:  RST     20H             ; NEXT-CHAR skips over the 'comma'.
 
         CALL    L1C82           ; routine EXPT-1NUM stacks the rotation angle.
 
-        CALL    L1BEE           ; routine CHECK-END
+;;; BUGFIX: Abstract arc drawing
+	JP	DRAW_ARC
+;;;	CALL    L1BEE           ; routine CHECK-END
 
 ;   Now enter the calculator and store the complete rotation angle in mem-5
 
-        RST     28H             ;; FP-CALC      x, y, A.
+ARC_DRAW:
+	RST     28H             ;; FP-CALC      x, y, A.
         DEFB    $C5             ;;st-mem-5      x, y, A.
 
 ;   Test the angle for the special case of 360 degrees.
@@ -12059,7 +12062,7 @@ L2439:  PUSH    BC              ; Preserve the arc counter on the machine stack.
         DEFB    $03             ;;subtract      ax, ay, Dx, ay-iy ( = Dy).
         DEFB    $38             ;;end-calc      ax, ay, Dx, Dy.
 
-	CALL	DRAW_LINE	; Routine DRAW-LINE draws (Dx,Dy) relative to
+	CALL	L24B7		; Routine DRAW-LINE draws (Dx,Dy) relative to
                                 ; the last pixel plotted leaving absolute x
                                 ; and y on the calculator stack.
                                 ;               ax, ay.
@@ -19999,10 +20002,15 @@ PAUSE_D:PUSH	HL
 	JP	C,PAUSE_L
 	RET
 
+; Abstract arc
+DRAW_ARC:
+	CALL	L1BEE		; routine CHECK-END
+	LD	A,4
+	JR	O_IOCTL
 ; Abstract straight line
 DRAW_LINE:
 	LD	A,3
-	AND	A
+O_IOCTL:AND	A
 OUT_SERV:
 	JP	L15F2		; output service routine
 
@@ -20176,6 +20184,7 @@ IOS_TAB:DEFW	RESET_S		; 0: Channel RESET
 	DEFW	X0094		; 1: COPY screen to itself (do nothing)
 	DEFW	PLOT		; 2: PLOT
 	DEFW	L24B7		; 3: DRAW-LINE
+	DEFW	ARC_DRAW	; 4: DRAW-ARC
 IOS_END:EQU	$
 
 ; LET substitute for FOR (6 bytes)
