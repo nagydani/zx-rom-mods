@@ -9150,21 +9150,22 @@ L1CA5:  ;SUB     L1AEB-$D8 % 256 ; convert $EB to $D8 ('INK') etc.
 L1CBE:  CALL    L2530           ; routine SYNTAX-Z
         JR      Z,L1CD6         ; forward to CL-09-1 if checking syntax.
 
-        RES     0,(IY+$02)      ; update TV_FLAG - signal main screen in use
-        CALL    L0D4D           ; routine TEMPS is called.
-        LD      HL,MASK_T        ; point to MASK_T
+;;; BUGFIX: Use channel "S"
+	RST	$18		; GET-CHAR
+	CALL	STR_FE
+	CALL	L1601
+;;;	RES     0,(IY+$02)      ; update TV_FLAG - signal main screen in use
+;;;	CALL    L0D4D           ; routine TEMPS is called.
+	LD	HL,MASK_T	; point to MASK_T
         LD      A,(HL)          ; fetch mask to accumulator.
         OR      $F8             ; or with 11111000 paper/bright/flash 8
         LD      (HL),A          ; mask back to MASK_T system variable.
         RES     6,(IY+$57)      ; reset P_FLAG  - signal NOT PAPER 9 ?
 
-        RST     18H             ; GET-CHAR
+	RST     18H             ; GET-CHAR
 
 ;; CL-09-1
-L1CD6:
-;;; BUGFIX: Use channel 2
-	CALL	STREAM2
-;;;	CALL    L21E2           ; routine CO-TEMP-2 deals with any embedded
+L1CD6:	CALL    L21E2           ; routine CO-TEMP-2 deals with any embedded
                                 ; colour items.
         JR      L1C7A           ; exit via EXPT-2NUM to check for x,y.
 
@@ -20112,18 +20113,6 @@ REPORT_B_3:
 	RST	$08
 	DEFB	$0A		; B Integer out of range
 
-; Change BORDER color in Timex HiRes mode as well (13 bytes)
-BORDER:	RLCA
-	RLCA
-	RLCA
-	LD	B,A
-	IN	A,($FF)
-	OR	$38
-	XOR	B
-	OUT	($FF),A
-	LD	A,B
-	RET
-
 ; Move cursor forward
 PR_RIGHT:
 	DEC	C
@@ -20169,10 +20158,6 @@ OUT_INV:PUSH	AF
 	LD	A,$0F
 	JP	OUT_INV_1
 
-; Abstracted NEW routine
-NEW:	CALL	NEW_HOOK
-	JP	L11B7		; NEW
-
 ; S channel controls
 IOCTL_S:EX	AF,AF'
 	ADD	A,A
@@ -20197,6 +20182,10 @@ IOS_END:EQU	$
 FOR_LET:CALL	FOR_HOOK
 	JP	L2AFF		; LET
 
+; Abstracted NEW routine (6 bytes)
+NEW:	CALL	NEW_HOOK
+	JP	L11B7		; NEW
+
 ; REPORT1, check for local variables first (5 bytes)
 REPORT1:CALL	NEXT_HOOK
 	RST	$08
@@ -20206,7 +20195,7 @@ REPORT1:CALL	NEXT_HOOK
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
 
-	DEFS	$3C05 - $, $FF
+	DEFS	$3C02 - $, $FF
 
 ; Find token in this ROM (128 bytes)
 ; Input: HL text to match, B length of text, DE token table, C number of tokens in the table
@@ -20283,6 +20272,18 @@ SPACEKW_R1:
 	DEC	DE
 	JR	TESTKW2_R1
 
+; Change BORDER color in Timex HiRes mode as well (13 bytes)
+BORDER:	RLCA
+	RLCA
+	RLCA
+	LD	B,A
+	IN	A,($FF)
+	OR	$38
+	XOR	B
+	OUT	($FF),A
+	LD	A,B
+	RET
+
 ; Find next argument of PROC or DATA (9 bytes)
 LOOK_READ:
 	CP	"("
@@ -20320,15 +20321,11 @@ REPORT_C_EXTRA:
 	RST	$08
 	DEFB	$0B		; C Nonsense in BASIC
 
-; Open system channel S (or other) for class 9 attribute changes
-STREAM2:CP	"#"
+; Select system channel S (or other) for class 9 attribute changes
+STR_FE:	CP	"#"
 	JR	Z,REPORT_C_EXTRA; other streams only allowed in ROM1
-	EX	AF,AF'
-	LD	A,$FE		; system channel "S"
-        CALL    L2530           ; routine SYNTAX-Z - checking syntax ?
-        CALL    NZ,L1601        ; routine CHAN-OPEN if in run-time.
-	EX	AF,AF'
-	JP	L21E2		; CO-TEMP-2
+	LD	A,$FE
+	RET
 
 ; Abstracted PLOT routine (high speed)
 PLOT:	BIT	4,(IY+FLAGS-ERR_NR)
