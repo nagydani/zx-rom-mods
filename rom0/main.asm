@@ -931,7 +931,7 @@ MIRROR:	LD	D,(HL)
 ; Replace a,b on top of stack by INT(a/b) and return a MOD b in register A.
 MOD2A:	CALL	MODDIV
 	RST	$28
-	DEFW	L343C		; EXCHANGE
+	DEFW	EXCHANGE
 	RST	$28
 	DEFW	L2DA2		; FP-TO-BC (and A)
 	RET

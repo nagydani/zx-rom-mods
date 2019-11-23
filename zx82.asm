@@ -1453,7 +1453,7 @@ L0427:  INC     B               ; increment octave
         ADD     A,$0C           ; A = # semitones above C (0-11)
         PUSH    BC              ; B = octave displacement from middle C, 2's complement: -5<=B<=10
         LD      HL,L046E        ; Address: semi-tone
-        CALL    L3406           ; routine LOC-MEM
+        CALL    LOC_MEM           ; routine LOC-MEM
                                 ;   HL = 5*A + $046E
         CALL    L33B4           ; routine STACK-NUM
                                 ;   read FP value (freq) from semitone table (HL) and push onto calc stack
@@ -17294,7 +17294,7 @@ SCINOT1:JP	Z,L2CF2
 
 ;; tbl-addrs
 L32D7:  DEFW    L368F           ; $00 Address: $368F - jump-true
-        DEFW    L343C           ; $01 Address: $343C - exchange
+        DEFW    EXCHANGE           ; $01 Address: $343C - exchange
         DEFW    L33A1           ; $02 Address: $33A1 - delete
 
 ;   True binary operations.
@@ -17372,9 +17372,9 @@ L32D7:  DEFW    L368F           ; $00 Address: $368F - jump-true
 ;   literals which are in range $80 - $FF.
 
         DEFW    L3449           ;     Address: $3449 - series-xx    $80 - $9F.
-        DEFW    STK_CONST       ;     Address: $341B - stk-const-xx $A0 - $BF.
-        DEFW    L342D           ;     Address: $342D - st-mem-xx    $C0 - $DF.
-        DEFW    GET_MEM         ;     Address: $340F - get-mem-xx   $E0 - $FF.
+        DEFW    STK_CONST	;     Address: $341B - stk-const-xx $A0 - $BF.
+        DEFW    STK_MEM		;     Address: $342D - st-mem-xx    $C0 - $DF.
+        DEFW    GET_MEM		;     Address: $340F - get-mem-xx   $E0 - $FF.
 
 ;   Aside: 3E - 3F are therefore unused calculator literals.
 ;   If the literal has to be also usable as a function then bits 6 and 7 are
@@ -17603,7 +17603,7 @@ L33C8:  CALL    L33A9           ; routine TEST-5-SP tests that room exists
                                 ; to read. $01 - $04
         LD      A,(HL)          ; reload the first byte
         AND     $3F             ; mask off to give possible exponent.
-        JR      NZ,L33DE        ; forward to FORM-EXP if it was possible to
+        JR      NZ,FORM_EXP	; forward to FORM-EXP if it was possible to
                                 ; include the exponent.
 
 ; else byte is just a byte count and exponent comes next.
@@ -17612,7 +17612,9 @@ L33C8:  CALL    L33A9           ; routine TEST-5-SP tests that room exists
         LD      A,(HL)          ; pick up the exponent ( - $50).
 
 ;; FORM-EXP
-L33DE:  ADD     A,$50           ; now add $50 to form actual exponent
+;;;L33DE:
+FORM_EXP:
+	ADD     A,$50           ; now add $50 to form actual exponent
         LD      (DE),A          ; and load into first destination byte.
         LD      A,$05           ; load accumulator with $05 and
         SUB     C               ; subtract C to give count of trailing
@@ -17637,14 +17639,16 @@ STK_DATA_CONT:
         XOR     A               ; clear accumulator
 
 ;; STK-ZEROS
-L33F1:  DEC     B               ; decrement B counter
+;;;L33F1:
+STK_ZEROS:
+	DEC     B               ; decrement B counter
         RET     Z               ; return if zero.          >>
                                 ; DE points to new STKEND
                                 ; HL to new number.
 
         LD      (DE),A          ; else load zero to destination
         INC     DE              ; increase destination
-        JR      L33F1           ; loop back to STK-ZEROS until done.
+        JR      STK_ZEROS	; loop back to STK-ZEROS until done.
 
 ; -------------------------------
 ; THE 'SKIP CONSTANTS' SUBROUTINE
@@ -17704,7 +17708,8 @@ TAB_CNST:
 ;   six values are held in compressed format.
 
 ;; LOC-MEM
-L3406:  LD      C,A             ; store the original number $00-$1F.
+;;;L3406:
+LOC_MEM:LD      C,A             ; store the original number $00-$1F.
         RLCA                    ; X2 - double.
         RLCA                    ; X4 - quadruple.
         ADD     A,C             ; X5 - now add original to multiply by five.
@@ -17731,7 +17736,7 @@ STK_CONST:
 ;; get-mem-xx
 GET_MEM:LD      HL,(MEM)	; MEM is base address of the memory cells.
 INDEX5:	PUSH	DE		; save STKEND
-	CALL    L3406           ; routine LOC-MEM so that HL = first byte
+	CALL    LOC_MEM           ; routine LOC-MEM so that HL = first byte
         CALL    L33C0           ; routine MOVE-FP moves 5 bytes with memory
                                 ; check.
                                 ; DE now points to new STKEND.
@@ -17783,10 +17788,11 @@ KEYCLICK:
 ; points to STKEND.
 
 ;; st-mem-xx
-L342D:  PUSH    HL              ; save the result pointer.
+;;;L342D:
+STK_MEM:PUSH    HL              ; save the result pointer.
         EX      DE,HL           ; transfer to DE.
         LD      HL,(MEM)      ; fetch MEM the base of memory area.
-        CALL    L3406           ; routine LOC-MEM sets HL to the destination.
+        CALL    LOC_MEM           ; routine LOC-MEM sets HL to the destination.
         EX      DE,HL           ; swap - HL is start, DE is destination.
         CALL    L33C0           ; routine MOVE-FP.
                                 ; note. a short ld bc,5; ldir
@@ -17806,12 +17812,16 @@ L342D:  PUSH    HL              ; save the result pointer.
 ;   On exit, HL=result, DE=stkend.
 
 ;; exchange
-L343C:  LD      B,$05           ; there are five bytes to be swapped
+;;;L343C:
+EXCHANGE:
+	LD      B,$05           ; there are five bytes to be swapped
 
 ; start of loop.
 
 ;; SWAP-BYTE
-L343E:  LD      A,(DE)          ; each byte of second
+;;;L343E:
+SWAP_BYTE:
+	LD      A,(DE)          ; each byte of second
 ;;;        LD      C,(HL)          ; each byte of first
 ;;;        EX      DE,HL           ; swap pointers
 	LD	C,A
@@ -17821,7 +17831,7 @@ L343E:  LD      A,(DE)          ; each byte of second
         LD      (HL),C          ; store each byte of second
         INC     HL              ; advance both
         INC     DE              ; pointers.
-        DJNZ    L343E           ; loop back to SWAP-BYTE until all 5 done.
+        DJNZ    SWAP_BYTE	; loop back to SWAP-BYTE until all 5 done.
 
 ;;;        EX      DE,HL           ; even up the exchanges so that DE addresses
                                 ; STKEND.
@@ -18400,7 +18410,7 @@ EX_OR_NOT:
         PUSH    HL              ; save HL - pointer to first operand.
                                 ; (DE points to second operand).
 
-        CALL    L343C           ; routine exchange swaps the two values.
+        CALL    EXCHANGE           ; routine exchange swaps the two values.
                                 ; (HL = second operand, DE = STKEND)
 
         POP     DE              ; DE = first operand
@@ -19856,7 +19866,7 @@ SAVARGS:POP	DE
 	LD	A,(HL)
 SARGL:	INC	HL
 	CP	$0E
-	CALL	Z,L343C		; EXCHANGE
+	CALL	Z,EXCHANGE		; EXCHANGE
 	LD	A,(HL)
 	CP	")"
 	JR	NZ,SARGL

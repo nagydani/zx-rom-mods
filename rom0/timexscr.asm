@@ -366,16 +366,20 @@ DRAW2:	LD	HL,COORDX
 	LD	BC,PXDOWN
 	BIT	7,(HL)
 	JR	Z,DDOWN
+	LD	HL,MEMBOT+5
+	RST	$28
+	DEFW	L346E		; negate
 	LD	BC,PXUP
-	SET	7,(IY+MEMBOT+6-ERR_NR)
 DDOWN:	PUSH	BC		; vertical step
 	EX	DE,HL
 	INC	HL
 	LD	BC,PXRIGHT
 	BIT	7,(HL)
 	JR	Z,DRIGHT
+	LD	HL,MEMBOT
+	RST	$28
+	DEFW	L346E		; negate
 	LD	BC,PXLEFT
-	SET	7,(IY+MEMBOT+1-ERR_NR)
 DRIGHT:	PUSH	BC		; horizontal step
 	LD	BC,2*5		; dup2
 	RST	$28
@@ -392,33 +396,20 @@ DRIGHT:	PUSH	BC		; horizontal step
 	CALL	CALCULATE
 	DEFB	$E4		; get COORDX	dy,dx,x1
 	DEFB	$0F		; add		dy,x2
-	DEFB	$E4		; get COORDX	dy,x2,x1
-	DEFB	$27		; int		dy,x2,X1
-	DEFB	$01		; exchange	dy,X1,x2
 	DEFB	$C4		; store COORDX
-	DEFB	$27		; int		dy,X1,X2
-	DEFB	$03		; subtract	dy,DX
-	DEFB	$01		; exchange	DX,dy
-	DEFB	$E5		; get COORDY	DX,dy,y1
-	DEFB	$0F		; add		DX,y2
-	DEFB	$E5		; get COORDY	DX,y2,y1
-	DEFB	$27		; int		DX,y2,Y1
-	DEFB	$01		; exchange	DX,Y1,y2
+	DEFB	$02		; delete	dy
+	DEFB	$E5		; get COORDY	dy,y1
+	DEFB	$0F		; add		y2
 	DEFB	$C5		; store COORDY
-	DEFB	$27		; int		DX,Y1,Y2
-	DEFB	$03		; subtract	DX,DY
+	DEFB	$02		; delete	y2
 	DEFB	$38		; end
 	LD	HL,MEMBOT
 	LD	(MEM),HL
-
-	RST	$28
-	DEFW	L2DA2		; FP-TO-BC
-	; TODO: overflow, negative, clipping	
-	PUSH	BC		; save DY
-	RST	$28
-	DEFW	L2DA2		; FP-TO-BC
-	; TODO: overflow, negative, clipping	
-	PUSH	BC		; save DX
+	LD	BC,2*5
+	ADD	HL,BC
+	EX	DE,HL
+	LD	HL,COORDX
+	LDIR			; x2,y2 to M2,M3
 
 	RST	$28
 	DEFW	L35BF		; STK-PNTRS
@@ -454,15 +445,14 @@ STEEP:	EXX
 	LD	HL,MEMBOT
 	LD	DE,MEMBOT+5
 	RST	$28
-	DEFW	L343C		; exchange
+	DEFW	EXCHANGE
+	LD	HL,MEMBOT+3*5
+	LD	BC,5
+	LDIR
 	EX	AF,AF'
-	POP	BC
-	POP	DE
 	POP	HL
-	EX	(SP),HL
-	PUSH	HL		; swap DX and DY
-	PUSH	BC
-	PUSH	DE		; swap transversal and longitudal steps
+	EX	(SP),HL		; swap transversal
+	PUSH	HL		; and longitudal steps
 	EXX
 	LD	L,C
 	LD	H,B
@@ -486,8 +476,9 @@ NSHFTDR:SRL	B
 	RR	C
 	SRL	D
 	RR	E
-	PUSH	BC
-	PUSH	DE
+	PUSH	BC		; placeholder for length in pixels
+	PUSH	BC		; t
+	PUSH	DE		; l
 	PUSH	BC
 	LD	C,E
 	LD	B,D
@@ -496,19 +487,38 @@ NSHFTDR:SRL	B
 	POP	BC
 	RST	$28
 	DEFW	L2D2B + 4	; STACK-BC + 4	t
-	CALL	CALCULATE
-	DEFB	$E0		; get M0
-	DEFB	$31		; duplicate
-	DEFB	$27		; int
+	LD	A,(MEMBOT+1)
+	ADD	A,A
+	JR	NC,DRFWD
+	LD	HL,MEMBOT+2*5
+	RST	$28
+	DEFW	L346E		; negate
+DRFWD:	CALL	CALCULATE
+	DEFB	$E0		; get M0	M0
+	DEFB	$31		; duplicate	M0,M0
+	DEFB	$27		; int		M0,int(M0)
+	DEFB	$C3		; store M3	M0,int(M0)
 	DEFB	$03		; subtract	frac(M0)
 	DEFB	$31		; duplicate	frac(M0),frac(M0)
+	DEFB	$E3		; get M3	frac(M0),frac(M0),int(M0)
+	DEFB	$E2		; get M2	frac(M0),frac(M0),int(M0),M2
+	DEFB	$27		; int		frac(M0),frac(M0),int(M0),int(M2)
+	DEFB	$03		; subtract	frac(M0),frac(M0),int(M0)-int(M2)
 	DEFB	$38		; end
 	RST	$28
-	DEFW	L2DA2 + 2	; FP-TO-BC
+	DEFW	L2DA2 + 2	; FP-TO-BC	length in pixels
+	PUSH	BC
+	RST	$28
+	DEFW	L2DA2 + 2	; FP-TO-BC	frac(M0)
+	POP	BC
 	OR	A
-	JR	NZ,DRPIX
-	LD	HL,$0008
+	LD	HL,$0004
 	ADD	HL,SP
+	LD	(HL),C
+	INC	HL
+	LD	(HL),B		; save length in pixels at placeholder
+	JR	NZ,DRPIX
+	INC	HL
 	LD	E,(HL)
 	INC	HL
 	LD	D,(HL)
@@ -545,13 +555,12 @@ DRPOS:	LD	L,C
 DRNON0:	POP	DE		; DE = l
 	POP	BC		; BC = t
 	EXX
-	POP	BC		; BC = DX
-	POP	HL		; discard DY
+	POP	BC		; BC = length in pixels
 	POP	HL		; longitudal step
 	POP	DE		; transversal step
 	LD	A,B
 	OR	C
-	RET	Z
+	JR	Z,DRENDP
 
 ; BC=length in pixels
 ; DE=transversal step pointer
@@ -582,7 +591,7 @@ STRGHT:	PUSH	BC
 	OR	C
 	JR	NZ,BRESEN
 
-	LD	A,$FF
+DRENDP:	LD	A,$FF
 	LD	(COORDS+1),A	; signal DRAW endpoint
 	LD	HL,COORDY
 	LD	DE,(STKEND)
