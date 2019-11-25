@@ -264,6 +264,7 @@ ENDDRAW:XOR	A
 	RST	$28
 	DEFW	L22AA+6		; PIXEL-ADD + 6
 	CALL	SETPIX
+	RET	C		; DRAW endpoint
 	EX	AF,AF'		; restore S_MODE
 	INC	SP
 	INC	SP		; remove SWAP
@@ -305,6 +306,7 @@ PIXL:	RRCA
 	LD	(COORDS),A	; save mask for DRAW
 	LD	(COORDS2),HL
 	INC	(IY+COORDS+1-ERR_NR)
+	SCF
 	RET	Z		; DRAW endpoint
 MASKPIX:LD	B,A
 	LD	A,(HL)
@@ -401,7 +403,7 @@ DRIGHT:	PUSH	BC		; horizontal step
 	DEFB	$E5		; get COORDY	dy,y1
 	DEFB	$0F		; add		y2
 	DEFB	$C5		; store COORDY
-	DEFB	$02		; delete	y2
+	DEFB	$02		; delete
 	DEFB	$38		; end
 	LD	HL,MEMBOT
 	LD	(MEM),HL
@@ -416,6 +418,7 @@ DRIGHT:	PUSH	BC		; horizontal step
 	CALL	STEPBACK
 	RST	$28
 	DEFW	L3293		; RE-ST-TWO
+	LD	(STKEND),HL	; remove dx and dy from calculator stack
 
 	LD	A,(HL)
 	INC	HL
@@ -666,5 +669,144 @@ PXLEFT:	RLC	(IY+COORDS-ERR_NR)
 PXLHR:	SET	5,H
 PXLLR:	DEC	L
 	RET
+
+DRAW64:	LD	A,$40
+	JR	DRAW3C
+
+DRAW1:	CALL	CALCULATE
+	DEFB	$E1		; get M1
+	DEFB	$E2		; get M2
+	DEFB	$38		; end
+	JP	DRAW2
+
+DRAW3:	CALL	CALCULATE
+	DEFB	$A2		; stk half
+	DEFB	$04		; multiply
+	DEFB	$C5		; store M5
+	DEFB	$02		; delete
+	DEFB	$C2		; store M2
+	DEFB	$2A		; abs
+	DEFB	$01		; exchange
+	DEFB	$C1		; store M1
+	DEFB	$2A		; abs
+	DEFB	$0F		; addition
+	DEFB	$E5		; get M5
+	DEFB	$2A		; abs
+	DEFB	$04		; multiply
+	DEFB	$27		; int
+	DEFB	$38		; end
+	RST	$28
+	DEFW	L2DD5		; FP-TO-A
+	JR	C,DRAW64
+	RRCA
+	RRCA
+	AND	$3F
+	JR	Z,DRAW1
+	INC	A
+DRAW3C:	PUSH	AF		; number of segments
+	RST	$28
+	DEFW	L2D28		; STACK-A
+	CALL	CALCULATE
+	DEFB	$E5		; get M5	n,a/2
+	DEFB	$01		; exchange	a/2,n
+	DEFB	$05		; division	a/2n
+	DEFB	$C3		; store M3	a/2n
+	DEFB	$31		; duplicate	a/2n,a/2n
+	DEFB	$0F		; addition	a/n
+	DEFB	$C4		; store M4	a/n
+	DEFB	$02		; delete
+	DEFB	$E2		; get M2	dy
+	DEFB	$E1		; get M1	dy,dx
+	DEFB	$E5		; get M5	dy,dx,a/2
+	DEFB	$E3		; get M3	dy,dx,a/2,a/2n
+	DEFB	$03		; subtract	dy,dx,a/2-a/2n
+	DEFB	$E5		; get M5	dy,dx,a/2-a/2n,a/2
+	DEFB	$E3		; get M3	dy,dx,a/2-a/2n,a/2,a/2n
+	DEFB	$1F		; sin		dy,dx,a/2-a/2n,a/2,sin(a/2n)
+	DEFB	$01		; exchange	dy,dx,a/2-a/2n,sin(a/2n),a/2
+	DEFB	$1F		; sin		dy,dx,a/2-a/2n,sin(a/2n),sin(a/2)
+	DEFB	$05		; division	dy,dx,a/2-a/2n,sin(a/2n)/sin(a/2)
+	DEFB	$C3		; store M3	dy,dx,a/2-a/2n,sin(a/2n)/sin(a/2)=w
+	DEFB	$02		; delete	dy,dx,a/2-a/2n
+	DEFB	$31		; duplicate	dy,dx,a/2-a/2n,a/2-a/2n
+	DEFB	$1F		; sin		dy,dx,a/2-a/2n,sin(a/2-a/2n)
+	DEFB	$01		; exchange	dy,dx,sin(a/2-a/2n),a/2-a/2n
+	DEFB	$20		; cos		dy,dx,sin(a/2-a/2n),cos(a/2-a/2n)
+	DEFB	$C1		; store M1	dy,dx,sin(a/2-a/2n),cos(a/2-a/2n)
+	DEFB	$02		; delete	dy,dx,sin(a/2-a/2n)
+	DEFB	$1B		; negate	dy,dx,-sin(a/2-a/2n)
+	DEFB	$C2		; store M2	dy,dx,-sin(a/2-a/2n)
+	DEFB	$02		; delete	dy,dx
+	DEFB	$E3		; get M3	dy,dx,w
+	DEFB	$04		; multiply	dy,dx*w
+	DEFB	$01		; exchange	dx*w,dy
+	DEFB	$E3		; get M3	dx*w,dy,w
+	DEFB	$04		; multiply	dx*w,dy*w
+	DEFB	$38		; end
+	CALL	CPXMUL
+	CALL	CALCULATE
+	DEFB	$E4		; get M4	dx',dy',a/n
+	DEFB	$20		; cos		dx',dy',cos(a/n)
+	DEFB	$C3		; store M3	dx',dy',cos(a/n)
+	DEFB	$02		; delete	dx',dy'
+	DEFB	$E4		; get M4	dx',dy',a/n
+	DEFB	$1F		; sin		dx',dy',sin(a/n)
+	DEFB	$C4		; store M4	dx',dy',sin(a/n)
+	DEFB	$02		; delete	dx',dy'
+	DEFB	$C2		; store M2	dx',dy'
+	DEFB	$02		; delete	dx'
+	DEFB	$C1		; store M1	dx'
+; ARC loop
+ARCL:	DEFB	$E2		; get M2
+	DEFB	$E3		; get M3
+	DEFB	$E4		; get M4
+	DEFB	$38		; end
+	CALL	DRAW1
+	LD	HL,(STKEND)
+	DEC	HL
+	LD	DE,MEMBOT+5*5-1
+	LD	BC,4*5
+	LDDR
+	INC	HL
+	LD	(STKEND),HL
+	POP	BC
+	DJNZ	ARCL1
+	RET
+
+ARCL1:	PUSH	BC
+	CALL	CALCULATE
+	DEFB	$E3		; get M3
+	DEFB	$E4		; get M4
+	DEFB	$38
+	CALL	CPXMUL
+	CALL	CALCULATE
+	DEFB	$C2		; store M2
+	DEFB	$02		; delete
+	DEFB	$C1		; store M1
+	DEFB	$33		; jump
+	DEFB	ARCL - $
+
+; Complex multiplication by M1+i*M2
+CPXMUL:	CALL	CALCULATE
+	DEFB	$C0		; store M0
+	DEFB	$02		; delete
+	DEFB	$31		; duplicate
+	DEFB	$E2		; get M2
+	DEFB	$04		; multiply
+	DEFB	$01		; exchange
+	DEFB	$E1		; get M1
+	DEFB	$04		; multiply
+	DEFB	$E0		; get M0
+	DEFB	$E2		; get M2
+	DEFB	$04		; multiply
+	DEFB	$03		; subtract
+	DEFB	$01		; exchange
+	DEFB	$E0		; get M0
+	DEFB	$E1		; get M1
+	DEFB	$04		; multiply
+	DEFB	$0F		; addition
+	DEFB	$38		; end
+	RET
+
 
 	include "calculator.asm"

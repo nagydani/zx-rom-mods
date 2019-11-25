@@ -770,6 +770,8 @@ S_OUT1:	LD	HL,S_STATE
 	EX	DE,HL
 	LD	HL,S_IOCTL
 	ADD	A,A
+	CP	S_IOCTL_END-S_IOCTL
+	RET	NC
 	LD	C,A
 	LD	B,0
 	ADD	HL,BC
@@ -1322,6 +1324,8 @@ S_IOCTL:DEFW	S_RST	; reset S channel (clear screen, etc.)
 	DEFW	TNOP	; COPY screen to itself (i.e. do nothing)
 	DEFW	PLOT1	; PLOT a single point
 	DEFW	DRAW2	; DRAW straight line
+	DEFW	DRAW3	; DRAW arc
+S_IOCTL_END:	EQU	$
 
 EDITOR_HEADER0:
 	DEFB	$14,$01,$16,$00,$00,$13,$01,$10,$00
