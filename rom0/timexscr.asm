@@ -797,7 +797,7 @@ ARCL:	DEFB	$E2		; get M2
 	DEFB	$E3		; get M3
 	DEFB	$E4		; get M4
 	DEFB	$38		; end
-	CALL	DRAW1
+ARCL2:	CALL	DRAW1
 	LD	HL,(STKEND)
 	DEC	HL
 	LD	DE,MEMBOT+5*5-1
@@ -822,9 +822,18 @@ ARCL1:	PUSH	BC
 	DEFB	$33		; jump
 	DEFB	ARCL - $
 
-CIRCLE2:LD	HL,MEMBOT
+CIRCLE2:INC	A
+	RRA
+	ADD	A,2
+	CP	6
+	JR	C,CRSMALL
+	LD	A,5
+CRSMALL:LD	B,A
+	LD	A,$02
+ANGLES:	RLCA
+	DJNZ	ANGLES
+	LD	HL,MEMBOT
 	LD	(MEM),HL
-	LD	A,$40		; 64: maximum number of arcs
 	PUSH	AF
 	RST	$28		; calculate
 	DEFB	$01		; exchange
@@ -836,7 +845,13 @@ CIRCLE2:LD	HL,MEMBOT
 	AND	A
 	RST	$30
 	DEFW	L15F2		; PRINT_A_2
-	RST	$28		; calculate
+	POP	AF
+	PUSH	AF
+	LD	B,2
+	CP	$40
+	JR	Z,CRCL64
+	DEC	B
+CRCL64:	RST	$28		; calculate
 	DEFB	$34,$ED,$48,$BD,$35,$E1	; stk sin(PI/32)
 	DEFB	$C4		; store M4
 	DEFB	$34,$F0,$7E,$C4,$6D,$20	; stk cos(PI/32)
@@ -850,8 +865,51 @@ CIRCLE2:LD	HL,MEMBOT
 	DEFB	$E0		; get M0
 	DEFB	$04		; multiply
 	DEFB	$C1		; store M1
-	DEFB	$33		; jump
+	DEFB	$35		; dec-jrnz
 	DEFB	ARCL - $
+	DEFB	$38		; end
+	POP	AF
+	PUSH	AF
+	ADD	A,A
+	ADD	A,A
+ARCL3:	PUSH	AF
+	RST	$28
+	DEFB	$E3		; get M3
+	DEFB	$E4		; get M4
+	DEFB	$38		; end
+	CALL	CPXMUL
+	RST	$28
+	DEFB	$E2		; get M2
+	DEFB	$0F		; addition
+	DEFB	$01		; exchange
+	DEFB	$E1		; get M1
+	DEFB	$0F		; addition
+	DEFB	$E3		; get M3
+	DEFB	$C1		; store M1
+	DEFB	$E4		; get M4
+	DEFB	$C2		; store M2
+	DEFB	$38		; end
+	CALL	CPXMUL
+	RST	$28
+	DEFB	$C4		; store M4
+	DEFB	$02		; delete
+	DEFB	$C3		; store M3
+	DEFB	$02		; delete
+	DEFB	$C1		; store M1
+	DEFB	$02		; delete
+	DEFB	$C2		; store M2
+	DEFB	$02		; delete
+	DEFB	$38		; end
+	POP	AF
+	ADD	A,A
+	JR	NC,ARCL3
+	RST	$28
+	DEFB	$E1		; get M1
+	DEFB	$E2		; get M2
+	DEFB	$E3		; get M3
+	DEFB	$E4		; get M4
+	DEFB	$38		; end
+	JP	ARCL2
 
 ; Complex multiplication by M1+i*M2
 CPXMUL:	RST	$28		; calculate
