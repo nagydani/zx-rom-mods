@@ -11398,13 +11398,15 @@ L2320:  RST     18H             ; GET-CHAR              x, y.
 
         RST     20H             ; NEXT-CHAR advances the parsed character address.
         CALL    L1C82           ; routine EXPT-1NUM stacks radius in runtime.
-        CALL    L1BEE           ; routine CHECK-END will return here in runtime
+;;; BUGFIX: abstract CIRCLE
+	JP	ACIRCLE
+;;;     CALL    L1BEE           ; routine CHECK-END will return here in runtime
                                 ; if nothing follows the command.
 
 ;   Now make the radius positive and ensure that it is in floating point form
 ;   so that the exponent byte can be accessed for quick testing.
 
-        RST     28H             ;; FP-CALC              x, y, r.
+DCRCLE:	RST     28H             ;; FP-CALC              x, y, r.
         DEFB    $2A             ;;abs                   x, y, r.
         DEFB    $3D             ;;re-stack              x, y, r.
         DEFB    $38             ;;end-calc              x, y, r.
@@ -20012,6 +20014,10 @@ PAUSE_D:PUSH	HL
 	JP	C,PAUSE_L
 	RET
 
+; Abstract circle
+ACIRCLE:CALL	L1BEE		; routine CHECK-END
+	LD	A,5
+	JR	O_IOCTL
 ; Abstract arc
 DRAW_ARC:
 	CALL	L1BEE		; routine CHECK-END
@@ -20067,17 +20073,18 @@ CH_DEST:LD	HL,(DEST)
 SK_DEST:EX	DE,HL
 	JP	L1664
 
+; These must be FF for IM2 vectoring
+	DEFS	$3A01 - $, $FF
+
 ; TURBO protection routines
-T_SA_BYTES:
-	INC	DE
-	DEC	IX
-	JR	TURBO
 T_LD_BYTES:
 	LD      HL,L053F        ; Address: SA/LD-RET
 	JR	TURBO
 
-; These must be FF for IM2 vectoring
-	DEFS	$3A01 - $, $FF
+T_SA_BYTES:
+	INC	DE
+	DEC	IX
+	JR	TURBO
 
 T_BEEPER:
 	SRL	L
@@ -20195,6 +20202,7 @@ IOS_TAB:DEFW	RESET_S		; 0: Channel RESET
 	DEFW	PLOT		; 2: PLOT
 	DEFW	L24B7		; 3: DRAW-LINE
 	DEFW	ARC_DRAW	; 4: DRAW-ARC
+	DEFW	DCRCLE		; 5: DRAW-CIRCLE
 IOS_END:EQU	$
 
 ; LET substitute for FOR (6 bytes)

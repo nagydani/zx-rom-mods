@@ -221,8 +221,33 @@ POSCR4B:CALL	CL_SCR
 	POP	BC
 	RET
 
-DRAWTO:	LD	A,$FF
-	DEFB	$2E		; LD L,skip next byte
+DRAWAT:	LD	A,$FF
+	JR	DOPLOT
+
+CIRCLE:	CALL	CALCULATE
+	DEFB	$C0		; store M0
+	DEFB	$38		; end
+	LD	HL,ORIGX
+	LD	(MEM),HL
+	CALL	CALCULATE
+	DEFB	$31		; duplicate
+	DEFB	$E2		; get SCALEX
+	DEFB	$04		; multiply
+	DEFB	$3D		; restack
+	DEFB	$01		; exchange
+	DEFB	$E3		; get SCALEY
+	DEFB	$04		; multiply
+	DEFB	$3D		; restack
+	DEFB	$02		; delete
+	DEFB	$38		; end
+	LD	A,(DE)
+	CP	(HL)
+	JR	NC,CIRCMP
+	LD	A,(HL)
+CIRCMP:	SUB	$81
+	LD	(STKEND),HL
+	JP	NC,CIRCLE2
+
 PLOT1:	XOR	A
 DOPLOT:	LD	(COORDS+1),A
 	LD	HL,ORIGX
@@ -679,15 +704,23 @@ DRAW1:	CALL	CALCULATE
 	DEFB	$38		; end
 	JP	DRAW2
 
-DRAW3:	CALL	CALCULATE
+DRAW3:	LD	HL,SCALEX
+	LD	DE,MEMBOT+3*5
+	LD	BC,2*5
+	LDIR			; copy SCALEX,SCALEY to M3,M4
+	CALL	CALCULATE
 	DEFB	$A2		; stk half
 	DEFB	$04		; multiply
 	DEFB	$C5		; store M5
 	DEFB	$02		; delete
 	DEFB	$C2		; store M2
+	DEFB	$E4		; get M4 (SCALEY)
+	DEFB	$04		; multiply
 	DEFB	$2A		; abs
 	DEFB	$01		; exchange
 	DEFB	$C1		; store M1
+	DEFB	$E3		; get M3 (SCALEX)
+	DEFB	$04		; multiply
 	DEFB	$2A		; abs
 	DEFB	$0F		; addition
 	DEFB	$E5		; get M5
@@ -783,6 +816,34 @@ ARCL1:	PUSH	BC
 	CALL	CALCULATE
 	DEFB	$C2		; store M2
 	DEFB	$02		; delete
+	DEFB	$C1		; store M1
+	DEFB	$33		; jump
+	DEFB	ARCL - $
+
+CIRCLE2:LD	HL,MEMBOT
+	LD	(MEM),HL
+	LD	A,$40		; 64: maximum number of arcs
+	PUSH	AF
+	CALL	CALCULATE
+	DEFB	$01		; exchange
+	DEFB	$E0		; get M0
+	DEFB	$0F		; addition
+	DEFB	$01		; exchange
+	DEFB	$38		; end
+	CALL	PLOT1
+	CALL	CALCULATE
+	DEFB	$34,$ED,$48,$BD,$35,$E1	; stk sin(PI/32)
+	DEFB	$C4		; store M4
+	DEFB	$34,$F0,$7E,$C4,$6D,$20	; stk cos(PI/32)
+	DEFB	$C3		; store M3
+	DEFB	$02		; delete
+	DEFB	$E0		; get M0
+	DEFB	$04		; multiply
+	DEFB	$C2		; store M2
+	DEFB	$02		; delete
+	DEFB	$34,$E9,$9D,$C9,$70,$BB ; stk -2*sin^2(pi/64)
+	DEFB	$E0		; get M0
+	DEFB	$04		; multiply
 	DEFB	$C1		; store M1
 	DEFB	$33		; jump
 	DEFB	ARCL - $

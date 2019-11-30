@@ -1325,6 +1325,7 @@ S_IOCTL:DEFW	S_RST	; reset S channel (clear screen, etc.)
 	DEFW	PLOT1	; PLOT a single point
 	DEFW	DRAW2	; DRAW straight line
 	DEFW	DRAW3	; DRAW arc
+	DEFW	CIRCLE	; draw a CIRCLE
 S_IOCTL_END:	EQU	$
 
 EDITOR_HEADER0:
