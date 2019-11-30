@@ -1,5 +1,5 @@
 CALCULATE:
-	RST	$28
+	RST	$30
 	DEFW	L35BF	; STK-PNTRS
 	LD	A,B
 	LD	(BREG),A
@@ -46,7 +46,7 @@ ENT_TABLE:
 	LD	DE,L32D7	; table of addresses
 	LD	H,$00
 	ADD	HL,DE
-	RST	$28
+	RST	$30
 	DEFW	X2AF0		; LD DE,(HL) in ROM1
 	LD	HL,RE_ENTRY
 	EX	(SP),HL
@@ -69,7 +69,7 @@ STK_DATA:
 	POP	HL		; discard jump address
 	LD	H,D
 	LD	L,E
-	RST	$28
+	RST	$30
 	DEFW	L33A9		; TEST-5-SP
 ; BC = $0005 at this point
 	EXX

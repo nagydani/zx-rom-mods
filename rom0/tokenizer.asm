@@ -19,7 +19,7 @@ TOK_IN0:LD	DE,TOKENS1 + 1
 	ADD	A,A
 TOK_IN:	EX	AF,AF'
 	LD	DE,X0119	; DEF FN token
-	RST	$28
+	RST	$30
 	DEFW	FTOKENL_R1	; search in ROM1
 	RR	D		; save CF
 	DEC	A
@@ -39,7 +39,7 @@ TOK_TF:	ADD	A,49
 ; Output: A token code matched or zero, if none; CF token matched fully
 TOK_OPR:LD	DE,L0095 + 1
 	LD	C,41		; 41 old operator tokens
-	RST	$28
+	RST	$30
 	DEFW	FTOKEN_R1
 	JR	C,TOK_TF	; full operator token found
 	LD	C,24		; 24 new operator tokens
@@ -95,7 +95,7 @@ TESTKW:	LD	A,(DE)
 	CP	$A0		; final space is not matched
 	JR	Z,TESTKW1
 	AND	$7F		; remove end marker
-	RST	$28
+	RST	$30
 	DEFW	L2C8D		; ALPHA
 	ADC	A,A
 	RRCA

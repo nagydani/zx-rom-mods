@@ -69,7 +69,7 @@ CLOSELO:POP	HL
 	DEC	HL
 	DEC	HL
 	DEC	HL		; HL = descriptor start
-	RST	$28
+	RST	$30
 	DEFW	L19E8		; RECLAIM-2
 CLOSE_NX:
 	POP	AF
@@ -82,7 +82,7 @@ MAKE_B:	LD      BC,$000B
 	LD	HL,(PROG)
 	DEC	HL
         PUSH    BC
-        RST	$28
+        RST	$30
 	DEFW	L1655		; MAKE-ROOM
         POP     BC
 	POP	HL
@@ -90,7 +90,7 @@ MAKE_B:	LD      BC,$000B
         EX      DE,HL
 	RET
 
-ERROR_F:RST	$28
+ERROR_F:RST	$30
 	DEFW	L1765		; F Invalid file name
 
 OPENSTRM2:
@@ -189,7 +189,7 @@ OPENXZ:	LD	D,0
 	EX	DE,HL		; TODO: can be saved, if necessary
 	RET
 
-ERROR_4:RST	$28
+ERROR_4:RST	$30
 	DEFW	L1F15		; 4 Out of memory
 
 OPENX1:	LD      HL,X_CHAN_E - 1
@@ -344,7 +344,7 @@ X_IN:	XOR	A
 	IN	A,($FE)
 	RRA
 	JR	C,X_IN_C
-	RST	$28
+	RST	$30
 	DEFW	X1F5A
 	JP	NC,ERROR_L	; Allow for BREAKing out of read-read deadlock
 X_IN_C:	POP	AF

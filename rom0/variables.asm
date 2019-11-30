@@ -171,7 +171,7 @@ STRNG_CONT:
 	BIT	0,(IY+$37)	; FLAGX, complete string
 	JP	Z,SWAP
 	PUSH	HL
-	RST	$28
+	RST	$30
 	DEFW	L2BF1		; STK-FETCH
 	POP	HL
 	PUSH	HL
@@ -207,7 +207,7 @@ STRNG_LONG:
 	LD	B,A
 	INC	BC		; room to make (positive)
 	PUSH	DE		; source address
-	RST	$28
+	RST	$30
 	DEFW	L1F05		; TEST-ROOM
 	POP	HL		; source address
 	EXX
@@ -261,7 +261,7 @@ STRNG_LONG:
 ; LET substitute for FOR
 FOR_CONT:
 	LD	BC,22		; enough space for a FOR loop
-	RST	$28
+	RST	$30
 	DEFW	L1F05		; TEST-ROOM
 	POP	DE		; discard return address
 	POP	DE		; discard return address

@@ -23,7 +23,7 @@
 ; Output: DE cursor pointer or one before depending on BIT 2,(TV_FLAG)
 ;;SP_CUR:	RES	0,(IY+$01)	; do not suppress leading space
 ;;	SCF
-;;	RST	$28
+;;	RST	$30
 ;;	DEFW	L1195		; SET-DE
 ;;	LD	HL,(K_CUR)	; is the cursor
 ;;	BIT	2,(IY+TV_FLAG-ERR_NR)	; previous character?
@@ -67,7 +67,7 @@
 ED_COPY:PUSH	HL		; save K_STATE address
 	SET	6,(HL)		; flashing cursor ON
 	RES	3,(HL)		; begin with instructions
-	RST	$28
+	RST	$30
 	DEFW	L0D4D		; TEMPS set temporary attributes
         RES     3,(IY+$02)      ; update TV_FLAG  - signal no change in mode
         RES     5,(IY+$02)      ; update TV_FLAG  - signal don't clear lower
@@ -131,7 +131,7 @@ ED_ALL:	SET	0,(IY+$01)	; leading space suppression
 	JR	Z,ED_ALLE
 	SET	2,(HL)
 ED_ALLE:POP	HL
-	RST	$28		; from the very beginning
+	RST	$30		; from the very beginning
 	DEFW	L1195		; SET-DE
 	RES	2,(IY+$30)	; not in quotes
 ED_CLP:	LD	HL,(X_PTR)
@@ -139,9 +139,9 @@ ED_CLP:	LD	HL,(X_PTR)
 	SBC	HL,DE
 	JR	NZ,ED_CLPC
 	LD	A,"?"
-	RST	$28
+	RST	$30
 	DEFW	OUT_FLASH
-ED_CLPC:RST	$28
+ED_CLPC:RST	$30
 	DEFW	L18E1		; OUT-CURS
 	LD	A,(DE)
 	BIT	6,(IY+TV_FLAG-ERR_NR)	; print only to cursor position?
@@ -153,16 +153,16 @@ ED_CLPC:RST	$28
 ED_ATC:	INC	DE
 	CP	$0D
 	JR	Z,ED_FIN
-	RST	$28
+	RST	$30
 	DEFW	L1937		; OUT-CHAR
 	JR	ED_CLP
 
-ED_FIN:	RST	$28
+ED_FIN:	RST	$30
 	DEFW	L18E1		; OUT-CURS
 	LD	HL,(S_POSNL)
 	EX	(SP),HL
 	EX	DE,HL
-	RST	$28
+	RST	$30
 	DEFW	L0D4D		; TEMPS
 ED_BLANK:
 	LD	A,(S_POSNL + 1)
@@ -179,7 +179,7 @@ ED_SPC:	LD	A,$80
 	JR	ED_BLANK
 
 
-ED_DONE:RST	$28
+ED_DONE:RST	$30
 	DEFW	L18E1		; OUT-CURS
 ED_CDN:	LD	HL,TV_FLAG
 	RES	6,(HL)
@@ -246,14 +246,14 @@ K_IN1:	BIT	5,(IY+$01)
 	LD	A,(PIP)		; duration
 	OR	A
 	JR	Z,NOPIP
-	RST	$28
+	RST	$30
 	DEFW	BEEP_PIP
 NOPIP:	LD	A,(LAST_K)	; pressed keycode
 	RES	5,(IY+$01)	; fetched from buffer
 	BIT	5,(IY+$02)
 	JR	Z,NOCLSL
 	PUSH	AF
-	RST	$28
+	RST	$30
 	DEFW	L0D6E		; CLS-LOWER
 	POP	AF
 NOCLSL:	CP	$18		; printable?
@@ -293,7 +293,7 @@ K_ING3:	BIT	5,(IY+FLAGS2-ERR_NR)	; mode K suppressed?
 	LD	HL,K_SAV
 	BIT	2,(HL)		; inside quotes?
 	RET	NZ		; return, if so
-	RST	$28
+	RST	$30
 	DEFW	L2C8D		; ALPHA
 	RET	C		; return, if so
 	RES	1,(IY+TV_FLAG-ERR_NR)	; echo from beginning
@@ -354,7 +354,7 @@ KEY_M_K0:
 	CALL	EDITOR_MODE
 	SCF
 	RET	NZ		; outside of editor mode, space is a regular key
-	RST	$28
+	RST	$30
 	DEFW	X1F5A		; CAPS SHIFT ?
 	LD	A," "		; restore A
 	CCF
@@ -487,7 +487,7 @@ EXT_NT:	LD	A,(HL)
 	JR	Z,EXT_NR
 	CP	"="
 	JR	Z,EXT_NR
-NOREL:	RST	$28
+NOREL:	RST	$30
 	DEFW	L2C8D		; ALPHA
 	JR	C,EXT_N
 	CP	A
@@ -519,7 +519,7 @@ K_INSTT:LD	HL,(K_CUR)
 	DEC	HL
 	LD	B,A
 	LD	A,(HL)
-	RST	$28
+	RST	$30
 	DEFW	L2C8D		; ALPHA
 	LD	A,B
 	CCF
@@ -529,7 +529,7 @@ EXT_N:	LD	B,0
 EXT_L:	INC	B
 	LD	A,(HL)
 	DEC	HL
-EXT_LS:	RST	$28
+EXT_LS:	RST	$30
 	DEFW	L2C8D		; ALPHA
 	JR	C,EXT_L
 	CP	" "
@@ -569,14 +569,14 @@ EXT_NF:	LD	A,(LAST_K)
 	LD	(LAST_K),A
 	LD	(K_DATA),A
 	LD	BC,$0001
-	RST	$28
+	RST	$30
 	DEFW	L19E8		; RECLAIM-2
 	DEC	HL
 	JR	EXT_N
 
 K_INSF:	EX	AF,AF'
 	LD	A,(HL)
-	RST	$28
+	RST	$30
 	DEFW	L2C8D		; ALPHA
 	JR	NC,K_INSX
 	DEC	HL
@@ -616,7 +616,7 @@ K_INSX:	LD	A,(LAST_K)
 	LD	(K_STATE),A
 K_INST:	LD	C,B
 	LD	B,0
-	RST	$28
+	RST	$30
 	DEFW	L19E8		; RECLAIM-2
 	EX	AF,AF'
 	SCF
@@ -639,7 +639,7 @@ EDITOR_MODE:
 
 ; print flashing cursor (invert character)
 PCURSOR:PUSH	AF
-	RST	$28
+	RST	$30
 	DEFW	POFETCH
 	PUSH	BC
 	PUSH	HL
@@ -681,7 +681,7 @@ TOKEN_I:LD	B,A
 TOKENI1:SUB	FREE_T - RND_T	; FREE / DEF FN
 	JR	C,TOKEN2I	; new tokens
 	LD	DE,I_TOKEN
-	RST	$28
+	RST	$30
 	DEFW	L0C10 + 3	; PO-TOKENS + 3
 	LD	A,D
 	CP	3
@@ -692,7 +692,7 @@ TOKEN2I:INC	B
 	LD	DE,TOKENS1
 	CALL	TOKEN
 	RRA
-	RST	$28
+	RST	$30
 	DEFW	L2C8D		; ALPHA
 	RET	NC
 TSPACE:	LD	A," "
@@ -710,7 +710,7 @@ TOKEN_O:CP	FREE_T - RND_T	; FREE / DEF FN
 	LD	B,A
 	LD	DE,TOKENS0
 	JP	TOKEN
-TOKEN2O:RST	$28
+TOKEN2O:RST	$30
 	DEFW	L0C10
 	RET
 
@@ -736,7 +736,7 @@ K_IOCTL:OR	A
 K_RST:	LD	(HL),A
 	LD	(K_SAV2),A
 	RES	5,(IY+TV_FLAG-ERR_NR)	; no further clearing
-	RST	$28
+	RST	$30
 	DEFW	L0D4D		; TEMPS
 	SCF
 	CALL	K_SWAP
@@ -789,7 +789,7 @@ S_RST:	EX	DE,HL
 	LD	(HL),A
 	LDIR			; clear last PLOT coordinates
 	RES	0,(IY+$30)	; update FLAGS2 - signal main screen is clear.
-	RST	$28
+	RST	$30
 	DEFW	L0D4D		; TEMPS
 	LD	B,$18		; 24 lines
 	CALL	CLLINE
@@ -832,7 +832,7 @@ KS_DCT:	BIT	2,(HL)
 	BIT	4,(HL)
 	JR	Z,KS_COL
 	LD	(IY+MASK_T-ERR_NR),$FF	; do not touch attributes in mono mode
-KS_COL:	RST	$28
+KS_COL:	RST	$30
 	DEFW	POFETCH
 	POP	AF
 	JP	NZ,E_HEAD
@@ -885,7 +885,7 @@ PRALL1:	CP	C
 	PUSH	DE
 	CALL	Z,POSCR
 	POP	DE
-	RST	$28
+	RST	$30
 	DEFW	X0B99
 TSTOREA:EX	AF,AF'
 	LD	A,(S_MODE)
@@ -914,7 +914,7 @@ TSTOREA:EX	AF,AF'
 	SUB	$27
 	LD	H,A
 	INC	HL
-TSTORE:	RST	$28
+TSTORE:	RST	$30
 	DEFW	POSTORE
 	RET
 
@@ -985,7 +985,7 @@ KS_IND2:RES	1,(HL)
 P_GR_TK:CP	$90
 	JR	NC,PR_T_UDG
 PR_GR:	LD	B,A
-	RST	$28
+	RST	$30
 	DEFW	L0B38		; PO-GR-1 mosaic
 	JR	PR_GR_E
 
@@ -1022,7 +1022,7 @@ PR_GR_R:RR	E
 	LD	(HL),D
 	INC	L
 	DJNZ	PR_GR_R
-PR_GR_E:RST	$28
+PR_GR_E:RST	$30
 	DEFW	POFETCH
 	LD	DE,MEMBOT
 	JP	PR_ALL
@@ -1199,7 +1199,7 @@ TCOMMA:	INC	DE
 	SUB	C
 	OR	$0F
 	INC	A
-POFILL: RST	$28
+POFILL: RST	$30
 	DEFW	POFETCH
 	ADD	A,C
 	DEC	A
@@ -1244,7 +1244,7 @@ CLSET:	LD	A,B
 	SUB	$18
 CLSET1:	PUSH	BC
 	LD	B,A
-	RST	$28
+	RST	$30
 	DEFW	L0E9B		; CL-ADDR
 	POP	BC
 CLSET2:	LD	A,(S_WIDTH)
@@ -1312,11 +1312,11 @@ T2CTR:	EX	DE,HL
 	SET	1,(HL)
 	JR	TCTR
 
-TRST:	RST	$28
+TRST:	RST	$30
 	DEFW	L0D4D	; TEMPS
 	RET
 
-;;POSCR:	RST	$28	; TODO: take width into account
+;;POSCR:	RST	$30	; TODO: take width into account
 ;;	DEFW	L0C55	; PO-SCR
 ;;	RET
 

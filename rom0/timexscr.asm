@@ -2,11 +2,11 @@ SCR_ALL:LD	B,$17
 CL_SCR:	LD	A,(S_MODE)
 	AND	$F8
 	JR	NZ,SCROLL
-	RST	$28
+	RST	$30
 	DEFW	L0E00		; CL-SCROLL
 	RET
 SCROLL:	INC	B
-	RST	$28
+	RST	$30
 	DEFW	L0E9B
 SCR_L:	PUSH	BC
 	PUSH	HL
@@ -46,7 +46,7 @@ SCR_LT:	DJNZ	SCR_R
 CLLINE:	LD	A,(S_MODE)
 	AND	$F8
 	JR	NZ,SCRCLL
-	RST	$28
+	RST	$30
 	DEFW	L0E44
 	RET
 
@@ -59,7 +59,7 @@ SCRCLL:	PUSH	BC
 	LD	A,(BORDCR)
 CLLL:	PUSH	BC
 	PUSH	AF
-	RST	$28
+	RST	$30
 	DEFW	L0E9B		; CL-ADDR
 	POP	AF
 SCR_MC:	LD	E,L
@@ -130,7 +130,7 @@ POSCR:	LD	DE,CLSET
 	DEC	E
 	JR	Z,POSCR3
 	XOR	A
-	RST	$28
+	RST	$30
 	DEFW	L1601		; CHAN-OPEN
 	LD	SP,(LIST_SP)
 	RES	4,(IY+$02)
@@ -145,7 +145,7 @@ POSCR2:	DEC	(IY+$52)
 	LD	A,(P_FLAG)
 	PUSH	AF
 	LD	DE,L0CF8	; scroll?
-	RST	$28
+	RST	$30
 	DEFW	MSG_WAIT
 	OR	A
 	JR	Z,SCRONE
@@ -161,7 +161,7 @@ POSCR2:	DEC	(IY+$52)
 SCRONE:	LD	A,1
 	LD	(SCR_CT),A
 SCRMANY:LD	A,$FE		; System channel S
-	RST	$28
+	RST	$30
 	DEFW	L1601		; CHAN-OPEN
 	LD	B,2
 	CALL	CLLINE
@@ -176,7 +176,7 @@ POSCR3:	CALL	SCR_ALL
 ; TODO: Attribute magic PO-SCR-3A
 	RET
 
-ERROR_D:RST	$28
+ERROR_D:RST	$30
 	DEFW	L0D00		; BREAK - CONT repeats
 
 POSCR4:	CP	$02
@@ -191,7 +191,7 @@ POSCR4:	CP	$02
 	PUSH	HL
 	LD	HL,(P_FLAG)
 	PUSH	HL
-	RST	$28
+	RST	$30
 	DEFW	L0D4D		; TEMPS
 	LD	A,B
 
@@ -224,12 +224,12 @@ POSCR4B:CALL	CL_SCR
 DRAWAT:	LD	A,$FF
 	JR	DOPLOT
 
-CIRCLE:	CALL	CALCULATE
+CIRCLE:	RST	$28		; calculate
 	DEFB	$C0		; store M0
 	DEFB	$38		; end
 	LD	HL,ORIGX
 	LD	(MEM),HL
-	CALL	CALCULATE
+	RST	$28		; calculate
 	DEFB	$31		; duplicate
 	DEFB	$E2		; get SCALEX
 	DEFB	$04		; multiply
@@ -252,7 +252,7 @@ PLOT1:	XOR	A
 DOPLOT:	LD	(COORDS+1),A
 	LD	HL,ORIGX
 	LD	(MEM),HL
-	CALL	CALCULATE
+	RST	$28		; calculate
 	DEFB	$E3		; get SCALEY
 	DEFB	$04		; multiply
 	DEFB	$E1		; get ORIGY
@@ -273,12 +273,12 @@ ENDDRAW:XOR	A
 	CP	$10
 	JR	NC,PLOT_HIRES
 	EX	AF,AF'		; save S_MODE
-	RST	$28
+	RST	$30
 	DEFW	L2DD5		; FP-TO-A
 	RET	C
 	RET	NZ
 	PUSH	AF
-	RST	$28
+	RST	$30
 	DEFW	L2DD5		; FP-TO-A
 	POP	BC
 	RET	C
@@ -286,7 +286,7 @@ ENDDRAW:XOR	A
 	CP	$C0
 	RET	NC
 	LD	C,B
-	RST	$28
+	RST	$30
 	DEFW	L22AA+6		; PIXEL-ADD + 6
 	CALL	SETPIX
 	RET	C		; DRAW endpoint
@@ -304,7 +304,7 @@ E_PLOT:	PUSH	BC
 	JP	SWAP		; return via PO-ATTR
 
 PLOT_HIRES:
-	RST	$28
+	RST	$30
 	DEFW	L2DA2		; FP-TO-BC
 	RET	C
 	RET	NZ
@@ -312,7 +312,7 @@ PLOT_HIRES:
 	CP	$02
 	RET	NC
 	PUSH	BC
-	RST	$28
+	RST	$30
 	DEFW	L2DA2		; FP-TO-BC
 	POP	DE
 	RET	C
@@ -381,7 +381,7 @@ DRAW2:	LD	HL,COORDX
 	LDIR			; save starting point
 	LD	HL,ORIGX
 	LD	(MEM),HL
-	CALL	CALCULATE
+	RST	$28		; calculate
 	DEFB	$E3		; get SCALEY
 	DEFB	$04		; multiply
 	DEFB	$01		; exchange
@@ -394,7 +394,7 @@ DRAW2:	LD	HL,COORDX
 	BIT	7,(HL)
 	JR	Z,DDOWN
 	LD	HL,MEMBOT+5
-	RST	$28
+	RST	$30
 	DEFW	L346E		; negate
 	LD	BC,PXUP
 DDOWN:	PUSH	BC		; vertical step
@@ -404,12 +404,12 @@ DDOWN:	PUSH	BC		; vertical step
 	BIT	7,(HL)
 	JR	Z,DRIGHT
 	LD	HL,MEMBOT
-	RST	$28
+	RST	$30
 	DEFW	L346E		; negate
 	LD	BC,PXLEFT
 DRIGHT:	PUSH	BC		; horizontal step
 	LD	BC,2*5		; dup2
-	RST	$28
+	RST	$30
 	DEFW	L1F05		; TEST-ROOM
 	LD	HL,(STKEND)
 	LD	E,L
@@ -420,7 +420,7 @@ DRIGHT:	PUSH	BC		; horizontal step
 	DEC	HL
 	DEC	DE
 	LDDR
-	CALL	CALCULATE
+	RST	$28		; calculate
 	DEFB	$E4		; get COORDX	dy,dx,x1
 	DEFB	$0F		; add		dy,x2
 	DEFB	$C4		; store COORDX
@@ -438,10 +438,10 @@ DRIGHT:	PUSH	BC		; horizontal step
 	LD	HL,COORDX
 	LDIR			; x2,y2 to M2,M3
 
-	RST	$28
+	RST	$30
 	DEFW	L35BF		; STK-PNTRS
 	CALL	STEPBACK
-	RST	$28
+	RST	$30
 	DEFW	L3293		; RE-ST-TWO
 	LD	(STKEND),HL	; remove dx and dy from calculator stack
 
@@ -472,7 +472,7 @@ STEEP:	EXX
 	EX	AF,AF'
 	LD	HL,MEMBOT
 	LD	DE,MEMBOT+5
-	RST	$28
+	RST	$30
 	DEFW	EXCHANGE
 	LD	HL,MEMBOT+3*5
 	LD	BC,5
@@ -510,18 +510,18 @@ NSHFTDR:SRL	B
 	PUSH	BC
 	LD	C,E
 	LD	B,D
-	RST	$28
+	RST	$30
 	DEFW	L2D2B + 4	; STACK-BC + 4	l
 	POP	BC
-	RST	$28
+	RST	$30
 	DEFW	L2D2B + 4	; STACK-BC + 4	t
 	LD	A,(MEMBOT+1)
 	ADD	A,A
 	JR	NC,DRFWD
 	LD	HL,MEMBOT+2*5
-	RST	$28
+	RST	$30
 	DEFW	L346E		; negate
-DRFWD:	CALL	CALCULATE
+DRFWD:	RST	$28		; calculate
 	DEFB	$E0		; get M0	M0
 	DEFB	$31		; duplicate	M0,M0
 	DEFB	$27		; int		M0,int(M0)
@@ -533,10 +533,10 @@ DRFWD:	CALL	CALCULATE
 	DEFB	$27		; int		frac(M0),frac(M0),int(M0),int(M2)
 	DEFB	$03		; subtract	frac(M0),frac(M0),int(M0)-int(M2)
 	DEFB	$38		; end
-	RST	$28
+	RST	$30
 	DEFW	L2DA2 + 2	; FP-TO-BC	length in pixels
 	PUSH	BC
-	RST	$28
+	RST	$30
 	DEFW	L2DA2 + 2	; FP-TO-BC	frac(M0)
 	POP	BC
 	OR	A
@@ -553,7 +553,7 @@ DRFWD:	CALL	CALCULATE
 	EXX
 	CALL	PXTRV		; actually longitudal step
 	LD	(COORDS2),HL
-DRPIX:	CALL	CALCULATE
+DRPIX:	RST	$28		; calculate
 	DEFB	$04		; multiply	l,t*frac(M0)
 	DEFB	$01		; exchange	t*frac(M0),l
 	DEFB	$A2		; stk-half	t*frac(M0),l,0.5
@@ -568,7 +568,7 @@ DRPIX:	CALL	CALCULATE
 	DEFB	$04		; multiply	t*frac(M0),l*(0.5-frac(M1))'
 	DEFB	$0F		; addition	t*frac(M0)+l*(0.5-frac(M1))'
 	DEFB	$38		; end
-	RST	$28
+	RST	$30
 	DEFW	L2DA2 + 2	; FP-TO-BC
 	JR	Z,DRPOS
 	POP	HL
@@ -698,17 +698,19 @@ PXLLR:	DEC	L
 DRAW64:	LD	A,$20
 	JR	DRAW3C
 
-DRAW1:	CALL	CALCULATE
+DRAW1:	RST	$28		; calculate
 	DEFB	$E1		; get M1
 	DEFB	$E2		; get M2
 	DEFB	$38		; end
-	JP	DRAW2
+	RST	$30
+	DEFW	DRAW_LINE
+	RET
 
 DRAW3:	LD	HL,SCALEX
 	LD	DE,MEMBOT+3*5
 	LD	BC,2*5
 	LDIR			; copy SCALEX,SCALEY to M3,M4
-	CALL	CALCULATE
+	RST	$28		; calculate
 	DEFB	$A2		; stk half
 	DEFB	$04		; multiply
 	DEFB	$C5		; store M5
@@ -728,7 +730,7 @@ DRAW3:	LD	HL,SCALEX
 	DEFB	$04		; multiply
 	DEFB	$27		; int
 	DEFB	$38		; end
-	RST	$28
+	RST	$30
 	DEFW	L2DD5		; FP-TO-A
 	JR	C,DRAW64
 	RRCA
@@ -738,9 +740,9 @@ DRAW3:	LD	HL,SCALEX
 	JR	Z,DRAW1
 	INC	A
 DRAW3C:	PUSH	AF		; number of segments
-	RST	$28
+	RST	$30
 	DEFW	L2D28		; STACK-A
-	CALL	CALCULATE
+	RST	$28		; calculate
 	DEFB	$E5		; get M5	n,a/2
 	DEFB	$01		; exchange	a/2,n
 	DEFB	$05		; division	a/2n
@@ -778,7 +780,7 @@ DRAW3C:	PUSH	AF		; number of segments
 	DEFB	$04		; multiply	dx*w,dy*w
 	DEFB	$38		; end
 	CALL	CPXMUL
-	CALL	CALCULATE
+	RST	$28		; calculate
 	DEFB	$E4		; get M4	dx',dy',a/n
 	DEFB	$20		; cos		dx',dy',cos(a/n)
 	DEFB	$C3		; store M3	dx',dy',cos(a/n)
@@ -808,12 +810,12 @@ ARCL:	DEFB	$E2		; get M2
 	RET
 
 ARCL1:	PUSH	BC
-	CALL	CALCULATE
+	RST	$28		; calculate
 	DEFB	$E3		; get M3
 	DEFB	$E4		; get M4
 	DEFB	$38
 	CALL	CPXMUL
-	CALL	CALCULATE
+	RST	$28		; calculate
 	DEFB	$C2		; store M2
 	DEFB	$02		; delete
 	DEFB	$C1		; store M1
@@ -824,14 +826,17 @@ CIRCLE2:LD	HL,MEMBOT
 	LD	(MEM),HL
 	LD	A,$40		; 64: maximum number of arcs
 	PUSH	AF
-	CALL	CALCULATE
+	RST	$28		; calculate
 	DEFB	$01		; exchange
 	DEFB	$E0		; get M0
 	DEFB	$0F		; addition
 	DEFB	$01		; exchange
 	DEFB	$38		; end
-	CALL	PLOT1
-	CALL	CALCULATE
+	LD	A,2		; PLOT
+	AND	A
+	RST	$30
+	DEFW	L15F2		; PRINT_A_2
+	RST	$28		; calculate
 	DEFB	$34,$ED,$48,$BD,$35,$E1	; stk sin(PI/32)
 	DEFB	$C4		; store M4
 	DEFB	$34,$F0,$7E,$C4,$6D,$20	; stk cos(PI/32)
@@ -849,7 +854,7 @@ CIRCLE2:LD	HL,MEMBOT
 	DEFB	ARCL - $
 
 ; Complex multiplication by M1+i*M2
-CPXMUL:	CALL	CALCULATE
+CPXMUL:	RST	$28		; calculate
 	DEFB	$C0		; store M0
 	DEFB	$02		; delete
 	DEFB	$31		; duplicate
