@@ -557,6 +557,24 @@ EXT_CNT:JR	C,K_INSF
 	SCF
 	RET
 
+; This area must be a data table not to trigger the SAVE trap
+
+; K-MODE translation table
+K_MODE:	DEFB	POKE_T,PEEK_T
+	DEFB	"@",LABEL_T
+	DEFB	0
+
+; L-MODE translation table
+L_MODE:	DEFB	$E2,"~"
+	DEFB	$C3,"|"
+	DEFB	$CD,"\\"
+	DEFB	$CC,"{"
+	DEFB	$CB,"}"
+	DEFB	$C6,"["
+	DEFB	$C5,"]"
+	DEFB	$AC,$7F		; copyright
+	DEFB	0
+
 EXT_NF:	LD	A,(LAST_K)
 	CP	$0E
 	SCF
@@ -587,24 +605,6 @@ K_INSF:	EX	AF,AF'
 	INC	HL
 	DEC	B
 	JR	K_INSX
-
-; This area must be a data table not to trigger the SAVE trap
-
-; K-MODE translation table
-K_MODE:	DEFB	POKE_T,PEEK_T
-	DEFB	"@",LABEL_T
-	DEFB	0
-
-; L-MODE translation table
-L_MODE:	DEFB	$E2,"~"
-	DEFB	$C3,"|"
-	DEFB	$CD,"\\"
-	DEFB	$CC,"{"
-	DEFB	$CB,"}"
-	DEFB	$C6,"["
-	DEFB	$C5,"]"
-	DEFB	$AC,$7F		; copyright
-	DEFB	0
 
 K_INSX:	LD	A,(LAST_K)
 	CP	$0E

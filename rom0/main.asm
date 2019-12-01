@@ -145,6 +145,11 @@ C_SPCC:	DEFB	1
 RCLINE:	DEFS	2		; current line being renumbered
 RCSTART:DEFW	10		; starting line number for renumbering
 RCSTEP:	DEFW	10		; step for renumbering
+; Clipping
+NORTH:	DEFB	$00
+SOUTH:	DEFB	$15
+WEST:	DEFB	$00
+EAST:	DEFB	$1F
 ; Origin
 ORIGX:	DEFB	$00,$00,$00,$00,$00	; 0.0
 ORIGY:	DEFB	$00,$00,$AF,$00,$00	; 175.0
@@ -1866,7 +1871,7 @@ CHOUT:	EXX
 	JR	Z,CHOUT0	; In this ROM
 	EX	AF,AF'
 	RST	$30
-	DEFW	L162C
+	DEFW	L162C		; JP (HL)
 	POP	HL
 	EXX
 	RET
