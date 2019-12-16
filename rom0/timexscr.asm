@@ -446,7 +446,18 @@ DRIGHT:	PUSH	BC		; horizontal step
 	DEFB	$38		; end
 	LD	HL,MEMBOT
 	LD	(MEM),HL
-	LD	BC,2*5
+	LD	A,(COORDS)
+	OR	A
+	JR	NZ,DRAWDO	; jump, if not clipped
+	POP	HL		; discard horizontal step
+	POP	HL		; discard vertical step
+	RST	$28
+	DEFB	$02		; delete
+	DEFB	$02		; delete
+	DEFB	$38		; end
+	JP	DRENDP
+
+DRAWDO:	LD	BC,2*5
 	ADD	HL,BC
 	EX	DE,HL
 	LD	HL,COORDX
@@ -968,8 +979,9 @@ CLIPPX:	RRA
 	CP	(HL)
 	CCF
 	RET	NC
-	INC	L
+	RET	Z
 	DEC	A
+	INC	L
 	CP	(HL)
 	RET
 
