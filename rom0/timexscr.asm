@@ -274,20 +274,27 @@ ENDDRAW:XOR	A
 	JR	NC,PLOT_HIRES
 	EX	AF,AF'		; save S_MODE
 	RST	$30
-	DEFW	L2DD5		; FP-TO-A
-	RET	C
-	RET	NZ
-	PUSH	AF
+	DEFW	L2DD5		; FP-TO-A	x coordinate
+	RET	C		; over 255
+	RET	NZ		; negative
+	LD	B,A
+	LD	HL,WEST
+	CALL	CLIPPX
+	RET	NC		; clipped
+	PUSH	BC
 	RST	$30
-	DEFW	L2DD5		; FP-TO-A
+	DEFW	L2DD5		; FP-TO-A	y coordinate
 	POP	BC
-	RET	C
-	RET	NZ
-	CP	$C0
-	RET	NC
+	RET	C		; over 255
+	RET	NZ		; negative
 	LD	C,B
+	LD	B,A
+	LD	HL,NORTH
+	CALL	CLIPPX
+	RET	NC		; clipped
+	LD	A,B
 	RST	$30
-	DEFW	L22AA+6		; PIXEL-ADD + 6
+	DEFW	L22AA+7		; PIXEL-ADD + 6
 	CALL	SETPIX
 	RET	C		; DRAW endpoint
 	EX	AF,AF'		; restore S_MODE
@@ -305,23 +312,30 @@ E_PLOT:	PUSH	BC
 
 PLOT_HIRES:
 	RST	$30
-	DEFW	L2DA2		; FP-TO-BC
-	RET	C
-	RET	NZ
+	DEFW	L2DA2		; FP-TO-BC	x coordinate
+	RET	C		; over 65535
+	RET	NZ		; negative
 	LD	A,B
-	CP	$02
-	RET	NC
+	SRL	A
+	RET	NZ		; over 512
+	LD	A,C
+	RRA
+	LD	HL,WEST
+	CALL	CLIPPX
+	RET	NC		; clipped
 	PUSH	BC
 	RST	$30
 	DEFW	L2DA2		; FP-TO-BC
 	POP	DE
 	RET	C
 	RET	NZ
-	CP	$C0
-	RET	NC
 	LD	A,B
 	OR	A
-	RET	NZ
+	RET	NZ		; over 256
+	LD	HL,NORTH
+	LD	A,C
+	CALL	CLIPPX
+	RET	NC		; clipped
 	CALL	PIXADD
 SETPIX:	LD	B,A
 	INC	B
@@ -945,6 +959,19 @@ ARCL3:	PUSH	AF
 	DEFB	$E4		; get M4
 	DEFB	$38		; end
 	JP	ARCL2
+
+; Clip pixel coordinate in A beteen (HL) and (HL+1)
+CLIPPX:	RRA
+	RRA
+	RRA
+	AND	$1F
+	CP	(HL)
+	CCF
+	RET	NC
+	INC	L
+	DEC	A
+	CP	(HL)
+	RET
 
 ; Complex multiplication by M1+i*M2
 CPXMUL:	RST	$28		; calculate
