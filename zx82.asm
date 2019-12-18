@@ -3586,38 +3586,53 @@ L0B24:  CP      $80             ; ASCII ?
 ; bits 0-3 of the character.
 
         LD      B,A             ; save character
-        CALL    L0B38           ; routine PO-GR-1 to construct top half
+;;; BUGFIX: considerable speedup
+	LD	HL,MEMBOT
+	PUSH	HL
+	CALL	LPOGR1
+;;;     CALL    L0B38           ; routine PO-GR-1 to construct top half
                                 ; then bottom half.
-X0B30:	CALL    L0B03           ; routine PO-FETCH fetches print position.
-        LD      DE,MEMBOT	; MEM-0 is location of 8 bytes of character
+	CALL    L0B03           ; routine PO-FETCH fetches print position.
+;;; BUGFIX: considerable speedup
+	POP	DE
+;;;	LD      DE,MEMBOT	; MEM-0 is location of 8 bytes of character
         JR      L0B7F           ; to PR-ALL to print to screen or printer
 
 ; ---
 
 ;; PO-GR-1
-L0B38:  LD      HL,MEMBOT        ; address MEM-0 - a temporary buffer in
+;;L0B38:  LD      HL,MEMBOT        ; address MEM-0 - a temporary buffer in
                                 ; systems variables which is normally used
                                 ; by the calculator.
-        CALL    L0B3E           ; routine PO-GR-2 to construct top half
+LPOGR1:	CALL    LPOGR2		; routine PO-GR-2 to construct top half
                                 ; and continue into routine to construct
                                 ; bottom half.
 
 ;; PO-GR-2
-L0B3E:  RR      B               ; rotate bit 0/2 to carry
+LPOGR2:	RR      B               ; rotate bit 0/2 to carry
         SBC     A,A             ; result $00 or $FF
         AND     $0F             ; mask off right hand side
         LD      C,A             ; store part in C
         RR      B               ; rotate bit 1/3 of original chr to carry
         SBC     A,A             ; result $00 or $FF
         AND     $F0             ; mask off left hand side
-        OR      C               ; combine with stored pattern
-        LD      C,$04           ; four bytes for top/bottom half
+LPOGR4:	OR      C               ; combine with stored pattern
+;;; BUGFIX: considerable speedup
+	LD	(HL),A
+	INC	L
+	LD	(HL),A
+	INC	L
+	LD	(HL),A
+	INC	L
+	LD	(HL),A
+	INC	L
+;;;        LD      C,$04           ; four bytes for top/bottom half
 
 ;; PO-GR-3
-L0B4C:  LD      (HL),A          ; store bit patterns in temporary buffer
-        INC     HL              ; next address
-        DEC     C               ; jump back to
-        JR      NZ,L0B4C        ; to PO-GR-3 until byte is stored 4 times
+;;;L0B4C:  LD      (HL),A          ; store bit patterns in temporary buffer
+;;;	INC     HL              ; next address
+;;;     DEC     C               ; jump back to
+;;;     JR      NZ,L0B4C        ; to PO-GR-3 until byte is stored 4 times
 
         RET                     ; return
 
@@ -4213,7 +4228,10 @@ L0D65:  XOR     (HL)            ;
 ;    If it's difficult to write it should be difficult to read.
 
 ;; CLS
-L0D6B:	CALL    L0DAF           ; Routine CL-ALL clears the entire display and
+L0D6B:
+;;; BUGFIX: backwards-compatible JP to abstract CLS
+	JP	L0DAF
+;;;	CALL    L0DAF           ; Routine CL-ALL clears the entire display and
                                 ; sets the attributes to the permanent ones
                                 ; from ATTR-P.
 
@@ -4236,9 +4254,10 @@ L0D6E:  LD	A,$FD
 	JP	RESET_STREAM_SAVE
 RESET_K:LD      HL,TV_FLAG        ; address System Variable TV_FLAG.
         RES     5,(HL)          ; TV_FLAG - signal do not clear lower screen.
-        SET     0,(HL)          ; TV_FLAG - signal lower screen in use.
+;;; BUGFIX: already set
+;;;	SET     0,(HL)          ; TV_FLAG - signal lower screen in use.
 
-        CALL    L0D4D           ; routine TEMPS applies permanent attributes,
+;;;	CALL    L0D4D           ; routine TEMPS applies permanent attributes,
                                 ; in this case BORDCR to ATTR_T.
                                 ; Note. this seems unnecessary and is repeated
                                 ; within CL-LINE.
@@ -4248,6 +4267,12 @@ RESET_K:LD      HL,TV_FLAG        ; address System Variable TV_FLAG.
         CALL    L0E44           ; routine CL-LINE clears lines to bottom of the
                                 ; display and sets attributes from BORDCR while
                                 ; preserving the B register.
+
+;;; BUGFIX: IOCTL 1 does not set DF-SZ to 2
+	EX	AF,AF'
+	DEC	A
+	JR	Z,RESET_K_1
+;;;
 
         LD      HL,$5AC0        ; set initial attribute address to the leftmost
                                 ; cell of second line up.
@@ -4317,6 +4342,8 @@ CL_CHAN_A:
 ;;;     LD      BC,$1721        ; line 23 for lower screen
         JR      L0DD9           ; exit via CL-SET to set column
                                 ; for lower display
+;;; ---
+	DEFS	$0DAF - $
 
 ; ---------------------------
 ; Clearing whole display area
@@ -4328,9 +4355,10 @@ CL_CHAN_A:
 ; PO-TV-2 or PO-CONT.
 
 ;; CL-ALL
-L0DAF:  LD	A,$FD
+L0DAF:	LD	A,$FE		; System "S" stream
 	CALL	RESET_STREAM
-	LD	A,$FE
+CLS_LOWER:
+	LD	A,$FD		; System "K" stream
 	JP	RESET_STREAM
 RESET_S:
 	LD      HL,$0000        ; Initialize plot coordinates.
@@ -4338,13 +4366,13 @@ RESET_S:
 
         RES     0,(IY+$30)      ; update FLAGS2  - signal main screen is clear.
 
-;;; BUGFIX: Reset K channel through service routine elsewhere
-;;;     CALL    L0D94           ; routine CL-CHAN makes channel 'K' 'normal'.
+;;; BUGFIX: channel "K" is reset elsewhere
+;;;	CALL    L0D94           ; routine CL-CHAN makes channel 'K' 'normal'.
+;;;	LD      A,$FE           ; select system channel 'S'
+;;;	CALL    L1601           ; routine CHAN-OPEN opens it.
 
-;;;     LD      A,$FE           ; select system channel 'S'
-;;;     CALL    L1601           ; routine CHAN-OPEN opens it.
-
-        CALL    L0D4D           ; routine TEMPS applies permanent attributes,
+;;; BUGFIX: CL-LINE does it
+;;;	CALL    L0D4D           ; routine TEMPS applies permanent attributes,
                                 ; in this case ATTR_P, to ATTR_T.
                                 ; Note. this seems unnecessary.
 
@@ -4362,7 +4390,6 @@ RESET_S:
 ;;;        LD      (HL),D          ; output address.
 
 	LD      (IY+$52),$01    ; set SCR_CT - scroll count - to default.
-
 ;   Note. BC already contains $1821.
 RESET_P:EX	AF,AF'
 	DEC	A
@@ -4538,25 +4565,30 @@ L0E4D:  AND     $07             ; mask 0-7 to consider thirds at a time
         CALL    L0E88           ; routine CL-ATTR gets attribute address
                                 ; in DE and B * 32 in BC.
 
+;;; BUGFIX: shorter and performs TEMPS
+	CALL	L0D4D		; TEMPS
+	LD	A,(ATTR_T)
+
         LD      H,D             ; transfer the address
         LD      L,E             ; to HL.
 
         INC     DE              ; make DE point to next location.
 
-        LD      A,(ATTR_P)       ; fetch ATTR_P - permanent attributes
-        BIT     0,(IY+$02)      ; test TV_FLAG  - lower screen in use ?
-        JR      Z,L0E80         ; skip to CL-LINE-3 if not.
-
-        LD      A,(BORDCR)       ; else lower screen uses BORDCR as attribute.
-
+;;;	LD      A,(ATTR_P)       ; fetch ATTR_P - permanent attributes
+;;;	BIT     0,(IY+$02)      ; test TV_FLAG  - lower screen in use ?
+;;;	JR      Z,L0E80         ; skip to CL-LINE-3 if not.
+;;;	LD      A,(BORDCR)       ; else lower screen uses BORDCR as attribute.
+;;;
 ;; CL-LINE-3
-L0E80:  LD      (HL),A          ; put attribute in first byte.
+;;;L0E80:
+	LD      (HL),A          ; put attribute in first byte.
         DEC     BC              ; decrement the counter.
         LDIR                    ; copy bytes to set all attributes.
         POP     BC              ; restore the line $01-$24.
         LD      C,$21           ; make column $21. (No use is made of this)
         RET                     ; return to the calling routine.
-
+;;; ---
+	DEFS	$0E88 - $
 ; ------------------
 ; Attribute handling
 ; ------------------
@@ -5277,7 +5309,10 @@ ED_UP:	BIT     5,(IY+$37)      ; test FLAGX  - input mode ?
 ; this branch is also taken from ed-down.
 
 ;; ED-LIST
-L106E:  CALL    L1795           ; routine AUTO-LIST lists to upper screen
+L106E:
+;;; BUGFIX: abstract auto-list
+	CALL	AUTO_LIST
+;;;	CALL    L1795           ; routine AUTO-LIST lists to upper screen
                                 ; including adjusted current line.
         LD      A,$00           ; select lower screen again
         JP      L1601           ; exit via CHAN-OPEN to ED-LOOP
@@ -5975,7 +6010,9 @@ NMIVEC:	LD	A,$14		; BREAK into program
 ;; MAIN-EXEC
 L12A2:  LD      (IY+$31),$02    ; set DF_SZ lower screen display file size to
                                 ; two lines.
-        CALL    L1795           ; routine AUTO-LIST
+;;; BUGFIX: abstract AUTO-LIST
+	CALL	AUTO_LIST
+;;;	CALL    L1795           ; routine AUTO-LIST
 
 ;; MAIN-1
 L12A9:  CALL    L16B0           ; routine SET-MIN clears work areas.
@@ -6047,7 +6084,9 @@ L12CF:  LD      HL,(E_LINE)      ; fetch the edit line address from E_LINE.
 
         CALL    NZ,L0DAF        ; routine CL-ALL, if so, e.g. after listing.
 
-        CALL    L0D6E           ; routine CLS-LOWER anyway.
+;;; BUGFIX: abstract
+        CALL    CLS_LOWER       ; routine CLS-LOWER anyway.
+;;;	CALL    L0D6E           ; routine CLS-LOWER anyway.
 
         LD      A,$19           ; compute scroll count as 25 minus
         SUB     (IY+$4F)        ; value of S_POSN_hi.
@@ -7256,15 +7295,22 @@ L1793:  JR      L1725           ; to REPORT-Ob
 ; This produces an automatic listing in the upper screen.
 
 ;; AUTO-LIST
-L1795:  LD      (LIST_SP),SP      ; save stack pointer in LIST_SP
+L1795:  LD      (LIST_SP),SP	; save stack pointer in LIST_SP
         LD      (IY+$02),$10    ; update TV_FLAG set bit 4
-        CALL    L0DAF           ; routine CL-ALL.
-        SET     0,(IY+$02)      ; update TV_FLAG  - signal lower screen in use
-
-        LD      B,(IY+$31)      ; fetch DF_SZ to B.
-        CALL    L0E44           ; routine CL-LINE clears lower display
-                                ; preserving B.
-        RES     0,(IY+$02)      ; update TV_FLAG  - signal main screen in use
+;;; BUGFIX: do not reset lower screen
+	LD	A,$FE
+	CALL	RESET_STREAM
+	LD	A,$FD
+	CALL	IOCTL1
+;;;	CALL    L0DAF           ; routine CL-ALL.
+;;; BUGFIX: Set Upper screen instead
+	LD	A,$FE
+	CALL	L1601		; open system channel "S"
+;;;	SET     0,(IY+$02)      ; update TV_FLAG  - signal lower screen in use
+;;;	LD      B,(IY+$31)      ; fetch DF_SZ to B.
+;;;	CALL    L0E44           ; routine CL-LINE clears lower display
+;;;                             ; preserving B.
+;;;	RES     0,(IY+$02)      ; update TV_FLAG  - signal main screen in use
         SET     0,(IY+$30)      ; update FLAGS2 - signal will be necessary to
                                 ; clear main screen.
         LD      HL,(E_PPC)      ; fetch E_PPC current edit line to HL.
@@ -7289,7 +7335,7 @@ L1795:  LD      (LIST_SP),SP      ; save stack pointer in LIST_SP
         POP     BC              ; restore the result to balance stack.
 
 ;; AUTO-L-1
-L17CE:  PUSH    BC              ; save the result.
+AUTO_L1:PUSH    BC              ; save the result.
         CALL    L19B8           ; routine NEXT-ONE gets address in HL of
                                 ; line after auto-line (in DE).
         POP     BC              ; restore result.
@@ -7302,10 +7348,9 @@ L17CE:  PUSH    BC              ; save the result.
         LD      E,(HL)          ; in DE.
         DEC     HL              ; adjust back to start.
         LD      (S_TOP),DE      ; update S_TOP.
-        JR      L17CE           ; to AUTO-L-1 until estimate reached.
-
+        JR	AUTO_L1		; to AUTO-L-1 until estimate reached.
 ; ---
-
+	DEFS	$17E1 - $
 ; the jump was to here if S_TOP was greater than E_PPC
 
 ;; AUTO-L-2
@@ -8396,7 +8441,7 @@ L1ABB:  DEFB    $03             ; Class-03 - A numeric expression may follow
 
 ;; P-CLS
 L1ABE:  DEFB    $00             ; Class-00 - No further operands.
-        DEFW    L0D6B           ; Address: $0D6B; Address: CLS
+	DEFW    L0D6B           ; Address: $0D6B; Address: CLS
 
 ;; P-PLOT
 L1AC1:  DEFB    $09             ; Class-09 - Two comma-separated numeric
@@ -20030,9 +20075,12 @@ O_IOCTL:AND	A
 OUT_SERV:
 	JP	L15F2		; output service routine
 
-; Abstract COPY (10 bytes)
-S_COPY:	LD	A,3
-	CALL	L1601		; Open #3
+; IOCTL 1: COPY and AUTO-LIST
+S_COPY:	LD	A,3		; stream #3
+	DEFB	$01		; LD BC,skip next two
+AUTO_LIST:
+	LD	A,$FE		; System channel "S"
+IOCTL1:	CALL	L1601		; open it
 	XOR	A
 	INC	A		; A=1, CF=0
 	JR	OUT_SERV
@@ -20198,7 +20246,7 @@ IOCTL_S:EX	AF,AF'
 	EX	DE,HL
 	JP	(HL)
 IOS_TAB:DEFW	RESET_S		; 0: Channel RESET
-	DEFW	X0094		; 1: COPY screen to itself (do nothing)
+	DEFW	L1795		; 1: AUTO-LIST
 	DEFW	PLOT		; 2: PLOT
 	DEFW	L24B7		; 3: DRAW-LINE
 	DEFW	ARC_DRAW	; 4: DRAW-ARC
