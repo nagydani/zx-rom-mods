@@ -6,7 +6,7 @@
 ; bit 3:	instructions (0), functions/operators (1)
 ; bit 4:	copy of bit 4 of FRAMES
 ; bit 5:	flashing cursor state
-; bit 6;	flashing cursor visible (1)
+; bit 6;	8 pixel font (0), 4 pixel font (1)
 ; bit 7:	K channel input from K_DATA
 ;
 ; byte 1:
@@ -65,10 +65,10 @@
 
 ; copy edit area
 ED_COPY:PUSH	HL		; save K_STATE address
-	SET	6,(HL)		; flashing cursor ON
 	RES	3,(HL)		; begin with instructions
+	RES	7,(IY+BORDCR-ERR_NR)	; flashing cursor OFF
 	RST	$30
-	DEFW	L0D4D		; TEMPS set temporary attributes
+	DEFW	L0D4D		; TEMPS
         RES     3,(IY+$02)      ; update TV_FLAG  - signal no change in mode
         RES     5,(IY+$02)      ; update TV_FLAG  - signal don't clear lower
                                 ; screen.
@@ -162,8 +162,7 @@ ED_FIN:	RST	$30
 	LD	HL,(S_POSNL)
 	EX	(SP),HL
 	EX	DE,HL
-	RST	$30
-	DEFW	L0D4D		; TEMPS
+	CALL	K_TEMPS
 ED_BLANK:
 	LD	A,(S_POSNL + 1)
 	SUB	D
@@ -174,7 +173,8 @@ ED_BLANK:
 	JR	NC,ED_CDN
 ED_SPC:	LD	A,$80
 	PUSH	DE
-	CALL	PR_GR
+	LD	DE,K_STATE
+	CALL	PR_PR
 	POP	DE
 	JR	ED_BLANK
 
@@ -194,6 +194,7 @@ ED_CDN:	LD	HL,TV_FLAG
 	LD	(ECHO_E),HL
 	LD	(IY+$26),$00
 	POP	HL		; discard SWAP
+	SET	7,(IY+BORDCR-ERR_NR)	; flashing cursor ON
 	RET
 
 ; channel K input service routine
@@ -211,9 +212,9 @@ K_IN:	LD	HL,SWAP
 	LD	(LAST_K),A	; has been pressed
 	JP	NOPIP		; in silence
 
-K_INNK:	LD	B,(HL)
-	BIT	6,B
+K_INNK:	BIT	7,(IY+BORDCR-ERR_NR)	; flashing cursor visible?
 	RET	Z
+	LD	B,(HL)
 	LD	A,(FRAMES)
 	XOR	B
 	AND	$10
@@ -314,9 +315,8 @@ K_ENT:	LD	HL,TV_FLAG
 	LD	A,$0D		; restore A
 	LD	HL,0
 	LD	(K_CUR_S),HL	; reset old cursor position
-	LD	HL,K_STATE
 	LD	(IY+DEFADD+1-ERR_NR),1	; TODO: this is an ugly hack
-	RES	6,(HL)		; turn off blinking cursor
+	RES	7,(IY+BORDCR-ERR_NR)	; turn off flashing cursor
 K_ENTP:	RES	4,(IY+$37)	; allow ELSE
 	SCF
 	JR	K_ING3
@@ -731,23 +731,28 @@ R_SPCC:	LD	HL,C_SPCC
 	RET
 
 ; channel K ioctl
-K_IOCTL:OR	A
-	RET	NZ
-K_RST:	LD	(HL),A
+K_IOCTL:CP	2
+	RET	NC
+K_RST:	EX	AF,AF'
+	LD	A,(HL)
+	AND	$40		; preserve font width
+	LD	(HL),A
 	LD	(K_SAV2),A
 	RES	5,(IY+TV_FLAG-ERR_NR)	; no further clearing
-	RST	$30
-	DEFW	L0D4D		; TEMPS
+	CALL	K_TEMPS
 	SCF
 	CALL	K_SWAP
 	CALL	R_SPCC
 	LD	HL,DF_SZ
 	LD	B,(HL)		; fetch lower screen line count
+	EX	AF,AF'
+	DEC	A
+	JR	Z,K_CLS
 	LD	(HL),$02	; now set DF_SZ to 2
 	RES	0,(IY+$02)	; clean hidden upper part
 	CALL	CLLINE
-	SET	0,(IY+$02)	; clean lower part
 	LD	B,2
+K_CLS:	SET	0,(IY+$02)	; clean lower part
 	CALL	CLLINE
 	LD	BC,(K_WIDTH)
 	LD	B,$17		; line 23 for lower screen
@@ -781,7 +786,8 @@ S_OUT1:	LD	HL,S_STATE
 	LD	L,A
 	JP	(HL)
 S_RST:	EX	DE,HL
-	XOR	A
+	LD	A,(HL)
+	AND	$40		; preserve font width
 	LD	(HL),A
 	LD	HL,COORDX
 	LD	DE,COORDX+1
@@ -838,6 +844,10 @@ KS_COL:	RST	$30
 	JP	NZ,E_HEAD
 COR_TK:	CP	$18
 	JR	C,KS_CTRL
+PR_PR:	EX	AF,AF'
+	LD	A,(DE)
+	AND	$40
+	EX	AF,AF'		; ZF' for 8 pixel font, NZF' for 4 pixel font
 	CP	$20
 	JP	C,PR_GR_0
 	CP	$80
@@ -855,13 +865,7 @@ COR_TK:	CP	$18
 PR_NQ:	EX	DE,HL		; restore screen address to HL
 PR_NC:	PUSH	BC
 	LD	BC,(CHARS)
-PR_CH2:	EX	DE,HL
-	EX	AF,AF'
-	LD	A,L
-	ADD	A,4
-	LD	L,A
-	LD	A,(HL)
-	EX	AF,AF'
+PR_CH2:	EX	DE,HL		; screen address to DE, S/K_STATE to HL
 	LD	HL,FLAGS
 	RES	0,(HL)
 	CP	" "
@@ -885,6 +889,8 @@ PRALL1:	CP	C
 	PUSH	DE
 	CALL	Z,POSCR
 	POP	DE
+	EX	AF,AF'
+	JP	NZ,PR_COND	; jump, if 4 pixel font
 	RST	$30
 	DEFW	X0B99
 TSTOREA:EX	AF,AF'
@@ -985,9 +991,27 @@ KS_IND2:RES	1,(HL)
 P_GR_TK:CP	$90
 	JR	NC,PR_T_UDG
 PR_GR:	LD	B,A
+	LD	HL,MEMBOT
+	EX	AF,AF'
+	JR	NZ,MOSAIC
+	EX	AF,AF'
 	RST	$30
-	DEFW	L0B38		; PO-GR-1 mosaic
+	DEFW	LPOGR1		; PO-GR-1 mosaic
 	JR	PR_GR_E
+MOSAIC:	EX	AF,AF'
+	CALL	MOSAIC2
+	CALL	MOSAIC2
+	JR	PR_GR_E
+MOSAIC2:RR	B
+	SBC	A,A
+	AND	$03
+	LD	C,A
+	RR	B
+	SBC	A,A
+	AND	$0C
+	RST	$30
+	DEFW	LPOGR4		; dump 4 bytes of the mosaic
+	RET
 
 PR_T_UDG:
 	SUB	RND_T
@@ -1247,11 +1271,21 @@ CLSET1:	PUSH	BC
 	RST	$30
 	DEFW	L0E9B		; CL-ADDR
 	POP	BC
-CLSET2:	LD	A,(S_WIDTH)
-	BIT	0,(IY+$02)
+CLSET2:	LD	A,(S_STATE)
+	ADD	A,A
+	ADD	A,A
+	LD	A,(S_WIDTH)
+	BIT	0,(IY+$02)	; upper screen?
 	JR	Z,CLSET3
+	LD	A,(K_STATE)
+	ADD	A,A
+	ADD	A,A
 	LD	A,(K_WIDTH)
-CLSET3:	SUB	C
+CLSET3:	JR	NC,CLSET5
+	SUB	C
+	SRL	A
+	DEFB	$1E		; LD E,skip next byte
+CLSET5:	SUB	C
 	LD	E,A
 	LD	D,0
 	LD	A,(S_MODE)
@@ -1316,12 +1350,85 @@ TRST:	RST	$30
 	DEFW	L0D4D	; TEMPS
 	RET
 
-;;POSCR:	RST	$30	; TODO: take width into account
-;;	DEFW	L0C55	; PO-SCR
-;;	RET
+K_TEMPS:RST	$30
+	DEFW	L0D4D	; TEMPS
+	RES	7,(IY+ATTR_T-ERR_NR)	; flash off
+	RET
+
+; Print condensed (4 pixel wide) character
+; BC coordinates, HL target, DE matrix
+PR_COND:PUSH	BC
+	PUSH	HL
+	LD	B,8
+	RR	C
+	LD	C,0
+	LD	A,(P_FLAG)
+	BIT	2,A
+	JR	Z,NOINV
+	DEC	C
+NOINV:	BIT	0,A
+	JR	NZ,POVER
+	JR	NC,PRCL2
+PRCL1:	RLD
+	LD	A,(DE)
+	XOR	C
+	RRD
+	INC	H
+	INC	DE
+	DJNZ	PRCL1
+PRCDR:	DEC	H
+	RST	$30
+	DEFW	L0BDB		; PO-ATTR
+	POP	HL
+	JR	PORET
+PRCL2:	RRD
+	LD	A,(DE)
+	XOR	C
+	RLD
+	INC	H
+	INC	DE
+	DJNZ	PRCL2
+PORET1:	DEC	H
+	RST	$30
+	DEFW	L0BDB		; PO-ATTR
+	POP	HL
+	INC	HL
+PORET:	POP	BC
+	DEC	C
+	BIT	0,C
+	JP	NZ,TSTOREA
+	JP	TSTORE
+
+POVER:	JR	NC,PROL2
+PROL1:	RLD
+	EX	DE,HL
+	XOR	(HL)
+	EX	DE,HL
+	XOR	C
+	RRD
+	INC	H
+	INC	DE
+	DJNZ	PROL1
+	JR	PRCDR
+PROL2:	RRD
+	EX	DE,HL
+	XOR	(HL)
+	EX	DE,HL
+	XOR	C
+	RLD
+	INC	H
+	INC	DE
+	DJNZ	PROL2
+	JR	PORET1
+
+AUTOLIST:
+	RES	7,(IY+BORDCR-ERR_NR)	; Flashing cursor OFF
+	RST	$30
+	DEFW	L1795		; AUTO-LIST
+	RET
 
 S_IOCTL:DEFW	S_RST	; reset S channel (clear screen, etc.)
-	DEFW	TNOP	; COPY screen to itself (i.e. do nothing)
+	DEFW	AUTOLIST
 	DEFW	PLOT1	; PLOT a single point
 	DEFW	DRAW2	; DRAW straight line
 	DEFW	DRAW3	; DRAW arc
@@ -1371,7 +1478,7 @@ EXTTAB_I:
 	DEFB	$D3		; ON ERROR followed by OPEN #
 	DEFB	$B5		; no change
 	DEFB	$B6		; no change
-	DEFB	$B7		; no change
+	DEFB	$B7		; TRACE followed by TRACE
 	DEFB	$E0		; LOCAL followed by LPRINT
 	DEFB	$E9		; DELETE followed by DIM
 	DEFB	$E5		; REPEAT followed by RESTORE

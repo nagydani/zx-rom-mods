@@ -53,7 +53,7 @@
 	DEFB	P_ONERROR - $	; ON ERROR
 	DEFB	P_PLUG - $	; EsQ
 	DEFB	P_PLUG - $	; EsW
-	DEFB	P_PLUG - $	; EsE
+	DEFB	P_TRACE - $	; TRACE
 	DEFB	P_LOCAL - $	; LOCAL
 	DEFB	P_DELETE - $	; DELETE
 	DEFB	P_REPEAT - $	; REPEAT
@@ -98,7 +98,7 @@ P_POKE:	DEFB	$06		; numeric expression
 	DEFB	$05		; list of items
 	DEFW	POKE
 
-P_STACK:DEFB	$07
+P_STACK:DEFB	$07,$00
 	DEFW	STACK
 
 P_REPEAT:
@@ -139,8 +139,8 @@ P_ASSERT:
 	DEFB	$06, $00
 	DEFW	ASSERT
 
-P_STEP:	DEFB	$05
-	DEFW	STEP
+P_TRACE:DEFB	$05
+	DEFW	TRACE
 
 P_DELETE:
 	DEFB	$05
@@ -166,6 +166,9 @@ P_TURBO:DEFB	$06,$00
 P_DISPLAY:
 	DEFB	$03
 	DEFW	DISPLAY
+
+P_STEP:	DEFB	$07,",",$06,$00
+	DEFW	STEP
 
 P_PLAY:
 ; unimplemented instruction, accepted w/o parameters, but not executed
@@ -197,11 +200,11 @@ LINE_END:
 	LD	HL,(NXTLIN)
 	LD	A,$C0
 	AND	(HL)
-	JP	NZ,SWAP		; program finished
+	JR	NZ,LE_SWAP	; program finished
 	PUSH	HL
 	LD	HL,L1BBF - 1	; XOR A, LINE-USE
 	EX	(SP),HL
-	JP	SWAP
+LE_SWAP:JP	SWAP
 
 CMDCLASS2:
 	DEFB	CLASS2_00 - $	; parameterless instruction
@@ -303,14 +306,19 @@ USE_ZERO:
 CLASS2_07:
 	RST	$30
 	DEFW	L2070		; STR-ALTER
-	JR	NC,STR_ALTERED
-	CALL	SYNTAX_Z
-	JR	Z,STR_ALTERED
+	RET	NC
+	LD	HL,(T_ADDR)
+	LD	A,(HL)
+	OR	A
+	JR	Z,CL7_E
+	INC	HL
+	LD	(T_ADDR),HL
+CL7_E:	CALL	SYNTAX_Z
+	RET	Z
 	LD	A,2
 	RST	$30
 	DEFW	L1601	; CHAN-OPEN
-STR_ALTERED:
-	JR	CLASS2_00
+	RET
 
 FROM_1:	CALL	SYNTAX_Z
 	JR	Z,FROM_1R
@@ -1808,31 +1816,31 @@ ERROR_G:CALL	ERROR
 	DEFB	$0F		; G No room for line
 
 
-; Step syntax check, like PRINT
-STEP_S:	RST	$30
+; TRACE syntax check, like PRINT
+TRACE_S:	RST	$30
 	DEFW	L1FDF		; PRINT-2
 	LD	HL,L1BEE + 5	; CHECK-END + 5
 	PUSH	HL
 	JP	SWAP
 
-STEP:	CALL	SYNTAX_Z
-	JR	Z,STEP_S
+TRACE:	CALL	SYNTAX_Z
+	JR	Z,TRACE_S
 	POP	HL		; discard return address
 	LD	HL,(PPC)
 	LD	(STEPPPC),HL
 	LD	A,(SUBPPC)
 	LD	(STEPSUB),A
-	CALL	STEP_P		; print STEP arguments, catching errors
+	CALL	TRACE_P		; print TRACE arguments, catching errors
 STEP_CONT:
 	LD	HL,(ERR_SP)
 	AND	A
 	SBC	HL,SP		; Handling an error?
-	JP	NZ,STEP_E	; jump, if so
+	JP	NZ,TRACE_E	; jump, if so
 	BIT	7,(IY+$0A)	; Jump to be made? NSPPC
-	JR	NZ,STEP_NX	; forward, if not
+	JR	NZ,TRACE_NX	; forward, if not
 	LD	HL,(NEWPPC)
 	BIT	7,H
-	JR	Z,STEP_LN
+	JR	Z,TRACE_LN
 	LD	HL,$FFFE
 	LD	(PPC),HL
 	LD	HL,(WORKSP)
@@ -1840,25 +1848,28 @@ STEP_CONT:
 	LD	DE,(E_LINE)
 	DEC	DE
 	LD	A,(NSPPC)
-	JR	STEP_NL
+	JR	TRACE_NL
 
-STEP_NX:RST	$18
+TRACE_NX:
+	RST	$18
 	CP	":"
-	JR	Z,STEP_N
+	JR	Z,TRACE_N
 	CP	$0D
-	JR	Z,STEP_LE
+	JR	Z,TRACE_LE
 	JP	ERROR_C
 
-STEP_LN:RST	$30
+TRACE_LN:RST	$30
 	DEFW	L196E		; LINE-ADDR
 	LD	A,(NSPPC)
-	JR	Z,STEP_LC
+	JR	Z,TRACE_LC
 	OR	A
 	JR	NZ,ERROR_N
 	DEC	HL
-STEP_LE:INC	HL
+TRACE_LE:
+	INC	HL
 	LD	A,1
-STEP_LC:CP	$01
+TRACE_LC:
+	CP	$01
 	ADC	A,$00
 	LD	D,(HL)
 	BIT	7,D
@@ -1875,7 +1886,8 @@ STEP_LC:CP	$01
 	EX	DE,HL
 	ADD	HL,DE
 	INC	HL
-STEP_NL:LD	(NXTLIN),HL
+TRACE_NL:
+	LD	(NXTLIN),HL
 	EX	DE,HL
 	LD	(CH_ADD),HL
 	LD	D,A
@@ -1883,7 +1895,7 @@ STEP_NL:LD	(NXTLIN),HL
 	LD	(IY+$0A),$FF	; NSPPC
 	DEC	D
 	LD	(IY+$0D),D	; SUBPPC
-	JR	Z,STEP_N
+	JR	Z,TRACE_N
 	INC	D
 	RST	$30
 	DEFW	L198B		; EACH-STMT
@@ -1891,12 +1903,12 @@ STEP_NL:LD	(NXTLIN),HL
 	RST	$18
 	DEFB	$1E		; LD E, skip one byte
 ; STMT-LOOP
-STEP_N:	RST	$20		; read next
+TRACE_N:RST	$20		; read next
 	CP	$0D
-	JR	Z,STEP_LE	; LINE-END
-STEP_L1:INC	(IY+$0D)
+	JR	Z,TRACE_LE	; LINE-END
+TRACE_L1:INC	(IY+$0D)
 	CP	":"
-	JR	Z,STEP_N
+	JR	Z,TRACE_N
 
 ;;	LD	HL,(CH_ADD)
 	LD	(T_ADDR),HL	; Save execution pointer
@@ -1904,39 +1916,39 @@ STEP_L1:INC	(IY+$0D)
 	DEFW	L16BF		; SET-WORK
 	LD	HL,(STEPPPC)
 	BIT	7,H
-	JR	NZ,STEP_C	; STEP was a command
+	JR	NZ,TRACE_C	; TRACE was a command
 	RST	$30
 	DEFW	L196E		; LINE-ADDR
 	INC	HL
 	INC	HL		; step over line number
 	INC	HL
 	INC	HL		; step over line length
-	JR	Z,STEP_0
+	JR	Z,TRACE_0
 ERROR_N:RST	$08
 	DEFW	L1BEC		; N Statement lost
-STEP_C:	LD	HL,(E_LINE)
-STEP_0:	DEC	HL
+TRACE_C:LD	HL,(E_LINE)
+TRACE_0:DEC	HL
 	LD	(CH_ADD),HL
 	LD	A,(STEPSUB)
 	LD	E,$00
 	LD	D,A
 	DEC	A
-	JR	Z,STEP_1	; STEP is first statement
+	JR	Z,TRACE_1	; TRACE is first statement
 	RST	$30
 	DEFW	L198B		; EACH-STMT
 	JR	NZ,ERROR_N
 	RST	$18
 	CP	":"
 	JR	NZ,ERROR_N
-STEP_1:	RST	$20		; advance
+TRACE_1:RST	$20		; advance
 	RST	$20		; twice
-	CALL	STEP_P
+	CALL	TRACE_P
 	LD	HL,(PPC)
 	BIT	7,H		; executing command line?
-	JR	Z,STEP_2	; jump, if not
+	JR	Z,TRACE_2	; jump, if not
 	INC	HL
 	INC	HL
-STEP_2:	CALL	DECWORD
+TRACE_2:	CALL	DECWORD
 	LD	A,":"
 	RST	$10
 	LD	A,(SUBPPC)
@@ -1965,9 +1977,9 @@ STEP_2:	CALL	DECWORD
 	CP	" "
 	JR	Z,ERROR_L	; BREAK
 	CP	"c"
-	JR	Z,STEP_X
+	JR	Z,TRACE_X
 	CP	"C"
-	JR	Z,STEP_X
+	JR	Z,TRACE_X
 	RST	$18
 	CP	REM_T
 	JR	Z,ST_REM
@@ -2011,11 +2023,11 @@ ST_IF:	RST	$20
 	CP	THEN_T
 	JR	NZ,ST_THENLESS
 	CALL	TEST_ZERO
-ST_IF1:	JP	NZ,STEP_N
+ST_IF1:	JP	NZ,TRACE_N
 	SET	4,(IY+$37)	; signal false outcome
 ST_REM:	LD	HL,(NXTLIN)
 	XOR	A
-	JP	STEP_LC
+	JP	TRACE_LC
 ST_THENLESS:
 	CALL	TEST_ZERO
 	JR	NZ,ST_IF1
@@ -2027,12 +2039,12 @@ ST_THENLESS:
 ERROR_L:RST	$30
 	DEFW	L1B7B		; L Break into program
 
-STEP_X:	LD	HL,L1B29	; STMT-L-1
+TRACE_X:LD	HL,L1B29	; STMT-L-1
 	PUSH	HL
 ST_SW:	JP	SWAP
 
-; Print STEP's arguments
-STEP_P:	RST	$30
+; Print TRACE's arguments
+TRACE_P:RST	$30
 	DEFW	L0D6E		; CLS-LOWER
 	LD	A,$16		; AT
 	RST	$10
@@ -2057,8 +2069,8 @@ STEP_P:	RST	$30
 	LD	(HL),D
 	RET
 
-; Print any error that might occur during STEP
-STEP_E:	LD	HL,L1303
+; Print any error that might occur during TRACE
+TRACE_E:LD	HL,L1303
 	PUSH	HL
 	LD	HL,(RETADDR)
 	PUSH	HL
@@ -2073,7 +2085,8 @@ STEP_E:	LD	HL,L1303
 	POP	AF
 	CP	$1C
 	JP	NC,REPORT
-STEP_EO:LD	DE,L1391
+TRACE_EO:
+	LD	DE,L1391
 	RST	$30
 	DEFW	L0C0A		; PO-MSG
 	LD	A,$0D
@@ -2984,4 +2997,46 @@ DISPFREE:
 	RST	$30
 	DEFW	L19E5		; RECLAIM-1
 	LD	(CHANS),HL
+	RET
+
+STEP:	RST	$30
+	DEFW	L1E94		; FIND-INT1
+	LD	HL,SWAP
+	PUSH	HL
+	LD	HL,S_STATE
+	LD	DE,S_POSN
+	BIT	0,(IY+TV_FLAG-ERR_NR)	; lower screen
+	JR	Z,STEP1
+	LD	HL,K_STATE
+	INC	DE
+	INC	DE
+STEP1:	CP	4
+	JR	Z,STEP4
+	CP	8
+	JP	NZ,ERROR_K
+	BIT	6,(HL)
+	RET	Z
+	LD	A,(DE)
+	RRA
+	LD	C,A
+	LD	A,$80		; hard blank
+	CALL	C,$0010
+	LD	A,C
+	INC	A
+	LD	(DE),A
+	RES	6,(HL)
+	INC	L
+	SRL	(HL)
+	INC	(HL)
+	RET
+STEP4:	BIT	6,(HL)
+	RET	NZ
+	LD	A,(DE)
+	ADD	A,A
+	DEC	A
+	LD	(DE),A
+	SET	6,(HL)
+	INC	L
+	SLA	(HL)
+	DEC	(HL)
 	RET

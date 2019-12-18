@@ -158,6 +158,7 @@
 | B3 | END WHILE
 | B4 | ON ERROR
 | ... |
+| B7 | TRACE
 | B8 | LOCAL
 | B9 | DELETE
 | BA | REPEAT
