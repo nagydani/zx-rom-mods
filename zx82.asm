@@ -35,6 +35,7 @@
 ; - channel control (e.g. reset) through output service routine (CF reset)
 ; - stream #0 is not restored to channel K in MAIN_EXEC
 ; - reports signaled by channel control $0D in the end to help processing
+; - channel P resets permanent attribtues as well [PRINT INVERSE 1;: LLIST]
 
 ; Mission: It is both an "alternative reality" project what ROM1 should have
 ; been in ZX Spectrum 128K, but is also usable for the stock 16k/48k machine.
@@ -53,7 +54,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 01-NOV-2019
+; Last updated: 17-DEC-2019
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -6616,9 +6617,9 @@ L162C:  JP      (HL)            ; jump to the routine
 ; A zero end-marker is required as channel 'R' is not present.
 
 ;; chn-cd-lu
-L162D:  DEFB    'K', L1634-$-1  ; offset $06 to CHAN-K
-        DEFB    'S', L1642-$-1  ; offset $12 to CHAN-S
-        DEFB    'P', L164D-$-1  ; offset $1B to CHAN-P
+L162D:  DEFB    'K', CHAN_K-$-1  ; offset $06 to CHAN-K
+        DEFB    'S', CHAN_S-$-1  ; offset $12 to CHAN-S
+        DEFB    'P', CHAN_P-$-1  ; offset $1B to CHAN-P
 
         DEFB    $00             ; end marker.
 
@@ -6628,13 +6629,15 @@ L162D:  DEFB    'K', L1634-$-1  ; offset $06 to CHAN-K
 ; routine to set flags for lower screen/keyboard channel.
 
 ;; CHAN-K
-L1634:  SET     0,(IY+$02)      ; update TV_FLAG  - signal lower screen in use
 ;;; BUGFIX: do not discard the byte in the keyboard buffer upon opening,
 ;;; rather, disable echoing into lower part of screen
-	RES	3,(IY+$02)
+CHAN_K:	LD	HL,TV_FLAG
+	SET	0,(HL)		; signal lower screen in use
+	RES	3,(HL)		; disable echo
+;;;	SET     0,(IY+$02)      ; update TV_FLAG  - signal lower screen in use
 ;;;	RES     5,(IY+$01)      ; update FLAGS    - signal no new key
         SET     4,(IY+$30)      ; update FLAGS2   - signal K channel in use
-        JR      L1646           ; forward to CHAN-S-1 for indirect exit
+        JR      CHAN_S1		; forward to CHAN-S-1 for indirect exit
 
 ; --------------
 ; Channel S flag
@@ -6642,11 +6645,11 @@ L1634:  SET     0,(IY+$02)      ; update TV_FLAG  - signal lower screen in use
 ; routine to set flags for upper screen channel.
 
 ;; CHAN-S
-L1642:  RES     0,(IY+$02)      ; TV_FLAG  - signal main screen in use
+CHAN_S:	RES     0,(IY+$02)      ; TV_FLAG  - signal main screen in use
 
 ;; CHAN-S-1
-L1646:  RES     1,(IY+$01)      ; update FLAGS  - signal printer not in use
-        JP      L0D4D           ; jump back to TEMPS and exit via that
+CHAN_S1:RES     1,(IY+$01)      ; update FLAGS  - signal printer not in use
+CHAN_S2:JP      L0D4D           ; jump back to TEMPS and exit via that
                                 ; routine after setting temporary attributes.
 ; --------------
 ; Channel P flag
@@ -6656,8 +6659,10 @@ L1646:  RES     1,(IY+$01)      ; update FLAGS  - signal printer not in use
 ; This status remains in force until reset by the routine above.
 
 ;; CHAN-P
-L164D:  SET     1,(IY+$01)      ; update FLAGS  - signal printer in use
-        RET                     ; return
+CHAN_P:	SET     1,(IY+$01)      ; update FLAGS  - signal printer in use
+;;; BUGFIX: restore permanent attributes for the ZX Printer as well
+        JR	CHAN_S2		; indirect exit
+;;;	RET
 
 ; --------------------------
 ; THE 'ONE SPACE' SUBROUTINE
@@ -10316,11 +10321,15 @@ L1FCD:  LD      A,$02           ; the stream for the upper screen.
 ;; PRINT-1
 L1FCF:  CALL    L2530           ; routine SYNTAX-Z checks if program running
         CALL    NZ,L1601        ; routine CHAN-OPEN if so
-        CALL    L0D4D           ; routine TEMPS sets temporary colours.
+;;; BUGFIX: unnecessary, called indirectly by CHAN-OPEN
+;;;	CALL    L0D4D           ; routine TEMPS sets temporary colours.
         CALL    L1FDF           ; routine PRINT-2 - the actual item
         CALL    L1BEE           ; routine CHECK-END gives error if not at end
                                 ; of statement
         RET                     ; and return >>>
+
+;;; ---
+	DEFS $1FDF - $
 
 ; ------------------------------------
 ; this subroutine is called from above
