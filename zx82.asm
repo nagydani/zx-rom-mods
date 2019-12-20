@@ -4589,6 +4589,8 @@ L0E4D:  AND     $07             ; mask 0-7 to consider thirds at a time
         LD      C,$21           ; make column $21. (No use is made of this)
         RET                     ; return to the calling routine.
 ;;; ---
+TEMPS2:	CALL	TEMPS_HOOK
+	JP	L0D4D		; TEMPS
 	DEFS	$0E88 - $
 ; ------------------
 ; Attribute handling
@@ -6649,7 +6651,9 @@ CHAN_S:	RES     0,(IY+$02)      ; TV_FLAG  - signal main screen in use
 
 ;; CHAN-S-1
 CHAN_S1:RES     1,(IY+$01)      ; update FLAGS  - signal printer not in use
-CHAN_S2:JP      L0D4D           ; jump back to TEMPS and exit via that
+;;; BUGFIX: extensible TEMPS
+CHAN_S2:JP	TEMPS2
+;;;	JP      L0D4D           ; jump back to TEMPS and exit via that
                                 ; routine after setting temporary attributes.
 ; --------------
 ; Channel P flag
@@ -8425,10 +8429,15 @@ L1AAE:  DEFB    $05             ; Class-05 - Variable syntax checked entirely
         DEFW    L17F9           ; Address: $17F9; Address: LIST
 
 ;; P-POKE
-L1AB1:  DEFB    $08             ; Class-08 - Two comma-separated numeric
-                                ; expressions required.
-        DEFB    $00             ; Class-00 - No further operands.
-        DEFW    L1E80           ; Address: $1E80; Address: POKE
+L1AB1:
+;;; BUGFIX: extensible POKE
+	DEFB	$05		; Class-05 - Variable syntax
+	DEFW	POKE
+	DEFS	$1AB5 - $
+;;;	DEFB    $08             ; Class-08 - Two comma-separated numeric
+;;;				; expressions required.
+;;;	DEFB    $00             ; Class-00 - No further operands.
+;;;	DEFW    L1E80           ; Address: $1E80; Address: POKE
 
 ;; P-RANDOM
 L1AB5:  DEFB    $03             ; Class-03 - A numeric expression may follow
@@ -12790,7 +12799,9 @@ L25DB:  LD      HL,FLAGS        ; Address FLAGS system variable.
 ; ->
 ;; S-BRACKET
 L25E8:  RST     20H             ; NEXT-CHAR
-        CALL    L24FB           ; routine SCANNING is called recursively.
+;;; BUGFIX: no need to read characer again, minor speedup
+	CALL	L24FB + 1	; routine SCANNING is called recursively.
+;;;	CALL	L24FB		; routine SCANNING is called recursively.
         CP      $29             ; is it the closing ')' ?
         JP      NZ,L1C8A        ; jump back to REPORT-C if not
                                 ; 'Nonsense in BASIC'
@@ -13488,7 +13499,10 @@ L27D0:  CP      $28             ; is '(' ?
         JR      Z,L27E9         ; forward to SF-FLAG-6 if no arguments.
 
 ;; SF-ARGMTS
-L27D9:  CALL    L24FB           ; routine SCANNING checks each argument
+L27D9:
+;;; BUGFIX: no need to read characer again, minor speedup
+	CALL	L24FB + 1	; routine SCANNING checks each argument
+;;;	CALL    L24FB           ; routine SCANNING checks each argument
                                 ; which may be an expression.
 
         RST     18H             ; GET-CHAR
@@ -13708,11 +13722,13 @@ L288D:  POP     DE              ; location of ')' in DEF FN to DE.
 
         PUSH    DE              ; save FN ')' pointer.
 
-        RST     20H             ; NEXT-CHAR advances past ')' in define
+        RST     $20             ; NEXT-CHAR advances past ')' in define
 
-        RST     20H             ; NEXT-CHAR advances past '=' to expression
+        RST     $20             ; NEXT-CHAR advances past '=' to expression
 
-        CALL    L24FB           ; routine SCANNING evaluates but searches
+;;; BUGFIX: no need to read characer again, minor speedup
+	CALL	L24FB + 1	; routine SCANNING evauluates but searches
+;;;	CALL    L24FB           ; routine SCANNING evaluates but searches
 ; ---
 	LD	DE,(DEFADD)	; DEF FN argument list
 	CALL	RSTARGS		; restore function arguments from stack
@@ -20262,24 +20278,37 @@ IOS_TAB:DEFW	RESET_S		; 0: Channel RESET
 	DEFW	DCRCLE		; 5: DRAW-CIRCLE
 IOS_END:EQU	$
 
+POKE:	CALL	L1C82		; CLASS-06, numeric expression
+	CP	","
+	JR	NZ,REPORT_C_EXTRA
+	RST	$20
+	CALL	L24FB + 1	; SCANNING + 1
+	BIT	6,(IY+$01)	; numeric?
+	JR	Z,REPORT_C_EXTRA
+	CALL	L1BEE		; CHECK-END
+	JP	L1E80		; POKE
+
+; Extensible instruction set (5 bytes)
+REPORT_C_EXTRA:
+	CALL	RUN_HOOK
+	RST	$08
+	DEFB	$0B		; C Nonsense in BASIC
+
+; Select system channel S (or other) for class 9 attribute changes
+STR_FE:	CP	"#"
+	JR	Z,REPORT_C_EXTRA; other streams only allowed in ROM1
+	LD	A,$FE
+	RET
+
 ; LET substitute for FOR (6 bytes)
 FOR_LET:CALL	FOR_HOOK
 	JP	L2AFF		; LET
-
-; Abstracted NEW routine (6 bytes)
-NEW:	CALL	NEW_HOOK
-	JP	L11B7		; NEW
-
-; REPORT1, check for local variables first (5 bytes)
-REPORT1:CALL	NEXT_HOOK
-	RST	$08
-	DEFB	$00		; 1 NEXT without FOR
 
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
 
-	DEFS	$3C02 - $, $FF
+	DEFS	$3C03 - $, $FF
 
 ; Find token in this ROM (128 bytes)
 ; Input: HL text to match, B length of text, DE token table, C number of tokens in the table
@@ -20399,17 +20428,14 @@ REPORT7:CALL	RETURN_HOOK
 REP7:	RST	$08
 	DEFB	$06		; 7 RETURN without GOSUB
 
-; Extensible instruction set
-REPORT_C_EXTRA:
-	CALL	RUN_HOOK
+; REPORT1, check for local variables first (5 bytes)
+REPORT1:CALL	NEXT_HOOK
 	RST	$08
-	DEFB	$0B		; C Nonsense in BASIC
+	DEFB	$00		; 1 NEXT without FOR
 
-; Select system channel S (or other) for class 9 attribute changes
-STR_FE:	CP	"#"
-	JR	Z,REPORT_C_EXTRA; other streams only allowed in ROM1
-	LD	A,$FE
-	RET
+; Abstracted NEW routine (6 bytes)
+NEW:	CALL	NEW_HOOK
+	JP	L11B7		; NEW
 
 ; Abstracted PLOT routine (high speed)
 PLOT:	BIT	4,(IY+FLAGS-ERR_NR)
@@ -20461,9 +20487,10 @@ NEW_HOOK:
 	CALL	NOPAGE
 STEP_HOOK:
 	CALL	NOPAGE
+TEMPS_HOOK:
+	CALL	NOPAGE
 POUT:	CALL	NOPAGE
 PIN:	CALL	NOPAGE
-SOUT:	CALL	NOPAGE
 KOUT:	CALL	NOPAGE
 KIN:	CALL	NOPAGE
 XOUT:	CALL	NOPAGE

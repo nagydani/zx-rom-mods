@@ -138,6 +138,7 @@ K_TV:	DEFW	0
 S_STATE:DEFB	$00
 S_WIDTH:DEFB	$21
 S_TV:	DEFW	0
+KS_PERM:DEFB	0		; additional permanent attributes
 K_SPCC:	DEFB	1
 C_SPCC:	DEFB	1
 RCLINE:	DEFS	2		; current line being renumbered
@@ -472,12 +473,18 @@ CL9_CONT:
 	DEFW	L21E2 + 4	; CO-TEMP-2 + 4
 	JP	SWAP
 
+OLD_CONT:
+	LD	A,(T_ADDR)
+	CP	$B2		; POKE ?
+	JP	Z,E_POKE
+	JR	ERRCNZ3
+
 RUN_CONT:
 	POP	HL		; discard return to REPORT C
 	INC	B		; B=$00 for instruction mismatch and B=$1B for separator mismatch
 	JR	Z,CL9_CONT
 	DJNZ	SEP_MISM
-
+	JR	NC,OLD_CONT	; old command extended
 	DEC	B		; B becomes FF here
 	LD	C,A
 	LD	HL,P_END
@@ -487,7 +494,8 @@ RUN_CONT:
 	ADD	HL,BC
 	CP	$B2		; TOKEN $80
 	JR	NC,GET_PARAM	; jump for tokens
-	JR	ERRCNZ		; TODO: syntax error for other characters
+ERRCNZ3:JR	ERRCNZ		; TODO: syntax error for other characters
+
 SCAN_LOOP:
 	LD	HL,(T_ADDR)
 GET_PARAM:
@@ -555,6 +563,8 @@ SEP_MISM:			; THEN-less IF and operator update in LET
 	LD	A,(T_ADDR)
 	CP	$8B		; EOL in STOP
 	JP	Z,STOP
+	CP	$B2		; EOL in POKE
+	JP	Z,N_POKE
 	CP	$7C		; = in LET
 ERRCNZ:	JR	NZ,ERROR_C_NZ
 	POP	AF
@@ -663,7 +673,7 @@ CHINFO0:
 K_CH:	DEFW	KOUT
 	DEFW	KIN
 	DEFB	"K"
-S_CH:	DEFW	SOUT
+S_CH:	DEFW	KOUT
 	DEFW	L15C4
 	DEFB	"S"
 R_CH:	DEFW	L0F81
@@ -740,8 +750,8 @@ ERR_MSG:DEFM	"ERRO"
 	DEFB	$80+"F"
 	DEFM	"_E"
 	DEFB	$80+"G"
-	DEFM	"POK"
-	DEFB	$80+"E"
+	DEFM	"_E"
+	DEFB	$80+"O"
 	DEFM	"_Es"
 	DEFB	$80+"I"
 	DEFM	"US"
@@ -1914,9 +1924,9 @@ C256:	DEFB	$00, $00, $00, $01, $00
 	JP	LOCAL_CONT
 	JP	NEW128
 	JP	STEP_CONT
+	JP	TEMPS_CONT
 	JP	PR_OUT
 	JP	PR_IN
-	JP	S_OUT
 	JP	K_OUT
 	JP	K_IN
 	JP	X_OUT

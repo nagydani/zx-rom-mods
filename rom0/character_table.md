@@ -11,7 +11,7 @@
 | 04 | ? | TBD
 | 05 | RST | temporary attributes reset
 | 06 | comma | next tabulator position, with blanking
-| 07 | ? | TBD
+| 07 | step | next byte selects font width (4 or 8)
 | 08 | BS, left | cursor one position to the left 
 | 09 | FW, right| cursor one position to the right, paints with temp attrs 
 | 0A | LF, down | cursor one position down
@@ -162,8 +162,6 @@
 | B8 | LOCAL
 | B9 | DELETE
 | BA | REPEAT
-| ... |
-| BE | POKE
 | ... |
 | C0 | USR
 | ... |

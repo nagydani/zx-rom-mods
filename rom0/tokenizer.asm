@@ -24,10 +24,7 @@ TOK_IN:	EX	AF,AF'
 	RR	D		; save CF
 	DEC	A
 	CPL
-	CP	POKE_T		; old POKE?
-	JR	NZ,TOK_PK	; if so,
-	LD	A,PEEK_T	; replace by new POKE
-TOK_PK:	RL	D
+	RL	D
 	RET
 TOK_TF:	ADD	A,49
 	CPL

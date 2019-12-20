@@ -13,10 +13,10 @@
 ; width of display + 1 (defaults to 33)
 ;
 ; byte 2:
-; control character saved (see TV_DATA)
+; control character saved (see TVDATA)
 ;
 ; byte 3:
-; first argument saved (see TV_DATA + 1)
+; first argument saved (see TVDATA + 1)
 
 ; Determine whether or not to suppress the leading space at the cursor position
 ; Pollutes: AF, HL, B
@@ -560,8 +560,7 @@ EXT_CNT:JR	C,K_INSF
 ; This area must be a data table not to trigger the SAVE trap
 
 ; K-MODE translation table
-K_MODE:	DEFB	POKE_T,PEEK_T
-	DEFB	"@",LABEL_T
+K_MODE:	DEFB	"@",LABEL_T
 	DEFB	0
 
 ; L-MODE translation table
@@ -760,14 +759,12 @@ K_CLS:	SET	0,(IY+$02)	; clean lower part
 S_IO_E:	JP	CLSET
 
 ; channel S output service routine
-S_OUT:	LD	HL,SWAP
-	PUSH	HL
-	BIT	4,(IY+TV_FLAG-ERR_NR)	; auto-list?
+S_OUT:	BIT	4,(HL)		; auto-list?
 	JR	Z,S_OUT1
 	EX	AF,AF'
 	LD	A,(BANK_M)
 	AND	$07
-	RET	NZ			; no auto-list in X channel
+	RET	NZ		; no auto-list in X channel
 	EX	AF,AF'
 S_OUT1:	LD	HL,S_STATE
 	JR	C,KS_OUT
@@ -822,6 +819,9 @@ KS_CTRL:PUSH	HL		; save display address
 ; channel K output service routine
 K_OUT:	LD	HL,SWAP
 	PUSH	HL
+	LD	HL,TV_FLAG
+	BIT	0,(HL)
+	JR	Z,S_OUT
 	LD	HL,K_STATE
 	JP	NC,K_IOCTL
 ; channel K/S direct output for coroutines
@@ -967,10 +967,12 @@ PATERR:	JP	C,ERROR_B
 	BIT	0,(IY+$02)
 	JP	NZ,POSCR
 	CP	(IY+$31)
-	JP	C,ERROR_5
-	JP	CLSET
+	JP	NC,CLSET
+	JP	ERROR_5
 
-COTEMP5:INC	SP		; TODO; proper handling in this ROM
+COTEMP5:CP	$07
+	JR	Z,PRSTEP
+	INC	SP		; TODO; proper handling in this ROM
 	INC	SP		; discard SWAP
 	PUSH	HL
 	LD	HL,L2211	; CO-TEMP-5
@@ -1012,6 +1014,9 @@ MOSAIC2:RR	B
 	RST	$30
 	DEFW	LPOGR4		; dump 4 bytes of the mosaic
 	RET
+
+PRSTEP:	LD	A,D
+	JP	TEMPS4
 
 PR_T_UDG:
 	SUB	RND_T
@@ -1177,7 +1182,7 @@ TCTRL:	DEFB	TNOP - $	; $00 does nothing
 	DEFB	TQUEST - $	; $04 prints question mark
 	DEFB	TRST - $	; $05 restore permanent attrs
 	DEFB	TCOMMA - $	; $06 tabulates with blanks
-	DEFB	TQUEST - $	; $07 prints question mark
+	DEFB	T1CTR - $	; $07 STEP
 	DEFB	TBS - $		; $08 back
 	DEFB	TFW - $		; $09 forward
 	DEFB	TLF - $		; $0A down
@@ -1427,6 +1432,56 @@ AUTOLIST:
 	DEFW	L1795		; AUTO-LIST
 	RET
 
+TEMPS_CONT:
+	LD	HL,SWAP
+	PUSH	HL
+TEMPS3:	LD	A,(TVDATA)
+	RRCA
+	LD	A,(KS_PERM)
+	JR	C,TEMPS_K
+	RRCA
+TEMPS_K:RRCA
+	LD	A,4
+	JR	C,TEMPS4
+	ADD	A,A
+TEMPS4:	LD	HL,S_STATE
+	LD	DE,S_POSN
+	BIT	0,(IY+TV_FLAG-ERR_NR)	; lower screen
+	JR	Z,STEP1
+	LD	HL,K_STATE
+	INC	DE
+	INC	DE
+STEP1:	CP	4
+	JR	Z,STEP4
+	CP	8
+	JP	NZ,ERROR_K
+	BIT	6,(HL)
+	RET	Z
+	LD	A,(DE)
+	RRA
+	LD	C,A
+	LD	A,$80		; hard blank
+	CALL	C,$0010
+	LD	A,C
+	INC	A
+	LD	(DE),A
+	RES	6,(HL)
+	INC	L
+	SRL	(HL)
+	INC	(HL)
+	RET
+STEP4:	BIT	6,(HL)
+	RET	NZ
+	LD	A,(DE)
+	ADD	A,A
+	DEC	A
+	LD	(DE),A
+	SET	6,(HL)
+	INC	L
+	SLA	(HL)
+	DEC	(HL)
+	RET
+
 S_IOCTL:DEFW	S_RST	; reset S channel (clear screen, etc.)
 	DEFW	AUTOLIST
 	DEFW	PLOT1	; PLOT a single point
@@ -1485,7 +1540,7 @@ EXTTAB_I:
 	DEFB	$BB		; no change
 	DEFB	$BC		; no change
 	DEFB	$BD		; no change
-	DEFB	$AC		; POKE followed by POP
+	DEFB	$BE		; no change
 	DEFB	$BF		; no change
 	DEFB	$C2		; USR followed by UNTIL
 	DEFB	$C1		; no change
@@ -1541,7 +1596,7 @@ EXTTAB_I:
 	DEFB	$E6		; NEXT followed by NEW
 	DEFB	$AC		; POKE followed by POP
 	DEFB	$CC		; PRINT followed by PROC
-	DEFB	$BE		; PLOT followed by POKE
+	DEFB	$F4		; PLOT followed by POKE
 	DEFB	$F9		; RUN followed by RANDOMIZE
 	DEFB	$AA		; SAVE followed by STEP
 	DEFB	$E3		; RANDOMIZE followed by READ
