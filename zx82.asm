@@ -10444,7 +10444,8 @@ L2024:  CALL    L21F2           ; routine CO-TEMP-3 will print any colour
         RET     NC              ; return if altered.
 
         CALL    L24FB           ; routine SCANNING now to evaluate expression
-        CALL    L1FC3           ; routine UNSTACK-Z if not runtime.
+; Return point after printable expression evaluation
+X202F:	CALL    L1FC3           ; routine UNSTACK-Z if not runtime.
 
         BIT     6,(IY+$01)      ; test FLAGS  - Numeric or string result ?
         CALL    Z,L2BF1         ; routine STK-FETCH if string.

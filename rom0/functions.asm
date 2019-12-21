@@ -72,6 +72,8 @@ SCANFUNC2:
 	DEFB	S_LBL - $
 	DEFB	"{"
 	DEFB	S_BRACE - $
+	DEFB	STEP_T
+	DEFB	S_STEP - $
 	DEFB	0
 
 S_BRACE:RST	$18		; HL = address of opening brace
@@ -151,6 +153,9 @@ L_LBL:	LD	A,(HL)
 	INC	HL
 	JR	NZ,L_LBL
 	JP	D_LBL
+
+; This is an ugly hack
+S_STEP:	JP	A_STEP
 
 F_NUM:	LD	BC,L270D	; S-PUSH-PO
 	PUSH	BC
@@ -397,6 +402,20 @@ S_LBL0:	INC	HL
 	RST	$30
 	DEFW	L0077		; TEMP-PTR1
 	RET
+
+; This is an ugly hack
+A_STEP:	POP	BC
+	LD	A,B
+	OR	A
+	JR	NZ,ERR_CL
+	LD	HL,L21FC + 2	; CO-TEMP-4 + 2
+	EX	(SP),HL
+	LD	BC,X202F
+	SBC	HL,BC
+	JR	NZ,ERR_CL
+	RST	$20
+	LD	A,$07		; CHR$ 7
+	JR	CSWAPR
 
 D_CPL:	BIT	6,(IY+$01)
 	JR	NZ,D_CPLN
