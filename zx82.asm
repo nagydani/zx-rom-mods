@@ -8945,7 +8945,7 @@ L1BF4:  RST     18H             ; GET-CHAR - ignoring white space etc.
                                 ; further statements
 
 ;;; BUGFIX: allow for extra arguments
-	JP	REPORT_C_EXTRA
+	JP	REPORT_C_EXTRA2
 ;;;        JP      L1C8A           ; jump to REPORT-C with any other character
                                 ; 'Nonsense in BASIC'.
 
@@ -20288,7 +20288,9 @@ POKE:	CALL	L1C82		; CLASS-06, numeric expression
 	CALL	L1BEE		; CHECK-END
 	JP	L1E80		; POKE
 
-; Extensible instruction set (5 bytes)
+; Extensible instruction set (7 bytes)
+REPORT_C_EXTRA2:
+	LD	B,$1B		; just like separators
 REPORT_C_EXTRA:
 	CALL	RUN_HOOK
 	RST	$08

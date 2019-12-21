@@ -559,7 +559,8 @@ SEP_MISM:			; THEN-less IF and operator update in LET
 	JR	Z,C_THEN
 	CP	":"
 	JR	Z,C_THEN
-	PUSH	AF
+	LD	HL,L1B76	; STMT-RET
+OLD_EXT:EX	AF,AF'
 	LD	A,(T_ADDR)
 	CP	$8B		; EOL in STOP
 	JP	Z,STOP
@@ -567,7 +568,7 @@ SEP_MISM:			; THEN-less IF and operator update in LET
 	JP	Z,N_POKE
 	CP	$7C		; = in LET
 ERRCNZ:	JR	NZ,ERROR_C_NZ
-	POP	AF
+	EX	AF,AF'
 	JP	UPDATE
 
 C_THEN:	LD	A,THEN_T	; THEN
