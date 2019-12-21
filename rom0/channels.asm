@@ -865,6 +865,10 @@ PR_PR:	EX	AF,AF'
 PR_NQ:	EX	DE,HL		; restore screen address to HL
 PR_NC:	PUSH	BC
 	LD	BC,(CHARS)
+	EX	AF,AF'
+	JR	Z,PR_8
+	LD	BC,(CHARS4)
+PR_8:	EX	AF,AF'
 PR_CH2:	EX	DE,HL		; screen address to DE, S/K_STATE to HL
 	LD	HL,FLAGS
 	RES	0,(HL)
@@ -1220,7 +1224,7 @@ TFF:	XOR	A
 	JP	S_RST
 
 TQUEST:	LD	A,"?"
-	JP	PR_NC
+	JP	PR_PR
 
 TCOMMA:	INC	DE
 	EX	AF,AF'		; ???

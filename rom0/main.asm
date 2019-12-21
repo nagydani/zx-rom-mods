@@ -139,6 +139,7 @@ S_STATE:DEFB	$00
 S_WIDTH:DEFB	$21
 S_TV:	DEFW	0
 KS_PERM:DEFB	0		; additional permanent attributes
+CHARS4:	DEFW	CHARSET - $0100
 K_SPCC:	DEFB	1
 C_SPCC:	DEFB	1
 RCLINE:	DEFS	2		; current line being renumbered
@@ -2023,4 +2024,4 @@ C256:	DEFB	$00, $00, $00, $01, $00
 	JP	NEW_X_IN
 	JP	F_SCAN
 	DEFS	$3D00 - $
-	INCBIN	"64.bin"
+CHARSET:INCBIN	"64.bin"
