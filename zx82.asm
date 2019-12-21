@@ -15401,7 +15401,8 @@ STACKBC:XOR     A               ; clear to signal small integer
         LD      B,A             ; last byte not used
         CALL    L2AB6           ; routine STK-STORE
 
-        RST     28H             ;; FP-CALC
+;; Entry point for floating-point results
+X2D37:	RST     28H             ;; FP-CALC
         DEFB    $38             ;;end-calc  make HL = STKEND-5
 
         AND     A               ; clear carry

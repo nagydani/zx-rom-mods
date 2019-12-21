@@ -1319,23 +1319,110 @@ D_RRN:	RST	$30
 	RST	$30
 	DEFW	L346E		; NEGATE
 
-D_RLN:	RST	$30
-	DEFW	L2307		; STK-TO-BC
-	LD	A,B
-	DEC	D
-	JR	Z,D_RLNP
-	NEG
-D_RLNP:	AND	$07
-	JR	Z,D_R0
+D_RLN:	LD	HL,X2D37
+	EX	(SP),HL		; adjust return address
+	RST	$30
+	DEFW	L2314		; STK-TO-A
+	OR	A
+	JR	Z,SW_R0		; shift by zero
 	LD	B,A
+	LD	A,(HL)
+	DEC	C
+	JR	Z,D_RLNP
+D_RRNP:	OR	A
+	JR	NZ,D_RRF	; shift FP number
+	CALL	D_SH0
+D_RRNL:	INC	HL
+	SRA	(HL)
+	DEC	HL
+	RR	(HL)
+	JR	C,D_RRNU	; integer underflow
+	DJNZ	D_RRNL
+	JR	SW_R0
+
+D_RRNU:	RST	$28
+	DEFB	$A2		; stk-half
+	DEFB	$0F		; addition
+	DEFB	$38		; end
+	LD	A,(BREG)
+	DEC	A
+	JR	Z,SW_R0
+	LD	B,A
+	LD	A,(HL)
+D_RRF:	SUB	A,B
+	JR	C,D_RRFU	; FP underflow
+	LD	(HL),A
+	JR	NZ,SW_R0
+D_RRFU:	LD	(HL),$00
+	LD	E,L
+	LD	D,H
+	INC	DE
+	LD	BC,4
+	LDIR
+	JR	SW_R0
+
+D_RLNP:	OR	A
+	JR	NZ,D_RLF	; shift FP number
+	CALL	D_SH0
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+D_RLNL:	RL	E
+	RL	D
+	SBC	A,A
+	XOR	C
+	ADD	A,A
+	JR	C,D_RLNO	; integer overflow
+	DJNZ	D_RLNL
+	LD	(HL),D
+	DEC	HL
+	LD	(HL),E
+	JR	SW_R0
+
+D_RLNO:	DEC	HL
+	DEC	HL
+	DEC	HL
+	LD	A,B
+	ADD	$90
+JCERR6:	JP	C,ERROR_6	; FP overflow
+	LD	(HL),A
+	INC	HL
+	LD	A,(HL)
+	LD	C,A
+	XOR	E
+	LD	E,A
 	LD	A,C
-D_RLL:	RLCA
-	DJNZ	D_RLL
-	LD	C,A		; B is already zeroed
-SW_R0:	JP	SWAP
+	XOR	D
+	RL	C
+	RRA
+	RR	E
+	LD	(HL),A
+	INC	HL
+	LD	(HL),E
+	INC	HL
+	LD	(HL),0
+	INC	HL
+	LD	(HL),0
+	JR	SW_R0
+
+D_RLF:	ADD	A,B
+	JR	C,JCERR6
+	LD	(HL),A
+	JR	SW_R0
 
 D_R0:	LD	B,A
-	JR	SW_R0
+SW_R0:	JP	SWAP
+
+D_SH0:	INC	HL
+	LD	C,(HL)
+	INC	HL
+	LD	A,(HL)
+	INC	HL
+	OR	(HL)
+	DEC	HL
+	RET NZ
+	POP	HL		; discard return address
+	JR	SW_R0		; don't shift zero
 
 D_TWOS:	POP	BC		; return here
 	POP	HL		; discard return address
