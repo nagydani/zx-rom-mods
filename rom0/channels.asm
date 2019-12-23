@@ -732,7 +732,8 @@ R_SPCC:	LD	HL,C_SPCC
 ; channel K ioctl
 K_IOCTL:CP	2
 	RET	NC
-K_RST:	EX	AF,AF'
+K_RST:	RES	7,(IY+BORDCR-ERR_NR) ; flashing cursor OFF
+	EX	AF,AF'
 	LD	A,(HL)
 	AND	$40		; preserve font width
 	LD	(HL),A
