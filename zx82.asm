@@ -16456,7 +16456,6 @@ L3014:  LD      A,(DE)          ; fetch first byte of second
 
 ; continue if both were small integers.
 
-;;; BUGFIX: -65536
 	PUSH    DE              ; save pointer to lowest number for result.
 
         INC     HL              ; address sign byte and
@@ -16481,43 +16480,32 @@ L3014:  LD      A,(DE)          ; fetch first byte of second
         POP     HL              ; pop result sign pointer
         EX      DE,HL           ; integer to HL
 
-;;; BUGFIX: at this point CF=0, but we need ZF
+;;; BUGFIX: At this point, CF=0, but we need ZF
 	ADC	HL,BC
 ;;;	ADD     HL,BC           ; add to the other one in BC
                                 ; setting carry if overflow.
 
         EX      DE,HL           ; save result in DE bringing back sign pointer
-;;; BUGFIX: -65536
-	JP	Z,ADD_PZ
+;;; BUGFIX: potentially -65536
+	JP	Z,ADD_Z
+;;;
 	ADC     A,(HL)          ; if pos/pos A=01 with overflow else 00
                                 ; if neg/neg A=FF with overflow else FE
                                 ; if mixture A=00 with overflow else FF
 	RRCA                    ; bit 0 to (C)
 	ADC     A,$00           ; both acceptable signs now zero
-;;; BUGFIX: save space
-	JR      NZ,ADDN_OFLW	; forward to ADDN-OFLW if not
-;;;	JR      NZ,L303C        ; forward to ADDN-OFLW if not
+	JR      NZ,L303C        ; forward to ADDN-OFLW if not
 	SBC     A,A             ; restore a negative result sign
-	LD      (HL),A          ;
-	INC     HL              ;
-	LD      (HL),E          ;
-	INC     HL              ;
-	LD      (HL),D          ;
-	DEC     HL              ;
-	DEC     HL              ;
-;;; BUGFIX: save space
-	XOR	A
-ADDN_OFLW:
-	DEC     HL              ;
-	POP     DE              ; STKEND
-	RET	NZ
-;;;	RET                     ;
 
+;;; BUGFIX: -65536
+	JP	ADD_STORE
+	DEFS	$303C - $
+;;;
 ; ---
 
 ;; ADDN-OFLW
-;;;L303C:  DEC     HL              ;
-;;;        POP     DE              ;
+L303C:	DEC     HL              ;
+	POP     DE              ;
 
 ;; FULL-ADDN
 L303E:  CALL    L3293           ; routine RE-ST-TWO
@@ -17043,23 +17031,26 @@ L3214:  LD      A,(HL)          ;
 
 ; ---
 ;;; BUGFIX: INT(-65536) should be left alone
-ADD_PZ:	LD	C,(HL)
+ADD_Z:	JR	NC,ADD_NC	; 0 + 0 = 0
+	XOR	(HL)		; sign bytes XOR'd
+	LD	A,E		; A cleared with ZF intact
+	JR	NZ,ADD_STORE	; -x + x = 0
 	DEC	HL
-	POP	DE
-	RET	NC		; 0 + 0 = 0
-	LD	E,L
-	LD	D,H
-	XOR	C
-	LD	B,5
-	JR	NZ,ADD_Z
-	LD	(HL),$91
-	INC	DE
-	LD	A,$80
-	AND	C
-	LD	(DE),A
-	INC	DE
-	LD	B,3
-ADD_Z:	JP	STK_ZEROS - 1
+	LD	(HL),$91	; +-65536
+	INC	HL
+	LD	A,(HL)		; preserve sign
+	AND	$80		; bit
+ADD_STORE:
+	LD      (HL),A          ;
+	INC     HL              ;
+	LD      (HL),E          ;
+	INC     HL              ;
+	LD      (HL),D          ;
+	DEC     HL              ;
+	DEC     HL              ;
+ADD_NC:	DEC     HL              ;
+	POP     DE              ; STKEND
+	RET                     ;
 
 	DEFS	$323D - $
 ;; T-GR-ZERO
