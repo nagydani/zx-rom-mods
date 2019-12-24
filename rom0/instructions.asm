@@ -33,7 +33,7 @@
 	DEFB	P_PLUG - $	; GQ
 	DEFB	P_PLUG - $	; GR
 	DEFB	P_PLUG - $	; GS
-	DEFB	P_PLUG - $	; GT
+	DEFB	P_SPECTRUM - $	; SPECTRUM
 	DEFB	P_PLAY - $	; PLAY
 	DEFB	P_TURBO - $	; TURBO
 	DEFB	P_PLUG - $	; EN
@@ -51,7 +51,7 @@
 	DEFB	P_DISPLAY - $	; DISPLAY
 	DEFB	P_ENDWHILE - $	; END WHILE
 	DEFB	P_ONERROR - $	; ON ERROR
-	DEFB	P_PLUG - $	; EsQ
+	DEFB	P_SPECTRUM - $	; SPECTRUM
 	DEFB	P_PLUG - $	; EsW
 	DEFB	P_TRACE - $	; TRACE
 	DEFB	P_LOCAL - $	; LOCAL
@@ -164,6 +164,10 @@ P_DISPLAY:
 
 P_STEP:	DEFB	$07,",",$06,$00
 	DEFW	STEP
+
+P_SPECTRUM:
+	DEFB	$00
+	DEFW	SPECTR
 
 P_PLAY:
 ; unimplemented instruction, accepted w/o parameters, but not executed
@@ -1487,7 +1491,7 @@ PALETTE:CP	INK_T
 	CP	5
 ERRBNC:	JP	NC,ERROR_B	; B Integer out of range
 	LD	HL,S_MODE
-	LD	C,A
+	LD	C,A		; ???
 	XOR	(HL)
 	AND	$07
 	XOR	(HL)
@@ -2772,7 +2776,6 @@ ERR_FRM:PUSH	DE			; error address
 ERR_NAR:LD	(IY+$00),$FF		; ERR_NR: no error
 	LD	HL,L1B76		; STMT-RET
 	PUSH	HL
-NODISPLAY:
 	JP	SWAP
 
 ERR_DEC:EX	AF,AF'
@@ -2782,17 +2785,19 @@ ERR_DEC:EX	AF,AF'
 ERR_ZERO:
 	rst	0			; TODO: find statement
 
-DISPLAY:RST	$30
+DISPLAY:LD	HL,SWAP
+	PUSH	HL
+	RST	$30
 	DEFW	L1E94		; FIND_INT1
 	CP	$03
 	JR	NC,ERROR_B_NC
-	LD	A,(S_MODE)
+DISP:	LD	A,(S_MODE)
 	AND	$F8
 	RRCA
 	RRCA
 	RRCA
 	CP	C
-	JR	Z,NODISPLAY
+	RET	Z
 	CCF
 	SBC	A,0
 	RRA
@@ -2853,7 +2858,6 @@ ERROR_B_NC:
 	JP	NC,ERROR_B	; B Integer out of range
 	LD	BC,$8E3B	; ZX PRISM control port, also works with the ZX UNO
 	OUT	(C),A
-NODISPLAY2:
 	JP	SWAP
 
 YIELD_R:LD	HL,(CHANS)
@@ -2901,7 +2905,7 @@ DISPC2:	OUT	($FF),A
 	AND	$F8
 	XOR	(HL)
 	LD	(HL),A
-	JR	NODISPLAY2
+	RET
 
 DISP02:	CALL	DISPALLOC
 DISP12:	CALL	REFRAME
@@ -2928,7 +2932,8 @@ DISP12:	CALL	REFRAME
 	AND	$38
 	OR	$06
 	OUT	($FF),A
-	JR	NODISPLAY2
+	RET
+
 DISP10:	LD	HL,$6000
 	LD	DE,$5800
 	LD	BC,$0100
@@ -3042,3 +3047,18 @@ K_STEP:	LD	HL,KS_PERM
 	XOR	(HL)
 	LD	(HL),A
 	JP	SWAP
+
+SPECTR:	LD	A,(BANK_M)
+	AND	$07
+	JP	NZ,ERROR_J	; not from coroutines
+	LD	C,0
+	CALL	DISP		; set video mode
+	CALL	PAL_0		; turn off ULAplus
+	LD	HL,L15AF	; initial channel info
+	LD	DE,(CHANS)
+	LD	BC,$0014	; do not copy the terminator!
+	RST	$30
+	DEFW	LDIRR		; reset channel drivers
+	RES	4,(IY+FLAGS-ERR_NR)	; signal 48k mode
+	JP	SPECTRUM
+
