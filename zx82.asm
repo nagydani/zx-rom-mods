@@ -13,6 +13,7 @@
 ; PF_SMALL fixed ["2"+STR$ 0.5]
 ; GO TO range fixed [GO TO 20000 vs. GO TO 60000]
 ; DIVISION fixed [(1/61)*61<>1]
+; ADDITION fixed [-65000-536]
 ; TRUNCATE fixed [INT -65536]
 ; SCREEN$ fixed (but no UDG support)
 ; FN fixed [10 DEF FN a(x,y)=x+y : PRINT FN a(2,FN a(1,1))=4]
@@ -54,7 +55,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 17-DEC-2019
+; Last updated: 23-DEC-2019
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -16455,7 +16456,8 @@ L3014:  LD      A,(DE)          ; fetch first byte of second
 
 ; continue if both were small integers.
 
-        PUSH    DE              ; save pointer to lowest number for result.
+;;; BUGFIX: -65536
+	PUSH    DE              ; save pointer to lowest number for result.
 
         INC     HL              ; address sign byte and
         PUSH    HL              ; push the pointer.
@@ -16479,40 +16481,43 @@ L3014:  LD      A,(DE)          ; fetch first byte of second
         POP     HL              ; pop result sign pointer
         EX      DE,HL           ; integer to HL
 
-        ADD     HL,BC           ; add to the other one in BC
+;;; BUGFIX: at this point CF=0, but we need ZF
+	ADC	HL,BC
+;;;	ADD     HL,BC           ; add to the other one in BC
                                 ; setting carry if overflow.
 
         EX      DE,HL           ; save result in DE bringing back sign pointer
-
-        ADC     A,(HL)          ; if pos/pos A=01 with overflow else 00
+;;; BUGFIX: -65536
+	JP	Z,ADD_PZ
+	ADC     A,(HL)          ; if pos/pos A=01 with overflow else 00
                                 ; if neg/neg A=FF with overflow else FE
                                 ; if mixture A=00 with overflow else FF
-
-        RRCA                    ; bit 0 to (C)
-
-        ADC     A,$00           ; both acceptable signs now zero
-
-        JR      NZ,L303C        ; forward to ADDN-OFLW if not
-
-        SBC     A,A             ; restore a negative result sign
-
-        LD      (HL),A          ;
-        INC     HL              ;
-        LD      (HL),E          ;
-        INC     HL              ;
-        LD      (HL),D          ;
-        DEC     HL              ;
-        DEC     HL              ;
-        DEC     HL              ;
-
-        POP     DE              ; STKEND
-        RET                     ;
+	RRCA                    ; bit 0 to (C)
+	ADC     A,$00           ; both acceptable signs now zero
+;;; BUGFIX: save space
+	JR      NZ,ADDN_OFLW	; forward to ADDN-OFLW if not
+;;;	JR      NZ,L303C        ; forward to ADDN-OFLW if not
+	SBC     A,A             ; restore a negative result sign
+	LD      (HL),A          ;
+	INC     HL              ;
+	LD      (HL),E          ;
+	INC     HL              ;
+	LD      (HL),D          ;
+	DEC     HL              ;
+	DEC     HL              ;
+;;; BUGFIX: save space
+	XOR	A
+ADDN_OFLW:
+	DEC     HL              ;
+	POP     DE              ; STKEND
+	RET	NZ
+;;;	RET                     ;
 
 ; ---
 
 ;; ADDN-OFLW
-L303C:  DEC     HL              ;
-        POP     DE              ;
+;;;L303C:  DEC     HL              ;
+;;;        POP     DE              ;
 
 ;; FULL-ADDN
 L303E:  CALL    L3293           ; routine RE-ST-TWO
@@ -17030,42 +17035,60 @@ L3214:  LD      A,(HL)          ;
         RET     Z               ;
 
         CP      $81             ;
-        JR      NC,L3221        ; to T-GR-ZERO
+        JR      NC,T_GR_ZERO	; to T-GR-ZERO
 
         LD      (HL),$00        ;
         LD      A,$20           ;
         JR      L3272           ; to NIL-BYTES
 
 ; ---
+;;; BUGFIX: INT(-65536) should be left alone
+ADD_PZ:	LD	C,(HL)
+	DEC	HL
+	POP	DE
+	RET	NC		; 0 + 0 = 0
+	LD	E,L
+	LD	D,H
+	XOR	C
+	LD	B,5
+	JR	NZ,ADD_Z
+	LD	(HL),$91
+	INC	DE
+	LD	A,$80
+	AND	C
+	LD	(DE),A
+	INC	DE
+	LD	B,3
+ADD_Z:	JP	STK_ZEROS - 1
 
+	DEFS	$323D - $
 ;; T-GR-ZERO
-L3221:  CP      $91             ;
+T_GR_ZERO:
+	CP      $91             ;
 ;;;     JR      NZ,L323F        ; to T-SMALL
-        JP      L323F           ; to T-SMALL, unconditionally, fast
-
 ;;;     INC     HL              ;
-        INC     HL              ;
-        INC     HL              ;
-        LD      A,$80           ;
-        AND     (HL)            ;
-        DEC     HL              ;
-        OR      (HL)            ;
-        DEC     HL              ;
-        JR      NZ,L3233        ; to T-FIRST
+;;;	INC     HL              ;
+;;;	INC     HL              ;
+;;;	LD      A,$80           ;
+;;;	AND     (HL)            ;
+;;;	DEC     HL              ;
+;;;	OR      (HL)            ;
+;;;	DEC     HL              ;
+;;;	JR      NZ,L3233        ; to T-FIRST
 
-        LD      A,$80           ;
-        XOR     (HL)            ;
+;;;	LD      A,$80           ;
+;;;	XOR     (HL)            ;
 
 ;; T-FIRST
-L3233:  DEC     HL              ;
-        JR      NZ,L326C        ; to T-EXPNENT
+;;;	L3233:  DEC     HL              ;
+;;;	JR      NZ,L326C        ; to T-EXPNENT
 
-        LD      (HL),A          ;
-        INC     HL              ;
-        LD      (HL),$FF        ;
-        DEC     HL              ;
-        LD      A,$18           ;
-        JR      L3272           ; to NIL-BYTES
+;;;	LD      (HL),A          ;
+;;;	INC     HL              ;
+;;;	LD      (HL),$FF        ;
+;;;	DEC     HL              ;
+;;;	LD      A,$18           ;
+;;;	JR      L3272           ; to NIL-BYTES
 
 ; ---
 
