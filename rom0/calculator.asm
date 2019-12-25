@@ -1,3 +1,7 @@
+FP_CALC_2:
+	LD	A,(BREG)
+	JR	SCAN_ENT
+
 CALCULATE:
 	RST	$30
 	DEFW	L35BF	; STK-PNTRS
@@ -12,6 +16,7 @@ RE_ENTRY:
 	LD	A,(HL)
 	INC	HL
 	PUSH	HL
+SCAN_ENT:
 	AND	A
 	JP	P,FIRST_3D
 	LD	D,A
@@ -37,6 +42,8 @@ FIRST_3D:
 DOUBLE_A:
 	CP	$38		; end-calc ?
 	JR	Z,END_CALC
+	CP	$3B
+	JR	Z,FP_CALC_2
 	RLCA
 	LD	L,A
 	OR	A		; jump-true?
