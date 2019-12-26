@@ -1307,6 +1307,56 @@ SKIPEE:	SCF
 	DEC	BC
 	JR	SKIPEXL
 
+D_BITW1:RST	$28
+	DEFW	$38		; end
+	CALL	STEPBACK
+	LD	B,3
+	LD	A,(DE)
+	OR	(HL)
+	RET	Z
+	RST	$30
+	DEFW	L3293		; RE-ST-TWO
+	EXX
+	EX	(SP),HL
+	PUSH	HL
+	EXX
+	EX	DE,HL
+	LD	C,L
+	LD	B,H
+	EX	(SP),HL
+	PUSH	DE
+	PUSH	HL
+	LD	L,C
+	LD	H,B
+	EX	DE,HL
+	RST	$30
+	DEFW	L2F9B		; PREP-ADD
+	LD	B,A
+	EX	DE,HL
+	RST	$30
+	DEFW	L2F9B		; PREP-ADD
+; The two numbers are A,(HL) and B,(DE)
+	CP	B
+	CCF
+	RET	C
+	LD	C,A
+	LD	A,B
+	LD	B,C
+	EX	DE,HL
+; The two numbers are A,(HL) and B,(DE) where A >= B
+	SCF
+	RET
+
+D_FCPL:	PUSH	HL
+	LD	B,5
+D_FCPLL:LD	A,(HL)
+	CPL
+	LD	(HL),A
+	INC	HL
+	DJNZ	D_FCPLL
+	POP	HL
+	RET
+
 UPDTABN:DEFB	"|"
 	DEFB	D_BOR - $
 	DEFB	"&"
@@ -1319,58 +1369,38 @@ UPDTABN:DEFB	"|"
 	DEFB	D_RLN - $
 	DEFB	0
 
-D_BAND:	RST	$30
-	DEFW	L2307		; STK-TO-BC
-	AND	B
-D_BORE:	LD	C,A
-	LD	B,0
-	JP	SWAP
+D_BAND:	POP	BC
+	CALL	D_BITW1
+	JR	C,D_FAND
+D_ANDL:	INC	HL
+	INC	DE
+	LD	A,(DE)
+	AND	(HL)
+	LD	(HL),A
+	DJNZ	D_ANDL
+	JR	D_BITW2
 
 D_BOR:	POP	BC
-	RST	$28
-	DEFB	$38		; end
-	CALL	STEPBACK
-	LD	A,(DE)
-	OR	(HL)
-	JR	NZ,D_FOR
-	LD	B,3
+	CALL	D_BITW1
+	JR	C,D_FOR
 D_ORL:	INC	HL
 	INC	DE
 	LD	A,(DE)
 	OR	(HL)
 	LD	(HL),A
 	DJNZ	D_ORL
-	DEC	DE
+D_BITW2:DEC	DE
 	DEC	DE
 	DEC	DE
 D_FSHW:	JP	SWAP
 
-D_FOR:	EXX
-	PUSH	HL
-	EXX
-	RST	$30
-	DEFW	L3293		; RE-ST-TWO
-	PUSH	HL
-	RST	$30
-	DEFW	L2F9B		; PREP-ADD
-	LD	B,A
-	EX	DE,HL
-	RST	$30
-	DEFW	L2F9B		; PREP-ADD
-; The two numbers are A,(HL) and B,(DE)
-	LD	C,A
-	CP	B
-	JR	NC,D_FSH
-	LD	A,B
-	LD	B,C
-	EX	DE,HL
-; The two numbers are A,(HL) and B,(DE) where A >= B
-D_FSH:	EX	DE,HL
+D_FOR:	EX	DE,HL
 	BIT	7,(HL)
 	EX	DE,HL
 	JR	Z,D_FSH1
-	LD	B,A
-	LD	A,C
+	LD	C,A
+	LD	A,B
+	LD	B,C
 	EX	DE,HL
 ; The two numbers are A,(HL) and B,(DE) where A,(HL) is fixed
 D_FSH1:	PUSH	AF
@@ -1383,38 +1413,23 @@ D_FSH1:	PUSH	AF
 D_FSH4:	POP	AF
 	POP	HL
 	LD	(HL),A
-	INC	HL
-	EXX
-	LD	A,H
-	OR	L
+	PUSH	HL
+	LD	A,E
+	OR	B
 	LD	L,A
 	LD	A,D
-	OR	B
-	XOR	L
-	AND	$7F
-	XOR	L
-	EXX
-	LD	(HL),A
-	INC	HL
+	OR	C
+	LD	H,A
 	EXX
 	LD	A,E
 	OR	C
-	EXX
-	LD	(HL),A
-	INC	HL
-	LD	A,C
-	OR	D
-	LD	(HL),A
-	INC	HL
-	LD	A,B
-	OR	E
-	LD	(HL),A
-	INC	HL
-	EX	DE,HL
-	EXX
-	POP	HL
-	EXX
-	JR	D_FSHW
+	LD	E,A
+	LD	A,D
+	OR	B
+	LD	D,A
+	LD	BC,X3069
+	PUSH	BC
+	JP	SWAP
 
 D_FSH2:	NEG
 	CP	$21
@@ -1435,10 +1450,20 @@ D_FSH3:	RST	$30
 	DEFW	L2FF9		; ADDEND-0
 	JR	D_FSH4
 
-D_XOR:	RST	$30
-	DEFW	L2307		; STK-TO-BC
-	XOR	B
-	jp	D_BORE
+D_XOR:	POP	BC
+	CALL	D_BITW1
+	JR	NZ,D_FXOR
+D_XORI:	INC	HL
+	INC	DE
+	LD	A,(DE)
+	XOR	(HL)
+	LD	(HL),A
+	DJNZ	D_XORI
+	JR	D_BITW2
+
+D_FAND:	jp	D_FOR
+
+D_FXOR: jp	D_FOR
 
 D_RRN:	RST	$30
 	DEFW	L35BF		; STK-PNTRS

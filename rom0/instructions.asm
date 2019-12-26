@@ -827,8 +827,7 @@ UPD_DO:	POP	BC		; discard marker, B=0
 	RST	$20		; advance
 	RST	$30
 	DEFW	L24FB + 1	; SCANNING + 1
-	POP	HL
-	JP	(HL)
+	RET
 
 DEFPROC:RST	$18
 	CP	")"

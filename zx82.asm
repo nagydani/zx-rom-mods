@@ -16518,10 +16518,13 @@ L303E:  CALL    L3293           ; routine RE-ST-TWO
         LD      B,A             ;
         EX      DE,HL           ;
         CALL    L2F9B           ; routine PREP-ADD
-        LD       C,A            ;
+;;; BUGFIX: minor speedup
+;;;	LD	C,A		;
         CP      B               ;
         JR      NC,L3055        ; to SHIFT-LEN
-
+;;; BUGFIX: minor speedup
+	LD	C,A		;
+;;;
         LD      A,B             ;
         LD      B,C             ;
         EX      DE,HL           ;
@@ -16542,7 +16545,7 @@ L3055:  PUSH    AF              ;
         EX      DE,HL           ;
         ADC     HL,BC           ;
         EX      DE,HL           ;
-        LD      A,H             ;
+X3069:	LD      A,H             ;
         ADC     A,L             ;
         LD      L,A             ;
         RRA                     ;
