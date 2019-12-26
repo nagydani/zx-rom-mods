@@ -28,7 +28,475 @@
 
 <h1>Reference</h1>
 
-<h2>Instructions</h2>
+<h2>Contents</h2>
+<ol>
+<li><a href="#lit">Literals</a>
+	<ol>
+	<li><a href="#nl">Numeric Literals</a></li>
+	<li><a href="#sl">String Literals</a></li>
+	</ol>
+</li>
+<li><a href="#op">Operators</a>
+	<ol>
+	<li><a href="#so">Special Operators</a>
+		<ol>
+		<li><a href="#se">Selectors</a></li>
+		<li><a href="#fn">User Defined Functions</a></li>
+		<li><a href="#ma">Multi-argument Functions</a></li>
+		</ol>
+	</li>
+	<li><a href="#sh">Shifts</a>
+	</li>
+	<li><a href="#uf">Unary Functions</a>
+	</li>
+	<li><a href="#ao">Arithmetic Operators</a>
+	</li>
+	<li><a href="#re">Relations</a>
+	</li>
+	<li><a href="#lo">Logical and Bitwise Operators</a>
+	</li>
+	</ol>
+</li>
+<li><a href="#inst">Instructions</a></li>
+</ol>
+
+<h2><a name="lit">Literals</a></h2>
+
+<h3><a name="nl">Numeric Literals</a></h3>
+
+<h4>Decimal</h4>
+
+<p>Consist of digits <code>0123456789</code>, at most one point <code>.</code> 
+separating the integral part from the fractional part. Optionally followed by an
+order of decimal magnitude separated by <code>e</code> or <code>E</code> and a signed integer.
+</p>
+
+<p><strong>Examples:</strong> <code>1</code>, <code>12.5</code>, <code>.75</code>, 
+<code>6.02214076e23</code>, <code>6.62607004e-34</code></p>
+
+<h4>Binary</h4>
+
+<p>Begin with the <code>BIN</code> keyword, followed by digits <code>01</code>. An optional
+point <code>.</code> separates the integral part from the fractional part.</p>
+
+<p><strong>Examples:</strong> <code>BIN 1000</code>, <code>BIN 10.1</code>, <code>BIN .1010101010101</code>
+</p>
+
+<h4>Hexadecimal</h4>
+
+<p>Begin with the <code>HEX</code> keyword, followed by digits 
+<code>0123456789ABCDEF</code> (lower case <code>abcdef</code> also allowed). An optional 
+point <code>.</code> separates the integral part from the fractional part.</p>
+
+<p><strong>Examples:</strong> <code>HEX 5CB0</code>, <code>HEX 1FFFF.8</code>, <code>HEX .AAAAAAAB</code>
+</p>
+
+<h4>Octal</h4>
+
+<p>Begin with the <code>OCT</code> keyword, followed by digits <code>01234567</code>. An optional
+point <code>.</code> separates the integral part from the fractional part.</p>
+
+<p><strong>Examples:</strong> <code>OCT 7500</code>, <code>OCT 55.2</code>, <code>OCT .5252525253</code>
+</p>
+
+
+<h3><a name="sl">String Literals</a></h3>
+
+<h4>Quoted Strings</h4>
+
+<p>Characters in quotes (<code>&quot;</code>) are interpreted as string literals.
+The quote character itself can be escaped by doubling (<code>&quot;&quot;</code>).</p>
+
+<h4>Syntax Checked Expressions</h4>
+
+<p>Expressions between curly braces <code>{</code> and <code>}</code> are not evaluated, but
+their syntax is checked upon entering. They are interpreted as strings that can be passed to
+<code>VAL</code> or <code>VAL$</code> for actual evaluation.</p>
+
+<h2><a name="op">Operators</a></h2>
+
+<p>Operators are grouped by priority, groups are listed in order of precedence.</p>
+
+<h3><a name="so">Special Operators</a></h3>
+
+<h4><a name="se">Selectors</a></h4>
+
+<dl>
+<dt><em>a$</em> <code>?(</code> <em>e0</em> <code>,</code> <em>e1</em> <code>)</code></dt>
+<dd>If <em>a$</em> is empty, <em>e0</em> is evaluated, otherwise <em>e1</em> is. Note that
+<em>e0</em> and <em>e1</em> can be either numeric or string expressions, but they must have
+the same type. This is going to be the type of the selector expression.
+</dd> 
+
+<dt><em>n</em> <code>?(</code> <em>e0</em> <code>,</code> <em>e1</em> <code>,</code> &hellip; <code>)</code></dt>
+<dd>The value of <em>n</em> selects the expression in the comma-separated list to be 
+evaluated, beginning with zero (the first expression evaluates if <em>n</em> = 0). If 
+the value of <em>n</em> is greater or equal to the number of expressions in the list, 
+then the last expression in the list is evaluated.
+The selectable expressions can be either numeric or string expressions, but they must have
+the same type. This is going to be the type of the selector expression.
+</dd> 
+</dl>
+
+<h4><a name="fn">User Defined Functions</a></h4>
+
+<dl>
+<dt><code>FN </code><em>f</em> <code>(</code> <em>e</em> <code>,</code> &hellip; <code>)</code></dt>
+<dd>Numeric function with an arbitrary number of arguments, denoted by a single letter <em>f</em> after 
+the <code>FN</code> keyword.
+</dd> 
+
+<dt><code>FN </code><em>f</em><code>$(</code> <em>e</em> <code>,</code> &hellip; <code>)</code></dt>
+<dd>String function with an arbitrary number of arguments, denoted by a single letter <em>f</em> with a dollar sign <code>$</code> 
+after the <code>FN</code> keyword.
+</dd> 
+</dl>
+
+<h4><a name="ma">Multi-argument Functions</a></h4>
+
+<dl>
+<dt><code>ATTR (</code> <em>row</em> <code>,</code> <em>column</em> <code>)</code></dt>
+<dd>...
+</dd> 
+
+<dt><code>POINT (</code> <em>x</em> <code>,</code> <em>y</em> <code>)</code></dt>
+<dd>...
+</dd> 
+
+<dt><code>SCREEN$ (</code> <em>row</em> <code>,</code> <em>column</em> <code>)</code></dt>
+<dd>...
+</dd> 
+
+<dt><code>STICK (</code> <em>n</em> <code>,</code> <em>m</em> <code>)</code></dt>
+<dd>Reads direction (odd values of <em>n</em>) or button (even values of <em>n</em>)
+of controller device (typically joystick) <em>m</em>. Set
+<em>m</em> = 0 for Kempston joystick, 
+<em>m</em> = 1 for Sinclair joystick 1, 
+<em>m</em> = 2 for Sinclair joystick 2, 
+<em>m</em> = 3 for Cursor joystick.
+For the button, values 1 or 0 are returned, whether or not the button is pressed, respectively.
+For the direction, use the table below:
+<table>
+<tr>
+<td>5</td><td>1</td><td>9</td>
+</tr>
+<tr>
+<td>4</td><td>0</td><td>8</td>
+</tr>
+<tr>
+<td>6</td><td>2</td><td>10</td>
+</tr>
+</table>
+</dd> 
+
+<dt><code>STICK (</code> <em>n</em> <code>,</code> <em>a$</em> <code>)</code></dt>
+<dd>Reads the keyboard for control with user defined keys. Argument <em>n</em> and the return
+values are compatible with the game controller version, the user defined keys are read
+from <em>a$</em> as follows: the button is the last character of <em>a$</em>, the
+four directions are the first four characters in <em>right, left, down, up</em> order.
+Also note that <code>STICK (0,</code> <em>k$</em> <code>)</code> can be used to check 
+whether key <em>k$</em> is pressed or not independently of other keys on the keyboard.
+</dd>
+<dt><a name="str"><code>STR$ (</code> <em>x</em> <code>,</code> <em>n</em> <code>,</code> <em>m</em> <code>)</code></a></dt>
+<dd>Converts numeric value <em>x</em> to base <em>n</em> string representation
+(2 &le; <em>n</em> &le; 36), with <em>m</em> fractional digits after the point. If <em>m</em> = 0, no point <code>.</code> is included in the result.
+</dd> 
+
+<dt><code>STR$ (</code> <em>x</em> <code>,</code> <em>n</em> <code>)</code></dt>
+<dd>Equivalent to 
+<code>STR$ (</code> <em>x</em> <code>,</code> <em>n</em> <code>,0)</code>.
+</dd> 
+
+</dl>
+
+
+<h4><a name="sx">Suffix Operators</a></h4>
+
+<dl>
+<dt><em>a</em><code>!</code></dt>
+<dd>Changes every integral bit in the two's complement signed representation of <em>a</em>
+to its opposite, leaving fractional bits intact. Thus, <code>0!=-1</code>. This operator 
+can be used to convert <code>NOT</code> <em>a</em> operators from other BASIC dialects that 
+only use bitwise logical operators, such as <code>ZX80</code>.
+</dd> 
+
+<dt><em>a$</em><code>!</code></dt>
+<dd>Changes every bit in the binary representation string <code>a$</code> to its opposite.
+</dd>
+</dl>
+
+<h3><a name="sh">Shifts</a></h3>
+
+<h4>Priority 16</h4>
+<dl>
+<dt><em>a</em> <code>&lt;&lt;</code> <em>n</em></dt>
+<dd>Bitwise arithmetic shift of number <em>a</em> to the left by <em>n</em> bits.
+Equivalent to <em>a</em><code>*2^INT (</code><em>n</em><code>+.5)</code>.
+</dd> 
+
+<dt><em>a</em> <code>&gt;&gt;</code> <em>n</em></dt>
+<dd>Bitwise arithmetic shift of number <em>a</em> to the right by <em>n</em> bits.
+Equivalent to <em>a</em><code>&lt;&lt;-</code><em>n</em>.
+</dd> 
+
+<dt><em>a$</em> <code>&lt;&lt;</code> <em>n</em></dt>
+<dd>Cyclic bitwise shift of the binary representation of string <em>a$</em> to the
+left by <em>n</em> digits.
+Cycling shifting of
+<em>a$</em> to the left by
+<em>k</em> characters can be accomplished by
+<em>a$</em> <code>&lt;&lt;(</code> <em>k</em> <code>*8)</code>
+or, even faster, by 
+<em>a$</em> <code>&lt;&lt;(</code> <em>k</em> <code>&lt;&lt;3)</code>
+</dd> 
+
+<dt><em>a$</em> <code>&gt;&gt;</code> <em>n</em></dt>
+<dd>
+<dd>Cyclic bitwise shift of the binary representation of string <em>a$</em> to the
+left by <em>n</em> digits.
+Equivalent to <em>a$</em><code>&lt;&lt;-</code><em>n</em>.
+</dd> 
+</dl>
+
+<h3><a name="uf">Unary Functions</a></h3>
+
+<h4>Priority 16</h4>
+<dl>
+<dt><code>ABS </code><em>x</em></dt>
+<dd>Absolute value of <em>x</em>. Equivalent to <em>x</em><code>*SGN </code><em>x</em></dd>
+
+<dt><a name="acs"><code>ACS </code><em>x</em></a></dt>
+<dd>Arc cosine of <em>x</em>. Inverse function of <a href="#cos"><code>COS </code><em>x</em></a>.</dd>
+
+<dt><a name="asn"><code>ASN </code></a></dt>
+<dd>Arc sine of <em>x</em>. Inverse function of <a href="#sin"><code>SIN </code><em>x</em></a>.</dd>
+
+<dt><a name="atn"><code>ATN</code></a></dt>
+<dd>Arc tangent of <em>x</em>. Inverse function of <a href="#tan"><code>TAN </code><em>x</em></a>.</dd>
+
+<dt><a name="chrs"><code>CHR$ </code><em>n</em></a></dt>
+<dd>Character at code point <em>n</em>, if <em>n</em> &lt; 256. Otherwise equivalent to
+<code>CHR$ (</code> <em>n</em> <code>%256)+CHR$ INT (</code> <em>n</em> <code>/256)</code>.
+Inverse function of <a href="#code"><code>CODE </code><em>a$</em></a>.</dd>
+
+<dt><a name="code"><code>CODE </code><em>a$</em></a></dt>
+<dd>If <em>a$</em> is empty, returns zero. If <em>a$</em> consists of a single character,
+returns its code point. Otherwise equivalent to
+<code>CODE </code><em>a$</em><code>(1)+256*CODE </code><em>a$</em><code>(2 TO)</code>.
+Inverse function of <a href="#chrs"><code>CHR$ </code><em>n</em></a>.</dd>
+</dd>
+
+<dt><a name="cos"><code>COS</code></a></dt>
+<dd>Cosine of <em>x</em>. Inverse function of <a href="#acs"><code>ACS </code><em>x</em></a>.</dd>
+
+<dt><code>DPEEK </code><em>n</em></dt>
+<dd>Returns 16 bit value at memory address <em>n</em>, least siginificant byte first.
+Equivalent to <code>CODE MEM$(</code> <em>n</em><code> TO </code><em>n</em> <code>+1)</code>
+for 1 &le; <em>n</em> &le; 65534.
+</dd>
+
+<dt><a name="exp"><code>EXP </code><em>x</em></a></dt>
+<dd>Exponential of <em>x</em>.
+Equivalent to <code>2.718281829^</code> <em>x</em>. 
+Inverse function of <a href="#ln"><code>LN </code><em>x</em></a>.</dd>
+
+<dt><code>IN </code><em>n</em></dt>
+<dd>Read I/O port <em>n</em>.</dd>
+
+<dt><code>INT </code> <em>x</em></dt> <dd>Returns the largest integer that is not 
+greater than <em>x</em>. In other words, rounding <em>x</em> towards negative 
+infinity.</dd>
+
+<dt><code>LEN </code><em>a$</em></dt>
+<dd>Number of characters in <em>a$</em>. In other words, the length of <em>a$</em></dd>
+
+<dt><a name="ln"><code>LN </code><em>x</em></a></dt>
+<dd>Natural logarithm of <em>x</em>.
+Inverse function of <a href="#exp"><code>EXP </code><em>x</em></a>.</dd>
+
+<dt><code>PEEK </code><em>n</em></dt>
+<dd>Returns 8 bit value at memory address <em>n</em>.
+Equivalent to <code>CODE MEM$(</code> <em>n</em> <code>)</code>
+for 1 &le; <em>n</em> &le; 65535.
+</dd>
+
+<dt><code>SGN </code><em>x</em></dt>
+<dd>Returns the sign of <em>x</em>.
+Equivalent to <code>(</code> <em>x</em> <code>&gt;0)-(</code> <em>x</em> <code>&lt;0)</code>.
+</dd>
+
+<dt><a name="sin"><code>SIN </code><em>x</em></a></dt>
+<dd>Sine of <em>x</em>.
+Inverse function of <a href="#asn"><code>ASN </code><em>x</em></a>.</dd>
+
+<dt><a name="sq"><code>SQ </code><em>x</em></a></dt>
+<dd>Square of <em>x</em>. Equivalent to <em>x</em><code>*</code><em>x</em>.
+Inverse function of <a href="#sqr"><code>SQR </code><em>x</em></a>.</dd>
+
+<dt><a name="sqr"><code>SQR </code><em>x</em></a></dt>
+<dd>Square root of <em>x</em>. Equivalent to <em>x</em><code>^.5</code>.
+Inverse function of <a href="#sq"><code>SQ </code><em>x</em></a>.</dd>
+
+<dt><code>STR$ </code><em>x</em></dt>
+<dd>Turns number <em>x</em> into a string in the decimal literal format.
+For <em>x</em> &gt; 99999999, exponential notation is used. Note that the <code>STR$</code>
+keyword can also be used as a <a href="#str">multi-argument function</a> for number
+formatting.</dd>
+
+<dt><a name="tan"><code>TAN </code><em>x</em></a></dt>
+<dd>Tangent of <em>x</em>. Inverse function of <a href="#atn"><code>ATN </code><em>x</em></a>.</dd>
+
+<dt><code>TIME$ </code><em>n</em></dt>
+<dd>Turns a frame counter into a string in <code>hh:mm:ss.ss</code> format.</dd>
+
+<dt><code>USR </code><em>n</em></dt>
+<dd>Calls machine code at memory address <em>n</em> and returns the value of <code>BC</code>
+register pair. Discarding the first return address, the topmost element in the calculator
+stack is returned as a number.</dd>
+
+<dt><code>USR </code><em>a$</em></dt>
+<dd>Returns the address of the user-defined graphics character (UDG) supplied in 
+<em>a$</em>.</dd>
+
+<dt><code>VAL </code><em>a$</em></dt>
+<dd>Evaluates numeric expression in <em>a$</em>.</dd>
+
+<dt><code>VAL$</code></dt>
+<dd>Evaluates string expression in <em>a$</em>.</dd>
+</dl>
+
+<h3><a name="ao">Arithmetic Operators</a></h3>
+
+<h4>Priority 10</h4>
+<dl>
+<dt><em>a</em> <code>^</code> <em>b</em></dt>
+<dd>Taking <em>a</em> to the power of <em>b</em>. Requires <em>a</em> &ge; 0.</dd>
+</dl>
+
+<h4>Priority 9</h4>
+<dl>
+<dt><code>-</code><em>x</em></dt>
+<dd>Negative value of <em>x</em>. Unary operator, but binding less tightly than other
+unary operators.</dd>
+</dl>
+
+<h4>Priority 8</h4>
+<dl>
+<dt><em>a</em> <code>*</code> <em>b</em></dt>
+<dd>Product of <em>a</em> and <em>b</em>.</dd>
+
+<dt><em>a$</em> <code>*</code> <em>b</em></dt>
+<dd>Repeat <em>a$</em> <em>b</em> times. Negative values of <em>b</em> imply
+reversing the order of characters in <em>a$</em>. Examples:
+<code>&quot;abcd&quot;*1.5=&quot;abcdab&quot;</code>, 
+<code>&quot;abcd&quot;*-2=&quot;dcbadcba&quot;</code>. </dd>
+
+<dt><em>a</em> <code>/</code> <em>b</em></dt>
+<dd>Division of <em>a</em> by <em>b</em>.</dd>
+
+<dt><em>a</em> <code>%</code> <em>b</em></dt>
+<dd>Remainder after division of <em>a</em> by <em>b</em>.
+Equivalent to <em>a</em> <code>-</code> <em>b</em> <code>*INT (</code> <em>a</em> <code>/</code> <em>b</em> <code>)</code></dd>
+</dl>
+
+<h4>Priority 6</h4>
+<dl>
+<dt><em>a</em> <code>+</code> <em>b</em></dt>
+<dd>Sum of <em>a</em> and <em>b</em>.</dd>
+
+<dt><em>a$</em> <code>+</code> <em>b$</em></dt>
+<dd>Concatenation of <em>a$</em> and <em>b$</em>.</dd>
+
+<dt><em>a</em> <code>-</code> <em>b</em></dt>
+<dd>Difference of <em>a</em> and <em>b</em>.</dd>
+</dl>
+
+<h3><a name="re">Relations</a></h3>
+
+<h4>Priority 5</h4>
+<dl>
+<dt><em>a</em> <code>=</code> <em>b</em></dt>
+<dd>True if and only if <em>a</em> equals <em>b</em>.</dd>
+
+<dt><em>a$</em> <code>=</code> <em>b$</em></dt>
+<dd>True if and only if <em>a$</em> equals <em>b$</em>.</dd>
+
+<dt><em>a</em> <code>&lt;&gt;</code> <em>b</em></dt>
+<dd>True if and only if <em>a</em> does not equal <em>b</em>.</dd>
+
+<dt><em>a$</em> <code>&lt;&gt;</code> <em>b$</em></dt>
+<dd>True if and only if <em>a$</em> does not equal <em>b$</em>.</dd>
+
+<dt><em>a</em> <code>&lt;</code> <em>b</em></dt>
+<dd>True if and only if <em>a</em> is strictly less than <em>b</em>.</dd>
+
+<dt><em>a$</em> <code>&lt;</code> <em>b$</em></dt>
+<dd>True if and only if <em>a$</em> precedes <em>b$</em> in lexicographic order.</dd>
+
+<dt><em>a</em> <code>&gt;</code> <em>b</em></dt>
+<dd>True if and only if <em>a</em> is strictly greater than <em>b</em>.</dd>
+
+<dt><em>a$</em> <code>&gt;</code> <em>b$</em></dt>
+<dd>True if and only if <em>a$</em> succeeds <em>b$</em> in lexicographic order.</dd>
+
+<dt><em>a</em> <code>&lt;=</code> <em>b</em></dt>
+<dd>True if and only if <em>a</em> is less than <em>b</em> or equal.</dd>
+
+<dt><em>a$</em> <code>&lt;=</code> <em>b$</em></dt>
+<dd>True if and only if <em>a$</em> precedes or equals <em>b$</em> in lexicographic order.</dd>
+
+<dt><em>a</em> <code>&gt;=</code> <em>b</em></dt>
+<dd>True if and only if <em>a</em> is greater than <em>b</em> or equal.</dd>
+
+<dt><em>a$</em> <code>&gt;=</code> <em>b$</em></dt>
+<dd>True if and only if <em>a$</em> succeeds or equals <em>b$</em> in lexicographic order.</dd>
+</dl>
+
+<h3><a name="lo">Logical and Bitwise Operators</a></h3>
+
+<h4>Priority 4</h4>
+<dl>
+<dt><code>NOT </code><em>x</em></dt>
+<dd>Logical negation of <em>x</em>. If <em>x</em>=0, returns 1, otherwise 0.
+Equivalent to <em>x</em><code>=0</code>.</dd>
+</dl>
+
+<h4>Priority 3</h4>
+
+<dl>
+<dt><em>a</em><code> AND </code><em>b</em></dt>
+<dd>Returns 0 if <em>b</em> = 0, otherwise <em>a</em>.</dd>
+
+<dt><em>a$</em><code> AND </code><em>b</em></dt>
+<dd>Returns empty string if <em>b</em> = 0, otherwise <em>a$</em>.</dd>
+
+<dt><em>a</em> <code>&amp;</code> <em>b</em></dt>
+<dd>Returns bitwise <em>a</em> and <em>b</em>.</dd>
+
+<dt><em>a$</em> <code>&amp;</code> <em>b$</em></dt>
+<dd>Returns bitwise <em>a$</em> and <em>b$</em>.</dd>
+</dl>
+
+<h4>Priority 2</h4>
+
+<dl>
+<dt><em>a</em><code> OR </code><em>b</em></dt>
+<dd>Returns <em>a</em> if <em>b</em> = 0, otherwise 1.</dd>
+
+<dt><em>a</em> <code>|</code> <em>b</em></dt>
+<dd>Returns bitwise <em>a</em> or <em>b</em>.</dd>
+
+<dt><em>a$</em> <code>|</code> <em>b$</em></dt>
+<dd>Returns bitwise <em>a$</em> or <em>b$</em>.</dd>
+
+<dt><em>a</em> <code>&gt;&lt;</code> <em>b</em></dt>
+<dd>Returns bitwise exclusive <em>a</em> or <em>b</em>.</dd>
+
+<dt><em>a$</em> <code>&gt;&lt;</code> <em>b$</em></dt>
+<dd>Returns bitwise excusive <em>a$</em> or <em>b$</em>.</dd>
+</dl>
+
+<h2><a name="inst">Instructions</a></h2>
 
 <dl>
 <dt><code>ASSERT</code> <em>condition</em></dt>
