@@ -1047,37 +1047,66 @@ OPERTB:	DEFB	"|"
 	DEFB	S_RL - $
 	DEFB	0
 
-S_BOR:	LD	A,$02		; priority
-	CALL	BITWISE
+S_BOR:	LD	A,$02		; priority like OR
+	CALL	TIGHTER
 	JR	NZ,S_BORN
 	LD	BC,D_BORS
-	JR	S_OPER2
+	JR	S_OPERS
 S_BORN:	LD	BC,D_BOR
-S_OPER2:JP	S_OPER
+S_OPER2:JP	S_OPERN
 
+S_OPERS:CALL	SYNTAX_Z
+	JR	Z,S_OPSS
+	PUSH	BC
+	LD	BC,FSCAN
+	RST	$30
+	DEFW	L2D2B + 4	; STACK-BC
+S_OPSS:	LD	B,A
+	LD	C,$6D		; USR$
+	PUSH	BC
+	LD	BC,L270D	; S-PUSH-PO
+	PUSH	BC
+	LD	B,A
+	LD	C,$81		; EXCHANGE number,string
+	JP	SWAP
 
-S_XOR:	LD	A,$02		; priority
-	CALL	BITWISE
+S_XOR:	LD	A,$02		; priority like OR
+	CALL	TIGHTER
 	JR	NZ,S_XORN
 	LD	BC,D_XORS
-	JR	S_OPER2
+	JR	S_OPERS
 S_XORN:	LD	BC,D_XOR
 	JR	S_OPER2
 
-S_BAND:	LD	A,$03		; priority
-	CALL	BITWISE
+S_BAND:	LD	A,$03		; priority like AND
+	CALL	TIGHTER
 	JR	NZ,S_BANDN
 	LD	BC,D_BANDS
-	JR	S_OPER2
+	JR	S_OPERS
 S_BANDN:LD	BC,D_BAND
 	JR	S_OPER2
 
-S_MOD:	LD	BC,$0BC2	; delete with priority 11
+S_MOD:	LD	A,$08		; priority like /
+	CALL	TIGHTER
+	JP	Z,ERROR_C	; only numeric lefthand
+	LD	BC,$08C2	; delete with priority 8
 	PUSH	BC
-	LD	BC,$0BF2	; mod with priority 11
+	LD	C,$F2		; mod with same priority
 SWNEXT:	LD	HL,L2790	; S-NEXT
 SWPUSH:	PUSH	HL
 SWAPOP:	JP	SWAP
+
+S_RL:	CALL	BWISE
+	LD	BC,D_RLS
+	JR	Z,S_OPERS
+	LD	BC,D_RLN
+	JR	S_OPER2
+
+S_RR:	CALL	BWISE
+	LD	BC,D_RRS
+	JR	Z,S_OPERS
+	LD	BC,D_RRN
+	JR	S_OPER2
 
 S_CPL:	CALL	SYNTAX_Z
 	JR	Z,F_CPL
@@ -1102,18 +1131,6 @@ S_CPLL:	LD	A,B
 	DEC	BC
 	JR	S_CPLL
 
-S_RL:	CALL	BWISE
-	LD	BC,D_RLS
-	JR	Z,S_OPER2
-	LD	BC,D_RLN
-	JR	S_OPER2
-
-S_RR:	CALL	BWISE
-	LD	BC,D_RRS
-	JR	Z,S_OPER2
-	LD	BC,D_RRN
-	JR	S_OPER2
-
 S_CPLN:	RST	$28		; calculate
 	DEFB	$A1		; stk-one
 	DEFB	$0F		; addition
@@ -1131,7 +1148,7 @@ S_LOOP:	LD	HL,L2734	; S-LOOP
 BWISE:	CALL	SYNTAX_Z
 	JR	NZ,BWISE2
 	POP	BC
-	LD	BC,$0AC8	; like AND, priority 10
+	LD	BC,$10C8	; like AND, priority $10
 	JR	S_LOOP
 
 BWISE2:	LD	BC,FSCAN
@@ -1190,7 +1207,19 @@ D_ELVR:	OR	A
 	RST	$18
 	JP	F_CPL2
 
-BITWISE:POP	HL		; return address
+TIGHT_S:EX	AF,AF'
+	LD	HL,FLAGS
+	LD	A,E
+	XOR	(HL)		; FLAGS, bit 6
+	AND	$40
+	JR	NZ,ERROR_C_ELV
+	RRCA
+	XOR	(HL)
+	AND	$40
+	XOR	(HL)
+	LD	(HL),A		; set bit 6 according to bit 7 of E
+	EX	AF,AF'
+TIGHTER:POP	HL		; return address
 	POP	DE		; operator
 	PUSH	DE
 	PUSH	HL
@@ -1199,9 +1228,9 @@ BITWISE:POP	HL		; return address
 	RET	NC
 	POP	HL
 	POP	DE
-	PUSH	HL		; eliminat DE
+	PUSH	HL		; eliminate DE
 	CALL	SYNTAX_Z
-	JR	Z,BITWISE
+	JR	Z,TIGHT_S
 	PUSH	BC
 	PUSH	AF
 	LD	A,E
@@ -1212,7 +1241,7 @@ BITWISE:POP	HL		; return address
 	DEFB	$38		; end
 	POP	AF
 	POP	BC
-	JR	BITWISE
+	JR	TIGHTER
 
 S_ELVS:	PUSH	AF
 	RST	$18
@@ -1422,12 +1451,16 @@ D_FSH4:	POP	AF
 	OR	C
 	LD	H,A
 	EXX
+	LD	A,H
+	OR	L
+	LD	L,A
 	LD	A,E
 	OR	C
 	LD	E,A
 	LD	A,D
 	OR	B
 D_FCONT:LD	D,A
+	LD	H,$00
 	LD	BC,X3069
 	PUSH	BC
 	JP	SWAP
@@ -1482,7 +1515,6 @@ D_FAND:	PUSH	AF
 	LD	A,H
 	AND	L
 	LD	L,A
-	LD	H,A
 	LD	A,E
 	AND	C
 	LD	E,A
@@ -1507,9 +1539,9 @@ D_FXOR:	PUSH	AF
 	XOR	C
 	LD	H,A
 	EXX
-;;	LD	A,H
-;;	XOR	L
-;;	LD	H,A
+	LD	A,H
+	XOR	L
+	LD	L,A
 	LD	A,E
 	XOR	C
 	LD	E,A
