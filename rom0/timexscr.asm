@@ -226,22 +226,42 @@ POSCR4B:CALL	CL_SCR
 	POP	BC
 	RET
 
+
+SCALEXY:RST	$28
+	DEFB	$38		; end
+SCLXY:	CALL	STEPBACK
+	PUSH	DE
+	LD	A,(SCALEX)
+	CALL	SCALEHL
+	LD	A,(SCALEY)
+	POP	HL
+SCALEHL:ADD	A,A
+	JR	NC,SCALEP
+	PUSH	AF
+	RST	$30
+	DEFW	L346E		; NEGATE
+	POP	AF
+SCALEP:	SRA	A
+	JP	M,SCALED
+	LD	C,1
+	JR	D_SHLR
+SCALED:	NEG
+	LD	C,$FF
+D_SHLR:	JP	D_SHL
+
 DRAWAT:	LD	A,$FF
 	JR	DOPLOT
 
 CIRCLE:	RST	$28		; calculate
 	DEFB	$C0		; store M0
+	DEFB	$31		; duplicate
 	DEFB	$38		; end
 	LD	HL,ORIGX
 	LD	(MEM),HL
+	CALL	SCLXY
 	RST	$28		; calculate
-	DEFB	$31		; duplicate
-	DEFB	$E2		; get SCALEX
-	DEFB	$04		; multiply
 	DEFB	$3D		; restack
 	DEFB	$01		; exchange
-	DEFB	$E3		; get SCALEY
-	DEFB	$04		; multiply
 	DEFB	$3D		; restack
 	DEFB	$02		; delete
 	DEFB	$38		; end
@@ -257,18 +277,15 @@ PLOT1:	XOR	A
 DOPLOT:	LD	(COORDS+1),A
 	LD	HL,ORIGX
 	LD	(MEM),HL
+	CALL	SCALEXY
 	RST	$28		; calculate
-	DEFB	$E3		; get SCALEY
-	DEFB	$04		; multiply
 	DEFB	$E1		; get ORIGY
 	DEFB	$0F		; add
-	DEFB	$C5		; store COORDY
+	DEFB	$C3		; store COORDY
 	DEFB	$01		; exchange
-	DEFB	$E2		; get SCALEX
-	DEFB	$04		; multiply
 	DEFB	$E0		; get ORIGX
 	DEFB	$0F		; add
-	DEFB	$C4		; store COORDX
+	DEFB	$C2		; store COORDX
 	DEFB	$38		; end
 	LD	HL,MEMBOT
 	LD	(MEM),HL
@@ -400,12 +417,9 @@ DRAW2:	LD	HL,COORDX
 	LDIR			; save starting point
 	LD	HL,ORIGX
 	LD	(MEM),HL
+	CALL	SCALEXY
 	RST	$28		; calculate
-	DEFB	$E3		; get SCALEY
-	DEFB	$04		; multiply
 	DEFB	$01		; exchange
-	DEFB	$E2		; get SCALEX
-	DEFB	$04		; multiply
 	DEFB	$38		; end
 	CALL	STEPBACK
 	INC	HL
@@ -440,13 +454,13 @@ DRIGHT:	PUSH	BC		; horizontal step
 	DEC	DE
 	LDDR
 	RST	$28		; calculate
-	DEFB	$E4		; get COORDX	dy,dx,x1
+	DEFB	$E2		; get COORDX	dy,dx,x1
 	DEFB	$0F		; add		dy,x2
-	DEFB	$C4		; store COORDX
+	DEFB	$C2		; store COORDX
 	DEFB	$02		; delete	dy
-	DEFB	$E5		; get COORDY	dy,y1
+	DEFB	$E3		; get COORDY	dy,y1
 	DEFB	$0F		; add		y2
-	DEFB	$C5		; store COORDY
+	DEFB	$C3		; store COORDY
 	DEFB	$02		; delete
 	DEFB	$38		; end
 	LD	HL,MEMBOT
@@ -771,10 +785,30 @@ DRAW1:	RST	$28		; calculate
 	DEFW	DRAW_LINE
 	RET
 
+ESCALE:	LD	A,(HL)
+	ADD	A,A
+	SRA	A
+	ADD	$81
+	LD	(DE),A
+	LD	A,(HL)
+	INC	DE
+	AND	$80
+	LD	(DE),A
+	XOR	A
+	INC	DE
+	LD	(DE),A
+	INC	DE
+	LD	(DE),A
+	INC	DE
+	LD	(DE),A
+	RET
+
 DRAW3:	LD	HL,SCALEX
 	LD	DE,MEMBOT+3*5
-	LD	BC,2*5
-	LDIR			; copy SCALEX,SCALEY to M3,M4
+	CALL	ESCALE
+	INC	DE
+	INC	HL
+	CALL	ESCALE
 	RST	$28		; calculate
 	DEFB	$A2		; stk half
 	DEFB	$04		; multiply

@@ -150,11 +150,11 @@ NORTH:	DEFB	$00
 SOUTH:	DEFB	$15
 WEST:	DEFB	$00
 EAST:	DEFB	$1F
+SCALEX:	DEFB	$00		; *1.0
+SCALEY:	DEFB	$80		; *-1.0
 ; Origin
 ORIGX:	DEFB	$00,$00,$00,$00,$00	; 0.0
 ORIGY:	DEFB	$00,$00,$AF,$00,$00	; 175.0
-SCALEX:	DEFB	$00,$00,$01,$00,$00	; 1.0
-SCALEY:	DEFB	$00,$FF,$FF,$FF,$00	; -1.0
 COORDX:	EQU	$
 COORDY:	EQU	COORDX+5
 COORDS2:EQU	COORDY+5
@@ -416,9 +416,6 @@ INFIX_T:CP	$0C		; multiplication?
 	CALL	SYNTAX_Z
 	JR	Z,MULS_S
 	POP	BC		; discard return address
-	LD	BC,FSCAN
-	RST	$30
-	DEFW	L2D2B + 4		; STACK-BC
 	LD	BC,D_STRING
 	JP	S_FUNC
 
@@ -1545,17 +1542,18 @@ D_FXOR:	PUSH	AF
 	XOR	B
 	JR	D_FCONT
 
-D_RRN:	RST	$30
-	DEFW	L35BF		; STK-PNTRS
-	RST	$30
-	DEFW	L346E		; NEGATE
+D_RRN:	RST	$28
+	DEFB	$1B		; negate
+	DEFB	$38
 
 D_RLN:	LD	HL,X2D37
 	EX	(SP),HL		; adjust return address
+	LD	HL,SWAP
+	PUSH	HL
 	RST	$30
 	DEFW	L2314		; STK-TO-A
-	OR	A
-	JR	Z,SW_R0		; shift by zero
+D_SHL:	OR	A
+	RET	Z		; shift by zero
 	LD	B,A
 	LD	A,(HL)
 	DEC	C
@@ -1569,7 +1567,7 @@ D_RRNL:	INC	HL
 	RR	(HL)
 	JR	C,D_RRNU	; integer underflow
 	DJNZ	D_RRNL
-	JR	SW_R0
+	RET
 
 D_RRNU:	RST	$28
 	DEFB	$A2		; stk-half
@@ -1577,20 +1575,20 @@ D_RRNU:	RST	$28
 	DEFB	$38		; end
 	LD	A,(BREG)
 	DEC	A
-	JR	Z,SW_R0
+	RET	Z
 	LD	B,A
 	LD	A,(HL)
 D_RRF:	SUB	A,B
 	JR	C,D_RRFU	; FP underflow
 	LD	(HL),A
-	JR	NZ,SW_R0
+	RET	NZ
 D_RRFU:	LD	(HL),$00
 	LD	E,L
 	LD	D,H
 	INC	DE
 	LD	BC,4
 	LDIR
-	JR	SW_R0
+	RET
 
 D_RLNP:	OR	A
 	JR	NZ,D_RLF	; shift FP number
@@ -1608,7 +1606,7 @@ D_RLNL:	RL	E
 	LD	(HL),D
 	DEC	HL
 	LD	(HL),E
-	JR	SW_R0
+	RET
 
 D_RLNO:	DEC	HL
 	DEC	HL
@@ -1634,15 +1632,12 @@ JCERR6:	JP	C,ERROR_6	; FP overflow
 	LD	(HL),0
 	INC	HL
 	LD	(HL),0
-	JR	SW_R0
+	RET
 
 D_RLF:	ADD	A,B
 	JR	C,JCERR6
 	LD	(HL),A
-	JR	SW_R0
-
-D_R0:	LD	B,A
-SW_R0:	JP	SWAP
+	RET
 
 D_SH0:	INC	HL
 	LD	C,(HL)
@@ -1653,7 +1648,7 @@ D_SH0:	INC	HL
 	DEC	HL
 	RET NZ
 	POP	HL		; discard return address
-	JR	SW_R0		; don't shift zero
+	RET			; don't shift zero
 
 D_TWOS:	POP	BC		; return here
 	POP	HL		; discard return address
