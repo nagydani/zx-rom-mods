@@ -62,7 +62,7 @@
 	DEFB	P_PLUG - $	; EG
 	DEFB	P_PLUG - $	; EO
 	DEFB	P_PLUG - $	; EsI
-	DEFB	P_USR - $	; EL
+	DEFB	P_USR - $	; USR
 	DEFB	P_PLUG - $	; EY
 	DEFB	P_UNTIL - $	; UNTIL
 	DEFB	P_ASSERT - $	; ASSERT
