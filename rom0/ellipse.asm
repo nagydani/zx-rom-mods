@@ -3,16 +3,12 @@
 
 ELLIP:	LD	HL,$000C
 	ADD	HL,SP
-	LD	C,(HL)
-	INC	HL
-	LD	B,(HL)
-	INC	HL
 	LD	SP,HL
+	POP	BC
 	LD	HL,$202F
 	AND	A
 	SBC	HL,BC
 	JP	NZ,L1C8A
-	PUSH	BC
 
 	RST	$20
 	CALL	L1C7A		; read coordinate pair
