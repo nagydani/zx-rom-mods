@@ -952,10 +952,9 @@ MODDIV:	RST	$30
 ; Move both pointers back by one entry
 STEPBACK:
 	LD	BC,-5
+	LD	D,H
+	LD	E,L
 	ADD	HL,BC
-	EX	DE,HL
-	ADD	HL,BC
-	EX	DE,HL
 	RET
 
 ; Put 0 on the calculator stack
