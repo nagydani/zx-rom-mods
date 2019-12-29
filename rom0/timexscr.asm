@@ -280,12 +280,12 @@ ENDDRAW:XOR	A
 	EX	AF,AF'		; save S_MODE
 	RST	$30
 	DEFW	L2DD5		; FP-TO-A	x coordinate
-	RET	C		; over 255
-	RET	NZ		; negative
+	JR	C,DELPLT	; over 255
+	JR	NZ,DELPLT	; negative
 	LD	B,A
 	LD	HL,WEST
 	CALL	CLIPPX
-	RET	NC		; clipped
+	JR	NC,DELPLT	; clipped
 	PUSH	BC
 	RST	$30
 	DEFW	L2DD5		; FP-TO-A	y coordinate
@@ -309,6 +309,12 @@ ENDDRAW:XOR	A
 	JR	NC,PLOT_HICOLOR
 	LD	BC,L0BDB	; find and set attribute
 	JR	E_PLOT
+
+DELPLT:	RST	$28
+	DEFB	$02		; delete y coordinate
+	DEFB	$38		; end
+	RET
+
 PLOT_HICOLOR:
 	SET	5,H
 	LD	BC,X0BE4	; set attribute
