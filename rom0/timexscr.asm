@@ -235,23 +235,23 @@ CIRCLE:	RST	$28		; calculate
 	LD	HL,ORIGX
 	LD	(MEM),HL
 	RST	$28		; calculate
-	DEFB	$31		; duplicate
-	DEFB	$E2		; get SCALEX
-	DEFB	$04		; multiply
-	DEFB	$3D		; restack
-	DEFB	$01		; exchange
-	DEFB	$E3		; get SCALEY
-	DEFB	$04		; multiply
-	DEFB	$3D		; restack
-	DEFB	$02		; delete
+	DEFB	$31		; duplicate	r,r
+	DEFB	$E2		; get SCALEX	r,r,SCALEX
+	DEFB	$04		; multiply	r,rx
+	DEFB	$3D		; restack	r,rx
+	DEFB	$01		; exchange	rx,r
+	DEFB	$E3		; get SCALEY	rx,r,SCALEY
+	DEFB	$04		; multiply	rx,ry
+	DEFB	$3D		; restack	rx,ry
+	DEFB	$02		; delete	rx
 	DEFB	$38		; end
 	LD	A,(DE)
 	CP	(HL)
 	JR	NC,CIRCMP
 	LD	A,(HL)
 CIRCMP:	SUB	$81
-	LD	(STKEND),HL
-	JP	NC,CIRCLE2
+	LD	(STKEND),HL	; delete rx
+;;	JP	NC,CIRCLE2
 
 PLOT1:	XOR	A
 DOPLOT:	LD	(COORDS+1),A
@@ -399,6 +399,14 @@ PIXADD:	LD	A,E
 	LD	A,E
 	AND	$07
 	RET
+
+DRAW3:	RST	$28
+	DEFB	$3D		; restack
+	DEFB	$38		; end
+DRAW3R:	LD	A,(HL)
+	CP	$7C
+	JP	NC,DRAW3DO
+	LD	(STKEND),HL	; delete a
 
 DRAW2:	LD	HL,COORDX
 	LD	DE,MEMBOT
@@ -766,9 +774,6 @@ PXLLR:	LD	A,(WEST)
 	DEC	L
 	RET
 
-DRAW64:	LD	A,$20
-	JR	DRAW3C
-
 DRAW1:	RST	$28		; calculate
 	DEFB	$E1		; get M1
 	DEFB	$E2		; get M2
@@ -777,228 +782,55 @@ DRAW1:	RST	$28		; calculate
 	DEFW	DRAW_LINE
 	RET
 
-ESCALE:	LD	A,(HL)
-	ADD	A,A
-	SRA	A
-	ADD	$81
-	LD	(DE),A
+DRAW3DO:DEC	(HL)		; a/2
+	RST	$28
+	DEFB	$C4		; store a/2 to M4
+	DEFB	$38		; tan skipped here
+	DEC	(HL)		; tan(a/2)/2
+	RST	$28		; calculate
+	DEFB	$C5		; store tan(a/2)/2 to M5
+	DEFB	$02		; delete tan(a/2)/2
+	DEFB	$38		; end
+	CALL	STEPBACK
+	RST	$30
+	DEFW	L3293		; RE-ST-TWO
 	LD	A,(HL)
-	INC	DE
-	AND	$80
-	LD	(DE),A
-	XOR	A
-	INC	DE
-	LD	(DE),A
-	INC	DE
-	LD	(DE),A
-	INC	DE
-	LD	(DE),A
-	RET
-
-DRAW3:	LD	HL,SCALEX
-	LD	DE,MEMBOT+3*5
-	LD	BC,2*5
-	LDIR			; copy SCALEX, SCALEY to M3,M4
-	RST	$28		; calculate
-	DEFB	$A2		; stk half
+	OR	A
+	JR	Z,DRAW3S1
+	DEC	(HL)		; /2
+DRAW3S1:EX	DE,HL
+	LD	A,(HL)
+	OR	A
+	JR	Z,DRAW3S2
+	DEC	(HL)
+DRAW3S2:RST	$28
+	DEFB	$C1		; store dy/2 to M1
+	DEFB	$E5		; get tan(a/2)/2
 	DEFB	$04		; multiply
-	DEFB	$C5		; store M5
-	DEFB	$02		; delete
-	DEFB	$C2		; store M2
-	DEFB	$E4		; get M4 (SCALEY)
-	DEFB	$04		; multiply
-	DEFB	$2A		; abs
+	DEFB	$C3		; store dy*tan(a/2)/4 to M3
 	DEFB	$01		; exchange
-	DEFB	$C1		; store M1
-	DEFB	$E3		; get M3 (SCALEX)
+	DEFB	$C0		; store dx/2 to M0
+	DEFB	$E5		; get tan(a/2)/2
 	DEFB	$04		; multiply
-	DEFB	$2A		; abs
-	DEFB	$0F		; addition
-	DEFB	$E5		; get M5
-	DEFB	$2A		; abs
-	DEFB	$04		; multiply
-	DEFB	$27		; int
-	DEFB	$38		; end
-	RST	$30
-	DEFW	L2DD5		; FP-TO-A
-	JR	C,DRAW64
-	RRCA
-	RRCA
-	RRCA
-	AND	$1F
-	JR	Z,DRAW1
-	INC	A
-DRAW3C:	PUSH	AF		; number of segments
-	RST	$30
-	DEFW	L2D28		; STACK-A
-	RST	$28		; calculate
-	DEFB	$E5		; get M5	n,a/2
-	DEFB	$01		; exchange	a/2,n
-	DEFB	$05		; division	a/2n
-	DEFB	$C3		; store M3	a/2n
-	DEFB	$31		; duplicate	a/2n,a/2n
-	DEFB	$0F		; addition	a/n
-	DEFB	$C4		; store M4	a/n
-	DEFB	$02		; delete
-	DEFB	$E2		; get M2	dy
-	DEFB	$E1		; get M1	dy,dx
-	DEFB	$E5		; get M5	dy,dx,a/2
-	DEFB	$E3		; get M3	dy,dx,a/2,a/2n
-	DEFB	$03		; subtract	dy,dx,a/2-a/2n
-	DEFB	$E5		; get M5	dy,dx,a/2-a/2n,a/2
-	DEFB	$E3		; get M3	dy,dx,a/2-a/2n,a/2,a/2n
-	DEFB	$1F		; sin		dy,dx,a/2-a/2n,a/2,sin(a/2n)
-	DEFB	$01		; exchange	dy,dx,a/2-a/2n,sin(a/2n),a/2
-	DEFB	$1F		; sin		dy,dx,a/2-a/2n,sin(a/2n),sin(a/2)
-	DEFB	$05		; division	dy,dx,a/2-a/2n,sin(a/2n)/sin(a/2)
-	DEFB	$C3		; store M3	dy,dx,a/2-a/2n,sin(a/2n)/sin(a/2)=w
-	DEFB	$02		; delete	dy,dx,a/2-a/2n
-	DEFB	$31		; duplicate	dy,dx,a/2-a/2n,a/2-a/2n
-	DEFB	$1F		; sin		dy,dx,a/2-a/2n,sin(a/2-a/2n)
-	DEFB	$01		; exchange	dy,dx,sin(a/2-a/2n),a/2-a/2n
-	DEFB	$20		; cos		dy,dx,sin(a/2-a/2n),cos(a/2-a/2n)
-	DEFB	$C1		; store M1	dy,dx,sin(a/2-a/2n),cos(a/2-a/2n)
-	DEFB	$02		; delete	dy,dx,sin(a/2-a/2n)
-	DEFB	$1B		; negate	dy,dx,-sin(a/2-a/2n)
-	DEFB	$C2		; store M2	dy,dx,-sin(a/2-a/2n)
-	DEFB	$02		; delete	dy,dx
-	DEFB	$E3		; get M3	dy,dx,w
-	DEFB	$04		; multiply	dy,dx*w
-	DEFB	$01		; exchange	dx*w,dy
-	DEFB	$E3		; get M3	dx*w,dy,w
-	DEFB	$04		; multiply	dx*w,dy*w
-	DEFB	$38		; end
-	CALL	CPXMUL
-	RST	$28		; calculate
-	DEFB	$E4		; get M4	dx',dy',a/n
-	DEFB	$20		; cos		dx',dy',cos(a/n)
-	DEFB	$C3		; store M3	dx',dy',cos(a/n)
-	DEFB	$02		; delete	dx',dy'
-	DEFB	$E4		; get M4	dx',dy',a/n
-	DEFB	$1F		; sin		dx',dy',sin(a/n)
-	DEFB	$C4		; store M4	dx',dy',sin(a/n)
-	DEFB	$02		; delete	dx',dy'
-	DEFB	$C2		; store M2	dx',dy'
-	DEFB	$02		; delete	dx'
-	DEFB	$C1		; store M1	dx'
-; ARC loop
-ARCL:	DEFB	$E2		; get M2
-	DEFB	$E3		; get M3
-	DEFB	$E4		; get M4
-	DEFB	$38		; end
-ARCL2:	CALL	DRAW1
-	LD	HL,(STKEND)
-	DEC	HL
-	LD	DE,MEMBOT+5*5-1
-	LD	BC,4*5
-	LDDR
-	INC	HL
-	LD	(STKEND),HL
-	POP	BC
-	DJNZ	ARCL1
-	RET
-
-ARCL1:	PUSH	BC
-	RST	$28		; calculate
-	DEFB	$E3		; get M3
-	DEFB	$E4		; get M4
-	DEFB	$38
-	CALL	CPXMUL
-	RST	$28		; calculate
-	DEFB	$C2		; store M2
-	DEFB	$02		; delete
-	DEFB	$C1		; store M1
-	DEFB	$33		; jump
-	DEFB	ARCL - $
-
-CIRCLE2:INC	A
-	RRA
-	ADD	A,2
-	CP	6
-	JR	C,CRSMALL
-	LD	A,5
-CRSMALL:LD	B,A
-	LD	A,$02
-ANGLES:	RLCA
-	DJNZ	ANGLES
-	LD	HL,MEMBOT
-	LD	(MEM),HL
-	PUSH	AF
-	RST	$28		; calculate
+	DEFB	$C2		; store dx*tan(a/2)/4 to M2
 	DEFB	$01		; exchange
-	DEFB	$E0		; get M0
-	DEFB	$0F		; addition
+	DEFB	$E0		; get dx/2
+	DEFB	$03		; subtract
+	DEFB	$1B		; negate
 	DEFB	$01		; exchange
-	DEFB	$38		; end
-	LD	A,2		; PLOT
-	AND	A
-	RST	$30
-	DEFW	L15F2		; PRINT_A_2
-	POP	AF
-	PUSH	AF
-	LD	B,2
-	CP	$40
-	JR	Z,CRCL64
-	DEC	B
-CRCL64:	RST	$28		; calculate
-	DEFB	$34,$ED,$48,$BD,$35,$E1	; stk sin(PI/32)
-	DEFB	$C4		; store M4
-	DEFB	$34,$F0,$7E,$C4,$6D,$20	; stk cos(PI/32)
-	DEFB	$C3		; store M3
-	DEFB	$02		; delete
-	DEFB	$E0		; get M0
-	DEFB	$04		; multiply
-	DEFB	$C2		; store M2
-	DEFB	$02		; delete
-	DEFB	$34,$E9,$9D,$C9,$70,$BB ; stk -2*sin^2(pi/64)
-	DEFB	$E0		; get M0
-	DEFB	$04		; multiply
-	DEFB	$C1		; store M1
-	DEFB	$35		; dec-jrnz
-	DEFB	ARCL - $
-	DEFB	$38		; end
-	POP	AF
-	PUSH	AF
-	ADD	A,A
-	ADD	A,A
-ARCL3:	PUSH	AF
-	RST	$28
-	DEFB	$E3		; get M3
-	DEFB	$E4		; get M4
-	DEFB	$38		; end
-	CALL	CPXMUL
-	RST	$28
-	DEFB	$E2		; get M2
+	DEFB	$E1		; get dy/2
 	DEFB	$0F		; addition
-	DEFB	$01		; exchange
-	DEFB	$E1		; get M1
+	DEFB	$E4		; get a/2
+	DEFB	$E0		; get dx/2
+	DEFB	$E3		; get dy*tan(a/2)/4
 	DEFB	$0F		; addition
-	DEFB	$E3		; get M3
-	DEFB	$C1		; store M1
-	DEFB	$E4		; get M4
-	DEFB	$C2		; store M2
+	DEFB	$E1		; get dy/2
+	DEFB	$E2		; get dx*tan(a/2)/4
+	DEFB	$03		; subtract
+	DEFB	$E4		; get a/2
 	DEFB	$38		; end
-	CALL	CPXMUL
-	RST	$28
-	DEFB	$C4		; store M4
-	DEFB	$02		; delete
-	DEFB	$C3		; store M3
-	DEFB	$02		; delete
-	DEFB	$C1		; store M1
-	DEFB	$02		; delete
-	DEFB	$C2		; store M2
-	DEFB	$02		; delete
-	DEFB	$38		; end
-	POP	AF
-	ADD	A,A
-	JR	NC,ARCL3
-	RST	$28
-	DEFB	$E1		; get M1
-	DEFB	$E2		; get M2
-	DEFB	$E3		; get M3
-	DEFB	$E4		; get M4
-	DEFB	$38		; end
-	JP	ARCL2
+	CALL	DRAW3R
+	JP	DRAW3
 
 ; Clip pixel coordinate in A beteen (HL) and (HL+1)
 CLIPPX:	RRA
