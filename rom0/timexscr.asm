@@ -229,30 +229,6 @@ POSCR4B:CALL	CL_SCR
 DRAWAT:	LD	A,$FF
 	JR	DOPLOT
 
-CIRCLE:	RST	$28		; calculate
-	DEFB	$C0		; store M0
-	DEFB	$38		; end
-	LD	HL,ORIGX
-	LD	(MEM),HL
-	RST	$28		; calculate
-	DEFB	$31		; duplicate	r,r
-	DEFB	$E2		; get SCALEX	r,r,SCALEX
-	DEFB	$04		; multiply	r,rx
-	DEFB	$3D		; restack	r,rx
-	DEFB	$01		; exchange	rx,r
-	DEFB	$E3		; get SCALEY	rx,r,SCALEY
-	DEFB	$04		; multiply	rx,ry
-	DEFB	$3D		; restack	rx,ry
-	DEFB	$02		; delete	rx
-	DEFB	$38		; end
-	LD	A,(DE)
-	CP	(HL)
-	JR	NC,CIRCMP
-	LD	A,(HL)
-CIRCMP:	SUB	$81
-	LD	(STKEND),HL	; delete rx
-;;	JP	NC,CIRCLE2
-
 PLOT1:	XOR	A
 DOPLOT:	LD	(COORDS+1),A
 	LD	HL,ORIGX
@@ -336,7 +312,7 @@ PLOT_HIRES:
 	RET	NC		; clipped
 	PUSH	BC
 	RST	$30
-	DEFW	L2DA2		; FP-TO-BC
+	DEFW	L2DA2		; FP-TO-BC	y coordinate
 	POP	DE
 	RET	C
 	RET	NZ
@@ -403,9 +379,18 @@ PIXADD:	LD	A,E
 DRAW3:	RST	$28
 	DEFB	$3D		; restack
 	DEFB	$38		; end
-DRAW3R:	LD	A,(HL)
-	CP	$7C
-	JP	NC,DRAW3DO
+DRAW3R:	CALL	STEPBACK
+	CALL	STEPBACK
+	RST	$30
+	DEFW	L3293		; RE-ST-TWO
+	LD	A,(DE)
+	CP	(HL)
+	JR	NC,DRAW3S
+	LD	A,(HL)
+DRAW3S:	LD	HL,5
+	ADD	HL,DE
+	ADD	A,(HL)
+	JP	C,DRAW3DO
 	LD	(STKEND),HL	; delete a
 
 DRAW2:	LD	HL,COORDX
@@ -481,9 +466,8 @@ DRAWDO:	LD	BC,2*5
 	EX	DE,HL
 	LD	HL,COORDX
 	LDIR			; x2,y2 to M2,M3
-
-	RST	$30
-	DEFW	L35BF		; STK-PNTRS
+	RST	$28
+	DEFB	$38		; end
 	CALL	STEPBACK
 	RST	$30
 	DEFW	L3293		; RE-ST-TWO
@@ -785,8 +769,14 @@ DRAW1:	RST	$28		; calculate
 DRAW3DO:DEC	(HL)		; a/2
 	RST	$28
 	DEFB	$C4		; store a/2 to M4
-	DEFB	$38		; tan skipped here
-	DEC	(HL)		; tan(a/2)/2
+	DEFB	$38
+	LD	A,(HL)
+	CP	$81
+	JR	C,TANSKIP	; tan x = x
+	RST	$28
+	DEFB	$21		; tan
+	DEFB	$38		; end
+TANSKIP:DEC	(HL)		; tan(a/2)/2
 	RST	$28		; calculate
 	DEFB	$C5		; store tan(a/2)/2 to M5
 	DEFB	$02		; delete tan(a/2)/2
@@ -830,7 +820,36 @@ DRAW3S2:RST	$28
 	DEFB	$E4		; get a/2
 	DEFB	$38		; end
 	CALL	DRAW3R
-	JP	DRAW3
+DRAW3J:	JP	DRAW3
+
+CIRCLE:	RST	$28
+	DEFB	$C4		; store R
+	DEFB	$0F		; addition
+	DEFB	$38		; end
+	CALL	DRAWAT
+	CALL	MASKPIX
+;;	CALL	PLOT1
+	RST	$28
+	DEFB	$E4		; get R
+	DEFB	$1B		; negate
+	DEFB	$E4		; get R
+	DEFB	$A3		; stk-pi2
+	DEFB	$E4		; get R
+	DEFB	$E4		; get R
+	DEFB	$A3		; stk-pi2
+	DEFB	$E4		; get R
+	DEFB	$E4		; get R
+	DEFB	$1B		; negate
+	DEFB	$A3		; stk-pi2
+	DEFB	$E4		; get R
+	DEFB	$1B		; negate
+	DEFB	$E4		; get R
+	DEFB	$1B		; negate
+	DEFB	$A3		; stk-pi2
+	DEFB	$38		; end
+	CALL	CIRCL
+CIRCL:	CALL	DRAW3
+	JR	DRAW3J
 
 ; Clip pixel coordinate in A beteen (HL) and (HL+1)
 CLIPPX:	RRA
@@ -845,28 +864,5 @@ CLIPPX:	RRA
 	INC	L
 	CP	(HL)
 	RET
-
-; Complex multiplication by M1+i*M2
-CPXMUL:	RST	$28		; calculate
-	DEFB	$C0		; store M0
-	DEFB	$02		; delete
-	DEFB	$31		; duplicate
-	DEFB	$E2		; get M2
-	DEFB	$04		; multiply
-	DEFB	$01		; exchange
-	DEFB	$E1		; get M1
-	DEFB	$04		; multiply
-	DEFB	$E0		; get M0
-	DEFB	$E2		; get M2
-	DEFB	$04		; multiply
-	DEFB	$03		; subtract
-	DEFB	$01		; exchange
-	DEFB	$E0		; get M0
-	DEFB	$E1		; get M1
-	DEFB	$04		; multiply
-	DEFB	$0F		; addition
-	DEFB	$38		; end
-	RET
-
 
 	include "calculator.asm"

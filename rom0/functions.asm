@@ -28,8 +28,7 @@ F_BRACE:LD	(HL),$0D	; temporarily place an end-of-line marker
 	PUSH	HL		; save ERR_SP
 	LD	HL,ERR_BRACE
 	PUSH	HL		; set error handler
-	LD	HL,SWAP
-	PUSH	HL		; in this ROM
+	CALL	STACKSWAP	; in this ROM
 	LD	(ERR_SP),SP
 	LD	(CH_ADD),DE
 	PUSH	DE		; save beginning-of-expression
@@ -359,18 +358,10 @@ E_ITEM:	POP	HL
 	POP	HL
 	LD	(CH_ADD),HL
 	JR	S_TIME_END
-N_ITEM:	CALL	STACK0
+N_ITEM:	RST	$28
+	DEFB	$A0		; stk-zero
+	DEFB	$38		; end
 	JR	E_ITEM
-
-STK_BASE:
-	LD	A,(MEMBOT+27)
-STK_A:	CALL	STACK_ZERO
-	INC	HL
-	INC	HL
-	LD	(HL),A
-	DEC	HL
-	DEC	HL		; stack base
-	RET
 
 S_LBLS:	LD	B,0
 	CALL	S_LBLL
@@ -444,10 +435,9 @@ D_CODE1:LD	C,(HL)
 	PUSH	AF		; save counter
 	RST	$30
 	DEFW	L2D2B + 4		; STACK-BC
-	RST	$30
-	DEFW	L35BF		; STK-PNTRS
-	RST	$30
-	DEFW	L3297		; RE-STACK
+	RST	$28
+	DEFB	$3D		; re-stack
+	DEFB	$38		; end
 	EX	DE,HL		; pointer to exponent to DE
 	POP	BC		; counter in B
 	POP	HL		; restore pointer
@@ -462,10 +452,9 @@ CODEL2:	DEC	HL
 	LD	A,(HL)
 	RST	$30
 	DEFW	L2D28		; STACK-A with space check
-	CALL	STEPBACK
-	RST	$30
-	DEFW	L3014		; ADDITION
-	LD	(STKEND),DE
+	RST	$28
+	DEFB	$0F		; addition
+	DEFB	$38		; end
 	POP	HL
 	POP	DE
 	POP	BC
@@ -483,8 +472,8 @@ D_CHR:	POP	HL		; discard return address
 	LD	DE,0
 	PUSH	DE		; BREG = 0
 	PUSH	HL
-	RST	$30
-	DEFW	L35BF		; STK-PNTRS
+	RST	$28
+	DEFB	$38		; end
 	RES	6,(IY+$01)	; string result
 	LD	A,(HL)
 	OR	A
@@ -535,23 +524,16 @@ D_CHRL:	INC	HL
 	EX	DE,HL
 	LD	(MEMBOT+28),HL
 	LD	(K_CUR),HL
-	RST	$30
-	DEFW	L35BF		; STK-PNTRS
-CHRL_L:	PUSH	DE
-	RST	$30
-	DEFW	L33A9		; TEST-5-SP
-	LD	HL,C256
-	LD	BC,$0005
-	LDIR			; STK-256
-	POP	HL
-	LD	(STKEND),DE
+CHRL_L:	RST	$28
+	DEFB	$34,$80,$B0,$00,$00,$01	; stk-data 256
+	DEFB	$38			; end
 	CALL	MOD2A
 	LD	HL,(K_CUR)
 	LD	(HL),A
 	INC	HL
 	LD	(K_CUR),HL
-	RST	$30
-	DEFW	L35BF		; STK-PNTRS
+	RST	$28
+	DEFB	$38		; end
 	LD	A,(HL)
 	OR	A
 	JR	NZ,CHRL_L
@@ -587,8 +569,8 @@ S_STR_NEW:
 	LD	A,$FF
 	RST	$30
 	DEFW	L1601		; CHAN-OPEN, open R channel
-	RST	$30
-	DEFW	L35BF		; STK-PNTRS
+	RST	$28
+	DEFB	$38		; end
 	INC	HL
 	BIT	7,(HL)		; check sign
 	JR	Z,S_STR_S	; if positive, do nothing
@@ -602,11 +584,9 @@ S_STR_S:RST	$20
 	CALL	SYNTAX_Z
 	JR	Z,S_ST0_S
 	PUSH	AF
-	RST	$30
-	DEFW	L35BF		; STK-PNTRS
-	RST	$30
-	DEFW	L33C0		; DUP
-	LD	(STKEND),DE
+	RST	$28
+	DEFB	$31		; duplicate
+	DEFB	$38		; end
 	RST	$30
 	DEFW	L1E94		; FIND-INT1
 	CP	2
@@ -620,7 +600,9 @@ S_ST0_S:CP	")"
 	CALL	SYNTAX_Z
 	JR	Z,S_STR_D
 	PUSH	AF
-	CALL	STACK0
+	RST	$28
+	DEFB	$A0		; stk-zero
+	DEFB	$38		; end
 	POP	AF
 	JR	S_STR_D
 
@@ -649,7 +631,9 @@ S_STR_D:JR	Z,S_STR_END
 	PUSH	AF
 	RST	$30
 	DEFW	L2D60		; E-LOOP
-	CALL	STK_BASE
+	LD	A,(MEMBOT+27)
+	RST	$30
+	DEFW	L2D28		; STACK-A
 NROUND:	CALL	MOD2A
 	CALL	PR_DIGIT
 	INC	HL
@@ -667,7 +651,9 @@ STR_DG:	JR	NC,STR_FR	; still fractional
 	RST	$30
 	DEFW	L34E9		; TEST-ZERO
 	JR	C,D_STR_E
-STR_FR:	CALL	STK_BASE
+STR_FR:	LD	A,(MEMBOT+27)
+	RST	$30
+	DEFW	L2D28		; STACK-A
 	JR	NROUND
 
 PR_DIGIT:

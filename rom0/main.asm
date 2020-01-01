@@ -373,8 +373,7 @@ MULS_R:	EX	(SP),HL		; replace return address by it
 
 GOTO_CONT:
 	POP	DE		; discard ERROR B
-	LD	HL,SWAP
-	PUSH	HL
+	CALL	STACKSWAP
 JP_LBL:	LD	HL,(PROG)
 	AND	A
 	SBC	HL,BC		; subtract large target from PROG
@@ -917,6 +916,12 @@ SYNTAX_Z:
 	BIT	7,(IY+1)
 	RET
 
+UNSTACK_Z:
+	CALL	SYNTAX_Z
+	POP	HL
+	RET	Z
+	JP	(HL)
+
 	INCLUDE	"functions.asm"
 
 ; Mirror a memory area
@@ -938,40 +943,21 @@ MIRROR:	LD	D,(HL)
 	JR	NZ,MIRROR
 	RET
 
-; Replace a,b on top of stack by INT(a/b) and return a MOD b in register A.
-MOD2A:	CALL	MODDIV
-	RST	$30
-	DEFW	EXCHANGE
+; Replace a,b on top of stack by INT(a/b) and return a MOD b in registers BC and A.
+MOD2A:	RST	$28		; calc
+	DEFB	$32		; mod
+	DEFB	$01		; exchange
+	DEFB	$38		; end
 	RST	$30
 	DEFW	L2DA2		; FP-TO-BC (and A)
 	RET
 
-; Replace a,b on top of stack by a MOD b, INT(a/b)
-MODDIV:	RST	$30
-	DEFW	L36A0		; MOD
 ; Move both pointers back by one entry
 STEPBACK:
 	LD	BC,-5
 	LD	D,H
 	LD	E,L
 	ADD	HL,BC
-	RET
-
-; Put 0 on the calculator stack
-STACK0:	RST	$30
-	DEFW	L35BF		; STK-PNTRS
-	RST	$30
-	DEFW	L33A9		; TEST-5-SP
-; Put 0 on the calculator stack, without testing available space
-STACK_ZERO:
-	LD	L,E
-	LD	H,D
-	LD	BC,$500
-STK0_L:	LD	(HL),C
-	INC	HL
-	DJNZ	STK0_L
-	LD	(STKEND),HL
-	EX	DE,HL
 	RET
 
 ; print the decimal value of a word in register HL
@@ -1547,8 +1533,7 @@ D_RRN:	RST	$28
 
 D_RLN:	LD	HL,X2D37
 	EX	(SP),HL		; adjust return address
-	LD	HL,SWAP
-	PUSH	HL
+	CALL	STACKSWAP
 	RST	$30
 	DEFW	L2314		; STK-TO-A
 D_SHL:	OR	A
@@ -1707,8 +1692,8 @@ D_STRING:
 	LD	DE,0
 	PUSH	DE		; BREG = 0
 	PUSH	HL
-	RST	$30
-	DEFW	L35BF		; STK-PNTRS
+	RST	$28
+	DEFB	$38		; end
 	INC	HL
 	BIT	7,(HL)		; check sign
 	DEC	HL
@@ -1722,11 +1707,10 @@ D_NFLIP:DEC	HL
 	LD	C,(HL)		; string length to BC
 	PUSH	BC
 	RST	$30
-	DEFW	L2D2B + 4		; STACK-BC
-	CALL	STEPBACK
-	RST	$30
-	DEFW	L30CA		; MULTIPLY
-	LD	(STKEND),DE
+	DEFW	L2D2B + 4	; STACK-BC
+	RST	$28
+	DEFB	$04		; multiply
+	DEFB	$38		; end
 	RST	$30
 	DEFW	L1E99		; FIND-INT2
 	POP	HL
@@ -1858,10 +1842,9 @@ D_XORL:	LD	A,B
 	DEC	BC
 	JR	D_XORL
 
-D_RLS:	RST	$30
-	DEFW	L35BF		; STK-PNTRS
-	RST	$30
-	DEFW	L346E		; NEGATE
+D_RLS:	RST	$28
+	DEFB	$1B		; negate
+	DEFB	$38		; end
 D_RRS:	POP	HL		; discard return address
 	POP	HL		; RE-ENTRY
 	POP	DE		; discard BREG?
@@ -1918,8 +1901,11 @@ D_RR:	SRA	B
 	PUSH	BC		; LEN
 	RST	$30
 	DEFW	L2D2B + 4	; STACK-BC
-	CALL	MODDIV
-	LD	(STKEND),DE
+
+	RST	$28
+	DEFB	$32		; mod
+	DEFB	$38		; end
+
 	RST	$30
 	DEFW	L2DA2		; FP-TO-BC
 	POP	HL		; LEN
@@ -2175,8 +2161,7 @@ SUB_OOR:SCF
 PLOT_CONT:
 	LD	A,2
 	AND	A
-	LD	HL,SWAP
-	PUSH	HL
+	CALL	STACKSWAP
 
 ; Call current channel's output service routine
 CHOUT:	EXX
@@ -2205,15 +2190,13 @@ CHOUT0:	EX	AF,AF'
 	EXX
 	RET
 SWJPHL:	PUSH	HL
+STACKSWAP:
 	LD	HL,SWAP
 	EX	(SP),HL
 	JP	(HL)
 
 	INCLUDE "variables.asm"
 	INCLUDE	"instructions.asm"
-
-CM1:	DEFB	$00, $FF, $FF, $FF
-C256:	DEFB	$00, $00, $00, $01, $00
 
 	DEFS	INFIX_HOOK - $
 ; jump table from ROM1

@@ -198,8 +198,7 @@ ED_CDN:	LD	HL,TV_FLAG
 	RET
 
 ; channel K input service routine
-K_IN:	LD	HL,SWAP
-	PUSH	HL
+K_IN:	CALL	STACKSWAP
 	LD	HL,K_STATE
 	BIT	7,(HL)
 	JR	Z,K_IN0
@@ -818,8 +817,7 @@ KS_CTRL:PUSH	HL		; save display address
 	RET
 
 ; channel K output service routine
-K_OUT:	LD	HL,SWAP
-	PUSH	HL
+K_OUT:	CALL	STACKSWAP
 	LD	HL,TV_FLAG
 	BIT	0,(HL)
 	JR	Z,S_OUT
@@ -1438,8 +1436,7 @@ AUTOLIST:
 	RET
 
 TEMPS_CONT:
-	LD	HL,SWAP
-	PUSH	HL
+	CALL	STACKSWAP
 TEMPS3:	LD	A,(TV_FLAG)
 	RRCA
 	LD	A,(KS_PERM)
