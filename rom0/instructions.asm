@@ -1,38 +1,3 @@
-	DEFB	P_PLUG - $	; G8
-	DEFB	P_PLUG - $	; G1
-	DEFB	P_PLUG - $	; G2
-	DEFB	P_PLUG - $	; G3
-	DEFB	P_PLUG - $	; G4
-	DEFB	P_PLUG - $	; G5
-	DEFB	P_PLUG - $	; G6
-	DEFB	P_PLUG - $	; G7
-	DEFB	P_PLUG - $	; Gs8
-	DEFB	P_PLUG - $	; Gs1
-	DEFB	P_PLUG - $	; Gs2
-	DEFB	P_PLUG - $	; Gs3
-	DEFB	P_PLUG - $	; Gs4
-	DEFB	P_PLUG - $	; Gs5
-	DEFB	P_PLUG - $	; Gs6
-	DEFB	P_PLUG - $	; Gs7
-	DEFB	P_PLUG - $	; GA
-	DEFB	P_PLUG - $	; GB
-	DEFB	P_PLUG - $	; GC
-	DEFB	P_PLUG - $	; GD
-	DEFB	P_PLUG - $	; GE
-	DEFB	P_PLUG - $	; GF
-	DEFB	P_PLUG - $	; GG
-	DEFB	P_PLUG - $	; GH
-	DEFB	P_PLUG - $	; GI
-	DEFB	P_PLUG - $	; GJ
-	DEFB	P_PLUG - $	; GK
-	DEFB	P_PLUG - $	; GL
-	DEFB	P_PLUG - $	; GM
-	DEFB	P_PLUG - $	; GN
-	DEFB	P_PLUG - $	; GO
-	DEFB	P_PLUG - $	; GP
-	DEFB	P_PLUG - $	; GQ
-	DEFB	P_PLUG - $	; GR
-	DEFB	P_PLUG - $	; GS
 	DEFB	P_SPECTRUM - $	; SPECTRUM
 	DEFB	P_PLAY - $	; PLAY
 	DEFB	P_TURBO - $	; TURBO

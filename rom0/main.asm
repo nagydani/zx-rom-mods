@@ -489,7 +489,7 @@ RUN_CONT:
 	LD	C,(HL)
 	INC	B		; B becomes 0 again
 	ADD	HL,BC
-	CP	$B2		; TOKEN $80
+	CP	$D5		; TOKEN $A3
 	JR	NC,GET_PARAM	; jump for tokens
 ERRCNZ3:JR	ERRCNZ		; TODO: syntax error for other characters
 
