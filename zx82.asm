@@ -23,6 +23,7 @@
 ; STO_MEM_X sped up, uses one byte
 ; STO_CON_X uses uncompressed constants: faster and smaller
 ; SQR replaced by a faster and more accurate one [5<>SQR 25]
+; TOPWR sped up and fixed for integer exponents [(-10)^5]
 ; RND sped up considerably
 ; PIP set to zero means no keyclicks [POKE 23609,0]
 ; PLOT, DRAW and CIRCLE select "S" channel [	POKE 23749,PEEK 23751
@@ -55,7 +56,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 23-DEC-2019
+; Last updated: 02-JAN-2020
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -17574,7 +17575,7 @@ L338E:  LD      DE,L32D7        ; Address: tbl-addrs
         PUSH    DE              ; now address of routine
         EXX                     ; main set
                                 ; avoid using IY register.
-        LD      BC,(STKEND+1)	; STKEND_hi
+GETBREG:LD      BC,(STKEND+1)	; STKEND_hi
                                 ; nothing much goes to C but BREG to B
                                 ; and continue into next ret instruction
                                 ; which has a dual identity
@@ -19850,13 +19851,62 @@ SLOOP:	DEFB 	$31	;;duplicate             x,x.
 ; 0 ^ -n = arithmetic overflow.
 ;
 
+;;; BUGFIX: speedup for integer exponents
+TOPWR:	LD	A,(DE)
+	OR	A
+	JR	NZ,TOPWR1
+	CALL	L2DAD		; FP-DELETE from FP-TO-BC
+	JR	Z,TOPWRP
+	PUSH	BC
+	RST	$28		;; FP-CALC
+TOPWRN:	DEFB    $A1             ;;stk-one               x, 1.
+        DEFB    $01             ;;exchange              1, x.
+        DEFB    $05             ;;division              1/x
+	DEFB	$38		;;end-calc
+	POP	BC
+	LD	A,C
+TOPWRP:	INC	B
+	DJNZ	TOPWR1
+	OR	A
+	JR	Z,STKONE
+	DEC	C
+	RET	Z
+	LD	B,8
+TOPWSH:	DEC	B
+	ADD	A,A
+	JR	NC,TOPWSH
+	PUSH	AF
+	RST	$28
+	DEFB	$C0		;;store M0
+TOPWRL:	DEFB	$31		;;duplicate
+	DEFB	$04		;;multiply
+	DEFB	$38		;;end-calc
+	POP	AF
+	ADD	A,A
+	PUSH	AF
+	LD	A,(BREG)
+	LD	B,A
+	JR	NC,TOPWRE
+	RST	$28
+	DEFB	$E0		;;get M0
+	DEFB	$04		;;multiply
+	DEFB	$33		;;jump
+	DEFB	TOPWRO - $
+TOPWRE:	RST	$28
+TOPWRO:	DEFB	$35		;;djnz
+	DEFB	TOPWRL - $
+	DEFB	$38
+	POP	BC
+	RET
+
+TOPWR2:	CALL	L2D2B + 4	;; STACK-BC + 4
 ;; to-power
-TOPWR:	RST     28H             ;; FP-CALC              X, Y.
+TOPWR1:	RST     28H             ;; FP-CALC              X, Y.
         DEFB    $01             ;;exchange              Y, X.
         DEFB    $31             ;;duplicate             Y, X, X.
         DEFB    $30             ;;not                   Y, X, (1/0).
         DEFB    $00             ;;jump-true
-        DEFB    $07             ;;to L385D, XIS0   if X is zero.
+        DEFB    XIS0 - $	;;to L385D, XIS0   if X is zero.
 
 ;   else X is non-zero. Function 'ln' will catch a negative value of X.
 
@@ -19873,31 +19923,39 @@ TOPWR:	RST     28H             ;; FP-CALC              X, Y.
 
 ;; XIS0
 ;;;L385D:
-XIS0:	DEFB    $02             ;;delete                Y.
-        DEFB    $31             ;;duplicate             Y, Y.
-        DEFB    $30             ;;not                   Y, (1/0).
-        DEFB    $00             ;;jump-true
-        DEFB    $09             ;;to L386A, ONE         if Y is zero.
+XIS0:
+;;; BUGFIX: checked with integer exponent
+;;;	DEFB    $02             ;;delete                Y.
+;;;	DEFB    $31             ;;duplicate             Y, Y.
+;;;	DEFB    $30             ;;not                   Y, (1/0).
+;;;	DEFB    $00             ;;jump-true
+;;;	DEFB    ONE - $		;;to L386A, ONE         if Y is zero.
 
-        DEFB    $A0             ;;stk-zero              Y, 0.
-        DEFB    $01             ;;exchange              0, Y.
-        DEFB    $37             ;;greater-0             0, (1/0).
-        DEFB    $00             ;;jump-true             0.
-        DEFB    $06             ;;to L386C, LAST        if Y was any positive
+;;;	DEFB    $A0             ;;stk-zero              Y, 0.
+	DEFB    $01             ;;exchange              0, Y.
+	DEFB    $37             ;;greater-0             0, (1/0).
+	DEFB    $00             ;;jump-true             0.
+	DEFB    LAST - $	;;to L386C, LAST        if Y was any positive
                                 ;;                      number.
 
 ;   else force division by zero thereby raising an Arithmetic overflow error.
 ;   There are some one and two-byte alternatives but perhaps the most formal
 ;   might have been to use end-calc; rst 08; defb 05.
 
-        DEFB    $A1             ;;stk-one               0, 1.
-        DEFB    $01             ;;exchange              1, 0.
-        DEFB    $05             ;;division              1/0        ouch!
+;;; BUGFIX: reciprocal already available
+	DEFB	$33		;;jump
+	DEFB	TOPWRN - $	;;1/x
+;;;	DEFB    $A1             ;;stk-one               0, 1.
+;;;	DEFB    $01             ;;exchange              1, 0.
+;;;	DEFB    $05             ;;division              1/0        ouch!
 
 ; ---
 
 ;; ONE
 ;;;L386A:
+;;; BUGFIX: return to calculator
+STKONE:	RST	$28		; FP-CALC
+;;;
 ONE:	DEFB    $02             ;;delete                .
         DEFB    $A1             ;;stk-one               1.
 
@@ -20129,14 +20187,20 @@ IOCTL1:	CALL	L1601		; open it
 	INC	A		; A=1, CF=0
 	JR	OUT_SERV
 
-; Branching of IF statement, with result recorded (22 bytes)
+; Branching of IF statement, with result recorded
 C2FLAGX4:
+	LD	HL,FLAGX
 	JR	C,SETFX4
-	RES	4,(IY+$37)
+	RES	4,(HL)
 SSTMTL1:JP	L1B29		; SSTMT-L-1
-SETFX4:	SET	4,(IY+$37)
+
+; These must be FF for IM2 vectoring
+	DEFS	$3A01 - $, $FF
+
+SETFX4:	SET	4,(HL)
 	JP	L1BB3		; LINE-END
-SFLAGX4:SET	4,(IY+$37)
+
+SFLAGX4:SET	4,(IY+FLAGX-ERR_NR)
 	JR	SSTMTL1
 
 ; POINTERS except DEST, if pointing to local variable (41 bytes)
@@ -20164,9 +20228,6 @@ CH_DEST:LD	HL,(DEST)
 	LD	(DEST),HL
 SK_DEST:EX	DE,HL
 	JP	L1664
-
-; These must be FF for IM2 vectoring
-	DEFS	$3A01 - $, $FF
 
 ; TURBO protection routines
 T_LD_BYTES:
