@@ -5612,16 +5612,19 @@ L1150:  LD      A,(S_POSNL + 1)	; fetch SPOSNL_hi is current line
 ;;; BUGFIX: use hard blank, in case of alternate character set
 L115E:  LD      A,$80		; prepare a hard blank.
 ;;; L115E:  LD      A," "           ; prepare a space.
-	PUSH    DE              ; save old line/column.
-	CALL    L09F4           ; routine PRINT-OUT prints a space over
+;;; BUGFIX: vector through RST 10h, for abstraction
+	RST	$10
+        JR      L1150           ; back to ED-BLANK until all old text blanked.
+	DEFS	$1167 - $
+;;;	PUSH    DE              ; save old line/column.
+;;;	CALL    L09F4           ; routine PRINT-OUT prints a space over
                                 ; any text from previous print.
                                 ; Note. Since the blanking only occurs when
                                 ; using $09F4 to print to the lower screen,
                                 ; there is no need to vector via a RST 10
                                 ; and we can use this alternate set.
-	POP     DE              ; restore the old line column.
-        JR      L1150           ; back to ED-BLANK until all old text blanked.
-
+;;;	POP     DE              ; restore the old line column.
+;;;	JR      L1150           ; back to ED-BLANK until all old text blanked.
 ; -------------------------------
 ; THE 'EDITOR-FULL' ERROR ROUTINE
 ; -------------------------------
