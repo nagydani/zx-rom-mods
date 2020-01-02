@@ -371,7 +371,7 @@ stack is returned as a number.</dd>
 <h4>Priority 10</h4>
 <dl>
 <dt><em>a</em> <code>^</code> <em>b</em></dt>
-<dd>Taking <em>a</em> to the power of <em>b</em>. Requires <em>a</em> &ge; 0.</dd>
+<dd>Taking <em>a</em> to the power of <em>b</em>. Requires <em>a</em> &ge; 0 for non-integer <em>b</em> values. By definition, <code>0^0=1</code>.</dd>
 </dl>
 
 <h4>Priority 9</h4>
@@ -548,7 +548,7 @@ conditions to find out when they do not hold.
 <dt><code>DEF PROC</code> <em>name</em><code>(</code>[[<code>REF </code>]<em>argument</em>[<code>,</code>...]]<code>)</code></dt>
 <dd>...</dd>
 
-<dt><code>DELETE</code> <em>variable</em></dt>
+<dt><code>DELETE</code> <em>variable</em> [<code>,<code> <em>variable</em>[<code>,</code>...]]</dt>
 <dd>...</dd>
 
 <dt><code>DELETE</code> [<em>line_number</em>][<code> TO </code>[<em>line_number</em>]]</dt>
