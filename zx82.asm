@@ -19856,34 +19856,35 @@ TOPWR:	LD	A,(DE)
 	OR	A
 	JR	NZ,TOPWR1
 	CALL	L2DAD		; FP-DELETE from FP-TO-BC
-	JR	Z,TOPWRP
 	PUSH	BC
+	JR	Z,TOPWRP
 	RST	$28		;; FP-CALC
 TOPWRN:	DEFB    $A1             ;;stk-one               x, 1.
         DEFB    $01             ;;exchange              1, x.
         DEFB    $05             ;;division              1/x
 	DEFB	$38		;;end-calc
-	POP	BC
-	LD	A,C
-TOPWRP:	INC	B
-	DJNZ	TOPWR1
-	OR	A
+TOPWRP:	POP	HL
+	LD	A,H
+	OR	L
 	JR	Z,STKONE
-	DEC	C
+	LD	B,$10
+	DEC	A
+	JR	NZ,TOPWSH
+	LD	A,H
+	OR	A
 	RET	Z
-	LD	B,8
 TOPWSH:	DEC	B
-	ADD	A,A
+	ADD	HL,HL
 	JR	NC,TOPWSH
-	PUSH	AF
+	PUSH	HL
 	RST	$28
 	DEFB	$C0		;;store M0
 TOPWRL:	DEFB	$31		;;duplicate
 	DEFB	$04		;;multiply
 	DEFB	$38		;;end-calc
-	POP	AF
-	ADD	A,A
-	PUSH	AF
+	POP	HL
+	ADD	HL,HL
+	PUSH	HL
 	LD	A,(BREG)
 	LD	B,A
 	JR	NC,TOPWRE
@@ -19896,10 +19897,9 @@ TOPWRE:	RST	$28
 TOPWRO:	DEFB	$35		;;djnz
 	DEFB	TOPWRL - $
 	DEFB	$38
-	POP	BC
+	POP	HL
 	RET
 
-TOPWR2:	CALL	L2D2B + 4	;; STACK-BC + 4
 ;; to-power
 TOPWR1:	RST     28H             ;; FP-CALC              X, Y.
         DEFB    $01             ;;exchange              Y, X.
