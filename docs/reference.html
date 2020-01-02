@@ -521,7 +521,7 @@ conditions to find out when they do not hold.
 <dt><code>CAT</code></dt>
 <dd>...</dd>
 
-<dt><code>CIRCLE</code> <em>x_coordinate</em><code>,</code><em>y_coordinate</em><code>,</code><em>radius</em></dt>
+<dt><code>CIRCLE</code> [<code>#</code><em>stream</em>,] [<em>attributes</em>;] <em>x_coordinate</em><code>,</code><em>y_coordinate</em><code>,</code><em>radius</em></dt>
 <dd>...</dd>
 
 <dt><code>CLEAR</code> [<em>RAMTOP_value</em>]</dt>
@@ -536,7 +536,7 @@ conditions to find out when they do not hold.
 <dt><code>CONTINUE</code></dt>
 <dd>...</dd>
 
-<dt><code>COPY</code></dt>
+<dt><code>COPY</code> [<code>#</code><em>stream</em>,]</dt>
 <dd>...</dd>
 
 <dt><code>DATA</code> <em>item</em>[<code>,</code>...]</dt>
@@ -557,7 +557,7 @@ conditions to find out when they do not hold.
 <dt><code>DIM</code> <em>name</em><code>(</code><em>dimension</em>[<code>,</code>...]<code>)</code></dt>
 <dd>...</dd>
 
-<dt><code>DRAW</code> <em>x_coordinate</em><code>,</code><em>y_coordinate</em>[<code>,</code><em>arc</em>]</dt>
+<dt><code>DRAW</code>  [<code>#</code><em>stream</em>,] [<em>attributes</em>;] <em>x_coordinate</em><code>,</code><em>y_coordinate</em>[<code>,</code><em>arc</em>]</dt>
 <dd>...</dd>
 
 <dt><code>ELSE</code> [<em>statement</em>[<code>:</code>...]]</dt>
@@ -665,7 +665,7 @@ conditions to find out when they do not hold.
 <dt><code>PLAY</code></dt>
 <dd>...</dd>
 
-<dt><code>PLOT</code> <em>x_coordinate</em><code>,</code><em>y_coordinate</em></dt>
+<dt><code>PLOT</code> [<code>#</code><em>stream</em>,] [<em>attributes</em>;] <em>x_coordinate</em><code>,</code><em>y_coordinate</em></dt>
 <dd>...</dd>
 
 <dt><code>POKE</code> <em>address</em><code>,</code><em>value</em> [<code>,</code><em>value</em>...]</dt>
@@ -707,13 +707,16 @@ conditions to find out when they do not hold.
 <dt><code>SAVE</code></dt>
 <dd>...</dd>
 
-<dt><code>STACK</code></dt>
+<dt><code>STACK</code> [<code>#</code><em>stream</em>]</dt>
 <dd>...</dd>
 
-<dt><code>STEP</code> [<em>print_items</em>]</dt>
+<dt><code>STEP</code> [<code>#</code><em>stream</em>,] <em>font width</em></dt>
 <dd>...</dd>
 
 <dt><code>STOP</code></dt>
+<dd>...</dd>
+
+<dt><code>TRACE</code> [<em>print_items</em>]</dt>
 <dd>...</dd>
 
 <dt><code>UNTIL</code> <em>condition</em></dt>
@@ -729,7 +732,7 @@ conditions to find out when they do not hold.
 <dd>...</dd>
 </dl>
 
-<dt><code>YIELD</code></dt>
+<dt><code>YIELD</code>  [<code>#</code><em>stream</em>]</dt>
 <dd>...</dd>
 
 </body>
