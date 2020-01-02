@@ -19986,6 +19986,25 @@ CNOARG:	CP	")"
 	JR	NZ,CNTARG
 	RET
 
+; Swap old FN arguments for new ones (25 bytes)
+SAVARGS:POP	DE
+	PUSH	DE		; DEF FN address in DE
+	CALL	CNTARGS
+	EX	DE,HL
+	POP	HL
+	PUSH	HL		; DEF FN address in HL
+	LD	A,(HL)
+SARGL:	INC	HL
+	CP	$0E
+	CALL	Z,EXCHANGE		; EXCHANGE
+	LD	A,(HL)
+	CP	")"
+	JR	NZ,SARGL
+	JP	SFRBR2
+
+; These bytes should be $FF in case anyone crazy vectors their IM2 from here
+	DEFS	$3901 - $, $FF
+
 RSTARGS:PUSH	DE
 	CALL	CNTARGS
 	SBC	HL,BC
@@ -20004,22 +20023,6 @@ RNOARG:	CP	")"
 	LD	C,5		; B is 0 anyway
 	LDIR			; move result to old STKEND
 	JP	L33BB		; set STKEND accordingly
-
-; Swap old FN arguments for new ones (25 bytes)
-SAVARGS:POP	DE
-	PUSH	DE		; DEF FN address in DE
-	CALL	CNTARGS
-	EX	DE,HL
-	POP	HL
-	PUSH	HL		; DEF FN address in HL
-	LD	A,(HL)
-SARGL:	INC	HL
-	CP	$0E
-	CALL	Z,EXCHANGE		; EXCHANGE
-	LD	A,(HL)
-	CP	")"
-	JR	NZ,SARGL
-	JP	SFRBR2
 
 ; Set the base C of number interpretation in M4
 SETBASE:PUSH	AF
@@ -20043,9 +20046,6 @@ RESET_STREAM_SAVE:
 	POP	BC
 	EXX
 	RET
-
-; These bytes should be $FF in case anyone crazy vectors their IM2 from here
-	DEFB	$FF, $FF, $FF, $FF
 
 ; External routine for RND
 S_SEED:	JR	Z,NOMOD
@@ -20189,15 +20189,14 @@ IOCTL1:	CALL	L1601		; open it
 
 ; Branching of IF statement, with result recorded
 C2FLAGX4:
-	LD	HL,FLAGX
 	JR	C,SETFX4
-	RES	4,(HL)
+	RES	4,(IY+FLAGX-ERR_NR)
 SSTMTL1:JP	L1B29		; SSTMT-L-1
 
 ; These must be FF for IM2 vectoring
 	DEFS	$3A01 - $, $FF
 
-SETFX4:	SET	4,(HL)
+SETFX4:	SET	4,(IY+FLAGX-ERR_NR)
 	JP	L1BB3		; LINE-END
 
 SFLAGX4:SET	4,(IY+FLAGX-ERR_NR)
@@ -20375,6 +20374,9 @@ REPORT_C_EXTRA:
 	CALL	RUN_HOOK
 	RST	$08
 	DEFB	$0B		; C Nonsense in BASIC
+
+; These must be FF for IM2 vectoring
+	DEFS	$3B01 - $, $FF
 
 ; Select system channel S (or other) for class 9 attribute changes
 STR_FE:	CP	"#"
