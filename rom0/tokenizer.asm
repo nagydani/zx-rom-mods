@@ -36,7 +36,7 @@ TOK_TF:	ADD	A,49
 ; Output: A token code matched or zero, if none; CF token matched fully
 TOK_OPR:LD	DE,L0095 + 1
 	LD	C,41		; 41 old operator tokens
-	RST	$30
+TC_OPR:	RST	$30
 	DEFW	FTOKEN_R1
 	JR	C,TOK_TF	; full operator token found
 	LD	C,24		; 24 new operator tokens

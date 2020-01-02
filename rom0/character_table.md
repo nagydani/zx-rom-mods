@@ -145,7 +145,7 @@
 
 | hex | symbol
 |:---:|:------
-| A5 | ...
+| A5 | TURBO
 | ... |
 | A7 | RENUM
 | A8 | DEF PROC

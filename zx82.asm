@@ -20333,11 +20333,6 @@ RESET_PRB:
 	LD	(IY+PR_CC+1-ERR_NR),$5B
 	JP	L0EDF		; CLEAR-PRB
 
-; Print inverse character (6 bytes)
-OUT_INV:PUSH	AF
-	LD	A,$0F
-	JP	OUT_INV_1
-
 ; S channel controls
 IOCTL_S:EX	AF,AF'
 	ADD	A,A
@@ -20360,6 +20355,7 @@ IOS_TAB:DEFW	RESET_S		; 0: Channel RESET
 	DEFW	DCRCLE		; 5: DRAW-CIRCLE
 IOS_END:EQU	$
 
+; Extensible POKE
 POKE:	CALL	L1C82		; CLASS-06, numeric expression
 	CP	","
 	JR	NZ,REPORT_C_EXTRA
@@ -20387,15 +20383,54 @@ STR_FE:	CP	"#"
 	LD	A,$FE
 	RET
 
-; LET substitute for FOR (6 bytes)
-FOR_LET:CALL	FOR_HOOK
-	JP	L2AFF		; LET
+; Print inverse character (6 bytes)
+OUT_INV:PUSH	AF
+	LD	A,$0F
+	JP	OUT_INV_1
+
+; Find next argument of PROC or DATA (9 bytes)
+LOOK_READ:
+	CP	"("
+	RET	Z
+	CP	")"
+	JR	NZ,LOOK_PROG_R
+	RST	$08
+	DEFB	$19		; Q Parameter error
+
+; Find closing NEXT (6 bytes)
+LOOK_PROG_FOR:
+	CALL	SKIP_FOR_HOOK
+LOOK_PROG_R:
+	JP	L1D86		; LOOK-PROG
+
+; LOOK-VARS for loop variables (6 bytes)
+LOOP_VARS:
+	CALL	LV_HOOK
+	JP	L28B2		; LOOK-VARS
 
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
 
 	DEFS	$3C03 - $, $FF
+
+; LET substitute for FOR (6 bytes)
+FOR_LET:CALL	FOR_HOOK
+	JP	L2AFF		; LET
+
+; Find non-whitespace character of token
+; Input: DE token table - 1, A token code
+; Output: H character code, DE next token
+FC_TOKEN_R1:
+	CALL	L0C41		; PO-SEARCH
+	LD	A,(DE)
+	INC	DE
+	CP	" "
+	JR	NZ,FC_TOKF
+	LD	A,(DE)
+FC_TOKF:LD	H,A
+	XOR	A
+	JP	L0C41		; PO-SEARCH
 
 ; Find token in this ROM (128 bytes)
 ; Input: HL text to match, B length of text, DE token table, C number of tokens in the table
@@ -20483,26 +20518,6 @@ BORDER:	RLCA
 	OUT	($FF),A
 	LD	A,B
 	RET
-
-; Find next argument of PROC or DATA (9 bytes)
-LOOK_READ:
-	CP	"("
-	RET	Z
-	CP	")"
-	JR	NZ,LOOK_PROG_R
-	RST	$08
-	DEFB	$19		; Q Parameter error
-
-; Find closing NEXT (6 bytes)
-LOOK_PROG_FOR:
-	CALL	SKIP_FOR_HOOK
-LOOK_PROG_R:
-	JP	L1D86		; LOOK-PROG
-
-; LOOK-VARS for loop variables (6 bytes)
-LOOP_VARS:
-	CALL	LV_HOOK
-	JP	L28B2		; LOOK-VARS
 
 ; Local variables in 128k mode
 STK_F_ARG:

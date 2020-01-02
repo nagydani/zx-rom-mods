@@ -68,133 +68,9 @@ ED_COPY:PUSH	HL		; save K_STATE address
 	RES	3,(HL)		; begin with instructions
 	RES	7,(IY+BORDCR-ERR_NR)	; flashing cursor OFF
 	RST	$30
-	DEFW	L0D4D		; TEMPS
-        RES     3,(IY+$02)      ; update TV_FLAG  - signal no change in mode
-        RES     5,(IY+$02)      ; update TV_FLAG  - signal don't clear lower
-                                ; screen.
-        LD      HL,(S_POSNL)      ; fetch SPOSNL
-        PUSH    HL              ; and save on stack.
-
-        LD      HL,(ERR_SP)      ; fetch ERR_SP
-        PUSH    HL              ; and save also
-        LD      HL,L1167        ; address: ED-FULL
-        PUSH    HL              ; is pushed as the error routine
-        LD      (ERR_SP),SP      ; and ERR_SP made to point to it.
-
-        LD      HL,(ECHO_E)      ; fetch ECHO_E
-        PUSH    HL              ; and push also
-
-	LD	HL,TV_FLAG
-	BIT	1,(HL)		; printing tail only?
-	JR	Z,ED_ALL
-	RES	1,(HL)		; reset flag
-ED_TAIL:AND	A
-	CALL	K_SWAP		; restore attributes
-	LD	HL,(K_SAV)
-	LD	DE,$FAFB
-	LD	A,(FLAGS)
-	AND	D
-	XOR	H
-	AND	D
-	XOR	H
-	LD	(FLAGS),A	; restore bits 0 and 2 of FLAGS
-	LD	A,(FLAGS2)
-	AND	E
-	XOR	L
-	AND	E
-	XOR	L
-	LD	(FLAGS2),A	; restore bit 2 of FLAGS2
-	LD	A,(K_SAV2)
-	AND	$08		; bit 3 of old K_STATE
-	LD	HL,K_STATE
-	RES	3,(HL)
-	OR	(HL)
-	LD	(HL),A		; restore bit 3 of K_STATE
-	LD	BC,(RETADDR)
-	CALL	CLSET
-	LD	DE,(K_CUR)	; cursor position
-	LD	HL,TV_FLAG
-	BIT	2,(HL)		; step back?
-	JR	Z,ED_CLP	; don't.
-	RES	2,(HL)		; reset flag
-	LD	DE,(K_CUR_S)	; old cursor position
-	LD	A,D
-	OR	E
-	JR	NZ,ED_CLP
-	SCF
-ED_ALL:	SET	0,(IY+$01)	; leading space suppression
-	PUSH	HL
-	CALL	R_SPCC
-	LD	HL,FLAGS
-	RES	2,(HL)
-	BIT	5,(IY+FLAGX-ERR_NR)
-	JR	Z,ED_ALLE
-	SET	2,(HL)
-ED_ALLE:POP	HL
-	RST	$30		; from the very beginning
-	DEFW	L1195		; SET-DE
-	RES	2,(IY+$30)	; not in quotes
-ED_CLP:	LD	HL,(X_PTR)
-	AND	A
-	SBC	HL,DE
-	JR	NZ,ED_CLPC
-	LD	A,"?"
-	RST	$30
-	DEFW	OUT_FLASH
-ED_CLPC:RST	$30
-	DEFW	L18E1		; OUT-CURS
-	LD	A,(DE)
-	BIT	6,(IY+TV_FLAG-ERR_NR)	; print only to cursor position?
-	JR	Z,ED_ATC	; don't
-	LD	HL,(K_CUR)
-	AND	A
-	SBC	HL,DE
-	JR	Z,ED_DONE
-ED_ATC:	INC	DE
-	CP	$0D
-	JR	Z,ED_FIN
-	RST	$30
-	DEFW	L1937		; OUT-CHAR
-	JR	ED_CLP
-
-ED_FIN:	RST	$30
-	DEFW	L18E1		; OUT-CURS
-	LD	HL,(S_POSNL)
-	EX	(SP),HL
-	EX	DE,HL
-	CALL	K_TEMPS
-ED_BLANK:
-	LD	A,(S_POSNL + 1)
-	SUB	D
-	JR	C,ED_CDN
-	JR	NZ,ED_SPC
-	LD	A,E
-	SUB	(IY+$50)
-	JR	NC,ED_CDN
-ED_SPC:	LD	A,$80
-	PUSH	DE
-	LD	DE,K_STATE
-	CALL	PR_PR
-	POP	DE
-	JR	ED_BLANK
-
-
-ED_DONE:RST	$30
-	DEFW	L18E1		; OUT-CURS
-ED_CDN:	LD	HL,TV_FLAG
-	RES	6,(HL)
-	POP	DE
-	POP	HL
-	POP	HL
-	LD	(ERR_SP),HL
-	POP	BC
-	PUSH	DE
-	CALL	CLSET
-	POP	HL
-	LD	(ECHO_E),HL
-	LD	(IY+$26),$00
-	POP	HL		; discard SWAP
+	DEFW	L111D			; just use ROM1
 	SET	7,(IY+BORDCR-ERR_NR)	; flashing cursor ON
+	POP	HL
 	RET
 
 ; channel K input service routine
@@ -256,11 +132,7 @@ NOPIP:	LD	A,(LAST_K)	; pressed keycode
 	RST	$30
 	DEFW	L0D6E		; CLS-LOWER
 	POP	AF
-NOCLSL:	CP	$18		; printable?
-	JR	C,K_IN_C	; jump, if not
-	SET	1,(IY+TV_FLAG-ERR_NR)
-	SET	2,(IY+TV_FLAG-ERR_NR)
-K_IN_C:	CP	$88
+NOCLSL:	CP	$88
 	JR	C,K_INB		; jump, if definitely not block graphics
 	CP	$90
 	JR	NC,K_INW	; jump, if UDG or tokens
@@ -296,7 +168,6 @@ K_ING3:	BIT	5,(IY+FLAGS2-ERR_NR)	; mode K suppressed?
 	RST	$30
 	DEFW	L2C8D		; ALPHA
 	RET	C		; return, if so
-	RES	1,(IY+TV_FLAG-ERR_NR)	; echo from beginning
 	LD	HL,TKETAB
 	LD	BC,$0006
 	CPIR
@@ -307,12 +178,7 @@ K_TKE:	LD	(IY-$2D),$80	; signal potential token end
 	SCF
 	RET
 
-K_ENT:	LD	HL,TV_FLAG
-	LD	A,(HL)
-	AND	$B5 		; reset bits 1,2 and 6 to echo full line (potential errors)
-	LD	(HL),A
-	LD	A,$0D		; restore A
-	LD	HL,0
+K_ENT:	LD	HL,0
 	LD	(K_CUR_S),HL	; reset old cursor position
 	LD	(IY+DEFADD+1-ERR_NR),1	; TODO: this is an ugly hack
 	RES	7,(IY+BORDCR-ERR_NR)	; turn off flashing cursor
@@ -391,18 +257,15 @@ KEY_MODE0:
 	DEC	HL
 	LD	B,0
 	LD	A,(HL)
-	SUB	A,RND_T		; is the cursor after a token?
+	CP	RND_T		; is the cursor after a token?
 	JR	C,EXT_NT	; jump, if it is not
-	LD	C,A
 	LD	HL,K_STATE
 	SET	7,(HL)
-	BIT	3,(IY+$37)	; FLAGX, token type before cursor
-	LD	HL,EXTTAB_I
-	JR	Z,EXT_TS
-	LD	HL,EXTTAB_O
-EXT_TS:	ADD	HL,BC
-	LD	A,(HL)
-	LD	(K_DATA),A
+;	BIT	3,(IY+$37)	; FLAGX, token type before cursor
+	INC	A
+	JR	NZ,EXT_CYC
+	LD	A,RND_T
+EXT_CYC:LD	(K_DATA),A
 	LD	A,$0C
 	SCF
 	RET
@@ -440,23 +303,13 @@ KEY_FLAG0:
 KEY_CUR:CALL	EDITOR_MODE	; editor mode?
 	SCF
 	RET	NZ		; all controls are passed on, if not
-	CP	$08
-	RET	C		; pass on what is not an arrow key
+	CP	$0A
+	RET	C		; pass on what is not an up or down key
 	CP	$0C
 	CCF
-	RET	C		; pass on what is not an arrow key
-	LD	HL,TV_FLAG
-	SET	6,(HL)		; stop listing at the cursor for movements
+	RET	C		; pass on what is not an up or down key
 	CP	$0B		; up arrow
 	JR	Z,K_HOME
-	CP	$0A		; down arrow
-	JR	Z,K_ENDK
-	CP	$09		; right arrow
-	SCF
-	RET	NZ		; pass on, if not
-	SET	1,(HL)
-	SET	2,(HL)		; start listing before the cursor
-	RET
 K_ENDK:	LD	HL,(K_CUR)
 	LD	A,$0D
 	CP	(HL)		; cursor on CR?
@@ -1522,165 +1375,5 @@ GR_TAB:	DEFB	$00, $FF
 	DEFB	$FF, $00
 	DEFB	$F0, $00
 	DEFB	$00, $0F
-
-EXTTAB_I:
-	DEFB	$A5		; no change
-	DEFB	$A6		; no change
-	DEFB	$BA		; RENUM followed by REPEAT
-	DEFB	$B9		; DEF PROC followed by DELETE
-	DEFB	$A9		; no change
-	DEFB	$CD		; STACK followed by STEP
-	DEFB	$AB		; @ followed by @
-	DEFB	$F5		; POP followed by PRINT
-	DEFB	$F6		; PLAY followed by PLOT
-	DEFB	$AE		; no change
-	DEFB	$AF		; no change
-	DEFB	$B0		; no change
-	DEFB	$B1		; no change
-	DEFB	$B2		; no change
-	DEFB	$D2		; END WHILE followed by ERASE
-	DEFB	$D3		; ON ERROR followed by OPEN #
-	DEFB	$B5		; no change
-	DEFB	$B6		; no change
-	DEFB	$B7		; TRACE followed by TRACE
-	DEFB	$E0		; LOCAL followed by LPRINT
-	DEFB	$E9		; DELETE followed by DIM
-	DEFB	$E5		; REPEAT followed by RESTORE
-	DEFB	$BB		; no change
-	DEFB	$BC		; no change
-	DEFB	$BD		; no change
-	DEFB	$BE		; no change
-	DEFB	$BF		; no change
-	DEFB	$C2		; USR followed by UNTIL
-	DEFB	$C1		; no change
-	DEFB	$C0		; UNTIL followed by USR
-	DEFB	$C3		; ASSERT followed by ASSERT
-	DEFB	$C4		; no change
-	DEFB	$CA		; END IF followed by END PROC
-	DEFB	$C6		; YIELD followed by YIELD
-	DEFB	$DA		; PALETTE followed by PAPER
-	DEFB	$CB		; EXIT followed by ELSE
-	DEFB	$C9		; WHILE followed by WHILE
-	DEFB	$B3		; END PROC followed by END WHILE
-	DEFB	$C5		; ELSE followed by END IF
-	DEFB	$C7		; PROC followed by PALETTE
-	DEFB	$E2		; STEP followed by STOP
-	DEFB	$A8		; DEF FN followed by DEF PROC
-	DEFB	$D8		; CAT followed by CIRCLE
-	DEFB	$DB		; FORMAT followed by FLASH
-	DEFB	$D5		; MOVE followed by MERGE
-	DEFB	$C8		; ERASE followed by EXIT
-	DEFB	$DF		; OPEN # followed by OUT
-	DEFB	$FB		; CLOSE # followed by CLS
-	DEFB	$D1		; MERGE followed by MOVE
-	DEFB	$D6		; VERIFY followed by VERIFY
-	DEFB	$E7		; BEEP followed by BORDER
-	DEFB	$FD		; CIRCLE followed by CLEAR
-	DEFB	$EE		; INK followed by INPUT
-	DEFB	$F2		; PAPER followed by PAUSE
-	DEFB	$EB		; FLASH followed by FOR
-	DEFB	$D7		; BRIGHT followed by BEEP
-	DEFB	$FA		; INVERSE followed by IF
-	DEFB	$B4		; OVER followed by ON ERROR
-	DEFB	$DE		; OUT followed by OVER
-	DEFB	$F1		; LPRINT followed by LET
-	DEFB	$EF		; LLIST followed by LOAD
-	DEFB	$F8		; STOP followed by SAVE
-	DEFB	$EA		; READ followed by REM
-	DEFB	$CE		; DATA followed by DEF FN
-	DEFB	$FE		; RESTORE followed by RETURN
-	DEFB	$F3		; NEW followed by NEXT
-	DEFB	$DC		; BORDER followed by BRIGHT
-	DEFB	$FF		; CONTINUE followed by COPY
-	DEFB	$FC		; DIM followed by DRAW
-	DEFB	$A7		; REM followed by RENUM
-	DEFB	$D0		; FOR followed by FORMAT
-	DEFB	$ED		; GO TO followed by GO SUB
-	DEFB	$EC		; GO SUB followed by GO TO
-	DEFB	$DD		; INPUT followed by INVERSE
-	DEFB	$E0		; LOAD followed by LPRINT
-	DEFB	$E1		; LIST followed by LLIST
-	DEFB	$F0		; LET followed by LIST
-	DEFB	$AD		; PAUSE followed by PLAY
-	DEFB	$E6		; NEXT followed by NEW
-	DEFB	$AC		; POKE followed by POP
-	DEFB	$CC		; PRINT followed by PROC
-	DEFB	$F4		; PLOT followed by POKE
-	DEFB	$F9		; RUN followed by RANDOMIZE
-	DEFB	$AA		; SAVE followed by STEP
-	DEFB	$E3		; RANDOMIZE followed by READ
-	DEFB	$D9		; IF followed by INK
-	DEFB	$E8		; CLS followed by CONTINUE
-	DEFB	$CE		; DRAW followed by DEF FN
-	DEFB	$D4		; CLEAR followed by CLOSE #
-	DEFB	$F7		; RETURN followed by RUN
-	DEFB	$CF		; COPY followed by CAT
-
-EXTTAB_O:
-	DEFB	$D6		; RND followed by REF
-	DEFB	$BA		; INKEY$ followed by INK
-	DEFB	$A9		; PI followed by POINT
-	DEFB	$CE		; FN followed by FREE
-	DEFB	$DA		; POINT followed by PAPER
-	DEFB	$BC		; SCREEN$ followed by SGN
-	DEFB	$BD		; ATTR followed by ABS
-	DEFB	$B7		; AT followed by ATN
-	DEFB	$B4		; TAB followed by TAN
-	DEFB	$B0		; VAL$ followed by VAL
-	DEFB	$B3		; CODE followed by COS
-	DEFB	$AE		; VAL followed by VAL$
-	DEFB	$CA		; LEN followed by LINE
-	DEFB	$BB		; SIN followed by SQR
-	DEFB	$C2		; COS followed by CHR$
-	DEFB	$CB		; TAN followed by THEN
-	DEFB	$AC		; ASN followed by AT
-	DEFB	$C6		; ACS followed by AND
-	DEFB	$AB		; ATN followed by ATTR
-	DEFB	$B1		; LN followed by LEN
-	DEFB	$D4		; EXP followed by EOF #
-	DEFB	$DD		; INT followed by INVERSE
-	DEFB	$CD		; SQR followed by STEP
-	DEFB	$B2		; SGN followed by SIN
-	DEFB	$B6		; ABS followed by ACS
-	DEFB	$A7		; PEEK followed by PI
-	DEFB	$D9		; IN followed by INK
-	DEFB	$C0		; USR followed by USR
-	DEFB	$AA		; STR$ followed by SCREEN$
-	DEFB	$AF		; CHR$ followed by CODE
-	DEFB	$C3		; NOT followed by NOT
-	DEFB	$DC		; BIN followed by BRIGHT
-	DEFB	$DE		; OR followed by OVER
-	DEFB	$B5		; AND followed by ASN
-	DEFB	$C8		; <= followed by >=
-	DEFB	$C9		; >= followed by <>
-	DEFB	$C7		; <> followed by <=
-	DEFB	$B8		; LINE followed by LN
-	DEFB	$D0		; THEN followed by TIME
-	DEFB	$AD		; TO followed by TAB
-	DEFB	$D1		; STEP followed by STICK
-	DEFB	$DB		; FREE followed by FLASH
-	DEFB	$CF		; MEM$ followed by MEM$
-	DEFB	$D5		; TIME followed by TIME$
-	DEFB	$C1		; STICK followed by STR$
-	DEFB	$E4		; DPEEK followed by DATA
-	DEFB	$C5		; OPEN # followed by OR
-	DEFB	$B9		; EOF # followed by EXP
-	DEFB	$D0		; TIME$ followed by TIME
-	DEFB	$A5		; REF followed by RND
-	DEFB	$D7		; unchanged
-	DEFB	$D8		; HEX followed by HEX
-	DEFB	$A6		; INK followed by INKEY$
-	DEFB	$BE		; PAPER followed by PEEK
-	DEFB	$A8		; FLASH followed by FN
-	DEFB	$C4		; BRIGHT followed by BIN
-	DEFB	$BF		; INVERSE followed by IN
-	DEFB	$DF		; OVER followed by OCT
-	DEFB	$D3		; OCT followed by OPEN #
-	DEFB	$E0		; unchanged
-	DEFB	$E1		; unchanged
-	DEFB	$E3		; >< followed by <<
-	DEFB	$E5		; << followed by >>
-	DEFB	$D2		; DATA followed by DPEEK
-	DEFB	$E2		; >> followed by ><
 
 	INCLUDE	"timexscr.asm"
