@@ -135,6 +135,9 @@ P_SPECTRUM:
 	DEFW	SPECTR
 
 P_PLAY:
+	DEFB	$05
+	DEFW	PLAY
+
 ; unimplemented instruction, accepted w/o parameters, but not executed
 P_PLUG:
 	DEFB	$00
@@ -1135,7 +1138,6 @@ ST_VARN:LD	A,C
 	RST	$10
 	RET
 
-PLAY:
 ; unimplemented instruction, reports error, if executed
 PLUG:	JP	ERROR_C
 
@@ -3014,3 +3016,5 @@ SPECTR:	LD	A,(BANK_M)
 	DEFW	LDIRR		; reset channel drivers
 	RES	4,(IY+FLAGS-ERR_NR)	; signal 48k mode
 	JP	SPECTRUM
+
+	INCLUDE	"play.asm"

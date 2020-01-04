@@ -145,6 +145,7 @@ C_SPCC:	DEFB	1
 RCLINE:	DEFS	2		; current line being renumbered
 RCSTART:DEFW	10		; starting line number for renumbering
 RCSTEP:	DEFW	10		; step for renumbering
+TEMPO:	DEFB	120		; in BPM for PLAY
 ; Clipping
 NORTH:	DEFB	$00
 SOUTH:	DEFB	$15
