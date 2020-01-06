@@ -17,6 +17,7 @@
 ; 1 - start echo at cursor position
 ; 2 - start echo at old cursor position
 ; 6 - echo only to cursor position
+; 7 - PLAY in progress
 
 CHANZ:		EQU	$5B7F
 OLDSP:		EQU	$5B81
