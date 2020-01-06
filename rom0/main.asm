@@ -74,6 +74,7 @@ NMI:	PUSH	AF
 	PUSH	HL
 	LD	HL,(NMIADD)
 	LD	A,H
+	OR	L
 	JR	Z,NONMI
 JP_HL:	JP	(HL)
 NONMI:	POP	HL
@@ -127,24 +128,7 @@ RAMNMI:	DI
 	OUT	(C),A
 	JP	NMIVEC
 
-	DEFS	$5B57 - $
-BANK_F:	DEFB	$06
-TARGET:	DEFW	0
-RETADDR:DEFW	0		; TODO: abused by PoC code
-BANK_M:	DEFB	0
-K_STATE:DEFB	$00
-K_WIDTH:DEFB	$21
-K_TV:	DEFW	0
-S_STATE:DEFB	$00
-S_WIDTH:DEFB	$21
-S_TV:	DEFW	0
-KS_PERM:DEFB	0		; additional permanent attributes
-CHARS4:	DEFW	CHARSET - $0100
-K_SPCC:	DEFB	1
-C_SPCC:	DEFB	1
-RCLINE:	DEFS	2		; current line being renumbered
-RCSTART:DEFW	10		; starting line number for renumbering
-RCSTEP:	DEFW	10		; step for renumbering
+	DEFS	$5B25 - $
 TEMPO:	DEFB	120		; in BPM for PLAY
 ; Clipping
 NORTH:	DEFB	$00
@@ -156,10 +140,27 @@ ORIGX:	DEFB	$00,$00,$00,$00,$00	; 0.0
 ORIGY:	DEFB	$00,$00,$AF,$00,$00	; 175.0
 SCALEX:	DEFB	$00,$00,$01,$00,$00	; 1.0
 SCALEY:	DEFB	$00,$FF,$FF,$FF,$00	; -1.0
-COORDX:	EQU	$
-COORDY:	EQU	COORDX+5
-COORDS2:EQU	COORDY+5
-STEPPPC:EQU	COORDS2+2
+COORDX:	DEFS	5
+COORDY:	DEFS	5
+COORDS2:DEFW	$57A0
+K_STATE:DEFB	$00
+K_WIDTH:DEFB	$21
+K_TV:	DEFW	0
+S_STATE:DEFB	$00
+S_WIDTH:DEFB	$21
+S_TV:	DEFW	0
+KS_PERM:DEFB	0		; additional permanent attributes
+CHARS4:	DEFW	CHARSET - $0100
+K_SPCC:	DEFB	1
+C_SPCC:	DEFB	1
+BANK_F:	DEFB	$06
+TARGET:	DEFW	0
+RETADDR:DEFW	0		; TODO: abused by PoC code
+BANK_M:	DEFB	0
+RCLINE:	DEFS	2		; current line being renumbered
+RCSTART:DEFW	10		; starting line number for renumbering
+RCSTEP:	DEFW	10		; step for renumbering
+STEPPPC:EQU	RCSTEP+2
 STEPSUB:EQU	STEPPPC+2
 K_ATTR:	EQU	STEPSUB+1	; ATTR_T and MASK_T at cursor position
 K_PFLAG:EQU	K_ATTR+2	; P_FLAG at cursor position
