@@ -8654,11 +8654,16 @@ L1B28:  RST     20H             ; NEXT-CHAR
 L1B29:  CALL    L16BF           ; routine SET-WORK clears workspace etc.
 
         INC     (IY+$0D)        ; increment statement number SUBPPC
-        JP      M,L1C8A         ; to REPORT-C to raise
-                                ; 'Nonsense in BASIC' if over 127.
 
-        RST     18H             ; GET-CHAR
+;;; BUGFIX: hook for step-by-step execution
+	JP	M,STEP_BY_STEP
+	RST	$18		; GET-CHAR
+	LD      HL,L1B76        ; address: STMT-RET
+;;;	JP      M,L1C8A         ; to REPORT-C to raise
+;;;				; 'Nonsense in BASIC' if over 127.
+;;;	RST     18H             ; GET-CHAR
 
+STMT_LOOP_CONT:
         LD      B,$00           ; set B to zero for later indexing.
                                 ; early so any other reason ???
 
@@ -8670,7 +8675,8 @@ L1B29:  CALL    L16BF           ; routine SET-WORK clears workspace etc.
                                 ; i.e. another type of empty statement.
         JR      Z,L1B28         ; back to STMT-LOOP if so.
 
-        LD      HL,L1B76        ; address: STMT-RET
+;;; BUGFIX: hook for step-by-step execution
+;;;	LD      HL,L1B76        ; address: STMT-RET
 ;;; Entry point for step-by-step execution
 X1B40:	PUSH    HL              ; is now pushed as a return address
         LD      C,A             ; transfer the current character to C.
@@ -8774,7 +8780,8 @@ L1B7D:  BIT     7,(IY+$0A)      ; test NSPPC - will be set if $FF -
                                 ; no jump to be made.
         JR      NZ,L1BF4        ; forward to STMT-NEXT if a program line.
 
-        LD      HL,(NEWPPC)      ; fetch line number from NEWPPC
+;; entry point for step-by-step execution
+X1B83:	LD      HL,(NEWPPC)      ; fetch line number from NEWPPC
         BIT     7,H             ; will be set if minus two - direct command(s)
         JR      Z,L1B9E         ; forward to LINE-NEW if a jump is to be
                                 ; made to a new program line/statement.
@@ -8814,9 +8821,9 @@ L1B9E:  CALL    L196E           ; routine LINE-ADDR gets address of line
         JR      NZ,L1BEC        ; forward to REPORT-N if not.
                                 ; 'Statement lost'
 
-;
+;; entry point for step-by-step execution
 
-        LD      B,A             ; save statement in B.??
+X1BA9:	LD      B,A             ; save statement in B.??
         LD      A,(HL)          ; fetch high byte of line number.
         AND     $C0             ; test if using direct command
                                 ; a program line is less than $3F
@@ -8910,7 +8917,9 @@ L1BD1:  LD      (NXTLIN),HL      ; store pointer in system variable NXTLIN
                                 ; at start of line and address is known.
 
         INC     D               ; else restore statement.
-        CALL    L198B           ; routine EACH-STMT finds the D'th statement
+;;; BUGFIX: search only positive statements (allow for step-by-step execution)
+	CALL    P,L198B		; routine EACH-STMT finds the D'th statement
+;;;	CALL    L198B           ; routine EACH-STMT finds the D'th statement
                                 ; address as E does not contain a token.
         JR      Z,L1BF4         ; forward to STMT-NEXT if address found.
 
@@ -20371,6 +20380,7 @@ REPORT_C_EXTRA2:
 	LD	B,$1B		; just like separators
 REPORT_C_EXTRA:
 	CALL	RUN_HOOK
+REPORT_C:
 	RST	$08
 	DEFB	$0B		; C Nonsense in BASIC
 
@@ -20382,6 +20392,14 @@ STR_FE:	CP	"#"
 	JR	Z,REPORT_C_EXTRA; other streams only allowed in ROM1
 	LD	A,$FE
 	RET
+
+; step-by-step execution (15 bytes)
+STEP_BY_STEP:
+	CALL	L2530		; SYNTAX-Z
+	JR	Z,REPORT_C	; no more than 127 statements
+	CALL	STEP_HOOK
+	RES	7,(IY+$0D)	; SUBPPC
+	JP	STMT_LOOP_CONT
 
 ; Print inverse character (6 bytes)
 OUT_INV:PUSH	AF

@@ -439,7 +439,7 @@ ELSEIF:	INC	HL
 	CP	THEN_T
 	JR	Z,ELSE_0
 	DEC	HL
-	LD	(CH_ADD),HL
+ELSE_4:	LD	(CH_ADD),HL
 	JR	ELSE_3
 
 N_POKE:	PUSH	HL		; STMT_RET or STEP_HOOK
@@ -1786,13 +1786,28 @@ RENUME:	RST	$30
 ERROR_G:CALL	ERROR
 	DEFB	$0F		; G No room for line
 
+; TRACE jump
+TRACE_J:SET	7,(HL)
+	LD	HL,STEP_HOOK
+	PUSH	HL
+	LD	(ERR_SP),SP
+	LD	HL,X1B83
+	JR	TR_SW
 
 ; TRACE syntax check, like PRINT
-TRACE_S:	RST	$30
+TRACE_S:RST	$30
 	DEFW	L1FDF		; PRINT-2
 	LD	HL,L1BEE + 5	; CHECK-END + 5
-	PUSH	HL
+TR_SW:	PUSH	HL
 	JP	SWAP
+
+TR_THENLESS:
+	CALL	TEST_ZERO
+	JR	NZ,TR_IF2
+	LD	HL,STEP_HOOK
+	PUSH	HL
+	PUSH	HL		; placeholder
+	JP	THENLESS0
 
 TRACE:	CALL	SYNTAX_Z
 	JR	Z,TRACE_S
@@ -1801,91 +1816,86 @@ TRACE:	CALL	SYNTAX_Z
 	LD	(STEPPPC),HL
 	LD	A,(SUBPPC)
 	LD	(STEPSUB),A
-	CALL	TRACE_P		; print TRACE arguments, catching errors
+	RST	$18		; CH_ADD to HL
+	LD	DE,$100		; skip this one statement
+	LD	C,E		; quotes off
+	RST	$30
+	DEFW	L199A		; EACH-S-3
+TRACE_N:LD	(CH_ADD),HL	; point to statement terminator
+TRACE_D:LD	HL,NSPPC
+	BIT	7,(HL)		; jump?
+	JR	Z,TRACE_J	; jump, if so
+TR_IF2:	RST	$18
+	CP	$0D
+	JR	Z,TRACE_L
+	SET	7,(IY+$0D)	; Signal TRACE for STMT-LOOP
+TRACE_R:LD	HL,L1B76	; STMT-RET
+TR_SW2:	JR	TR_SW		; return
+
+TR_ELIF:INC	HL
+	CALL	SKIPEX
+	CP	THEN_T
+	JR	Z,TR_REM
+	DEC	HL
+	JP	ELSE_4
+
+TRACE_EX_TAB:
+	DEFB	IF_T
+	DEFB	TR_IF - $
+	DEFB	ELSE_T
+	DEFB	TR_ELSE - $
+	DEFB	REM_T
+	DEFB	TR_REM - $
+	DEFB	0
+
+TR_IF:	RST	$20
+	RES	4,(IY+$37)	; signal true outcome
+	RST	$30
+	DEFW	L24FB + 1	; SCANNING + 1
+	CP	THEN_T
+	JR	NZ,TR_THENLESS
+	CALL	TEST_ZERO
+	JR	NZ,TR_IF1
+	SET	4,(IY+$37)	; signal false outcome
+
+TR_ELSE:LD	HL,FLAGX
+	BIT	4,(HL)
+	JR	NZ,TR_REM
+	RES	4,(HL)
+	RST	$20
+	CP	$0D
+	SCF
+	LD	BC,STEP_HOOK
+	JP	Z,ELSE_3
+	CP	IF_T
+	JR	Z,TR_ELIF
+
+TR_REM:	LD	HL,(NXTLIN)
+	DEC	HL
+TRACE_L:INC	HL
+	LD	A,(HL)
+	CP	$3E		; end-of program?
+	JR	NC,TRACE_R	; jump, if so
+TRACE_U:LD	A,$81
+	LD	DE,STEP_HOOK
+	PUSH	DE
+	LD	(ERR_SP),SP
+	LD	DE,X1BA9	; LINE-USE with preliminary check
+	PUSH	DE
+	JP	SWAP
+
 STEP_CONT:
-	LD	HL,(ERR_SP)
-	AND	A
-	SBC	HL,SP		; Handling an error?
+	LD	A,(ERR_NR)
+	INC	A		; Handling an error?
 	JP	NZ,TRACE_E	; jump, if so
-	BIT	7,(IY+$0A)	; Jump to be made? NSPPC
-	JR	NZ,TRACE_NX	; forward, if not
-	LD	HL,(NEWPPC)
-	BIT	7,H
-	JR	Z,TRACE_LN
-	LD	HL,$FFFE
-	LD	(PPC),HL
-	LD	HL,(WORKSP)
-	DEC	HL
-	LD	DE,(E_LINE)
-	DEC	DE
-	LD	A,(NSPPC)
-	JR	TRACE_NL
 
-TRACE_NX:
-	RST	$18
-	CP	":"
-	JR	Z,TRACE_N
-	CP	$0D
-	JR	Z,TRACE_LE
-	LD	HL,STEP_HOOK
-	JP	OLD_EXT
+	LD	HL,SUBPPC
+	BIT	7,(HL)		; Handling STMT-LOOP?
+	JR	Z,TRACE_D	; jump, if not
 
-TRACE_LN:RST	$30
-	DEFW	L196E		; LINE-ADDR
-	LD	A,(NSPPC)
-	JR	Z,TRACE_LC
-	OR	A
-	JR	NZ,ERROR_N
-	DEC	HL
-TRACE_LE:
-	INC	HL
-	LD	A,1
-TRACE_LC:
-	CP	$01
-	ADC	A,$00
-	LD	D,(HL)
-	BIT	7,D
-	JR	NZ,RENUME	; Program finished
-	BIT	6,D
-	JR	NZ,RENUME	; Program finished
-	INC	HL
-	LD	E,(HL)
-	LD	(PPC),DE
-	INC	HL
-	LD	E,(HL)
-	INC	HL
-	LD	D,(HL)
-	EX	DE,HL
-	ADD	HL,DE
-	INC	HL
-TRACE_NL:
-	LD	(NXTLIN),HL
-	EX	DE,HL
-	LD	(CH_ADD),HL
-	LD	D,A
-	LD	E,$00
-	LD	(IY+$0A),$FF	; NSPPC
-	DEC	D
-	LD	(IY+$0D),D	; SUBPPC
-	JR	Z,TRACE_N
-	INC	D
-	RST	$30
-	DEFW	L198B		; EACH-STMT
-	JR	NZ,ERROR_N
-	RST	$18
-	DEFB	$1E		; LD E, skip one byte
-; STMT-LOOP
-TRACE_N:RST	$20		; read next
-	CP	$0D
-	JR	Z,TRACE_LE	; LINE-END
-TRACE_L1:INC	(IY+$0D)
-	CP	":"
-	JR	Z,TRACE_N
-
-;;	LD	HL,(CH_ADD)
+	RES	7,(HL)
+	RST	$18		; CH_ADD to HL
 	LD	(T_ADDR),HL	; Save execution pointer
-	RST	$30
-	DEFW	L16BF		; SET-WORK
 	LD	HL,(STEPPPC)
 	BIT	7,H
 	JR	NZ,TRACE_C	; TRACE was a command
@@ -1894,18 +1904,22 @@ TRACE_L1:INC	(IY+$0D)
 	INC	HL
 	INC	HL		; step over line number
 	INC	HL
-	INC	HL		; step over line length
-	JR	Z,TRACE_0
+	;;INC	HL		; step over line length
+	JR	Z,TRACE_0 + 1
 ERROR_N:RST	$08
 	DEFW	L1BEC		; N Statement lost
+
+TR_IF1:	SET	7,(IY+$0D)	; Signal TRACE for STMT-LOOP
+	JP	STMT_LOOP
+
 TRACE_C:LD	HL,(E_LINE)
 TRACE_0:DEC	HL
 	LD	(CH_ADD),HL
 	LD	A,(STEPSUB)
 	LD	E,$00
 	LD	D,A
-	DEC	A
-	JR	Z,TRACE_1	; TRACE is first statement
+	CP	2
+	JR	C,TRACE_1	; TRACE is first statement
 	RST	$30
 	DEFW	L198B		; EACH-STMT
 	JR	NZ,ERROR_N
@@ -1920,7 +1934,7 @@ TRACE_1:RST	$20		; advance
 	JR	Z,TRACE_2	; jump, if not
 	INC	HL
 	INC	HL
-TRACE_2:	CALL	DECWORD
+TRACE_2:CALL	DECWORD
 	LD	A,":"
 	RST	$10
 	LD	A,(SUBPPC)
@@ -1951,69 +1965,18 @@ TRACE_2:	CALL	DECWORD
 	CP	"c"
 	JR	Z,TRACE_X
 	CP	"C"
-	JR	Z,TRACE_X
+TRACE_X:JP	Z,ELSE_1
 	RST	$18
-	CP	REM_T
-	JR	Z,ST_REM
-	CP	IF_T
-	JR	Z,ST_IF
-	CP	ELSE_T
-	JR	Z,ST_ELSE
-	LD	B,0
-	LD	HL,X1B40
-	PUSH	HL
+	LD	C,A
+	LD	HL,TRACE_EX_TAB
+	CALL	INDEXER
+	JP	C,INDEXER_JP
+	LD	A,C
 	LD	HL,STEP_HOOK
-	JR	ST_SW
-
-ST_ELSE:LD	HL,FLAGX
-	BIT	4,(HL)		; FLAGX, check if last IF was false
-	RES	4,(HL)
-	JR	NZ,ST_IF1
-	RST	$20
-	CP	$0D
-	SCF
-	LD	BC,STEP_HOOK
-	JR	Z,ST_ELSE_3	; multi-line ELSE block
-	CP	IF_T
-	JR	Z,ST_ELSEIF	; ELSE IF
-	JR	ST_REM
-
-ST_ELSEIF:
-	INC	HL
-	CALL	SKIPEX
-	CP	THEN_T
-	JR	Z,ST_REM
-	DEC	HL
-	LD	(CH_ADD),HL
-ST_ELSE_3:
-	JP	ELSE_3
-
-ST_IF:	RST	$20
-	RES	4,(IY+$37)	; signal true outcome
-	RST	$30
-	DEFW	L24FB + 1	; SCANNING + 1
-	CP	THEN_T
-	JR	NZ,ST_THENLESS
-	CALL	TEST_ZERO
-ST_IF1:	JP	NZ,TRACE_N
-	SET	4,(IY+$37)	; signal false outcome
-ST_REM:	LD	HL,(NXTLIN)
-	XOR	A
-	JP	TRACE_LC
-ST_THENLESS:
-	CALL	TEST_ZERO
-	JR	NZ,ST_IF1
-	LD	BC,STEP_HOOK
-	PUSH	BC
-	PUSH	BC		; placeholder
-	JP	THENLESS0
+	JP	SWAP
 
 ERROR_L:RST	$30
 	DEFW	L1B7B		; L Break into program
-
-TRACE_X:LD	HL,L1B29	; STMT-L-1
-	PUSH	HL
-ST_SW:	JP	SWAP
 
 ; Print TRACE's arguments
 TRACE_P:RST	$30
@@ -2043,8 +2006,35 @@ TRACE_P:RST	$30
 	LD	(HL),D
 	RET
 
+TRACE_Q:LD	HL,(NEWPPC)
+	RST	$30
+	DEFW	L196E		; LINE-ADDR again, we lost the result
+	JP	TRACE_U
+
+; Find statement during step-by-step execution
+TRACE_F:LD	(ERR_SP),SP	; restore ERR_SP
+	LD	(IY+$00),$FF	; restore ERR_NR
+	RST	$18		; HL=(CH_ADD)
+	LD	A,(SUBPPC)
+	ADD	$81
+	JR	NC,TRACE_Q	; LINE-NEW derailed
+	CP	2
+	JR	C,TRACE_E1
+	LD	D,A
+	LD	E,0
+	RST	$30
+	DEFW	L198B		; EACH-STMT
+	JP	NZ,ERROR_N
+	CP	$0D
+	JP	Z,TRACE_L
+	RST	$20		; advance
+TRACE_E1:
+	JP	ELSE_1
+
 ; Print any error that might occur during TRACE
-TRACE_E:LD	HL,L1303
+TRACE_E:CP	$17		; N Statement lost?
+	JR	Z,TRACE_F
+	LD	HL,L1303	; MAIN-4
 	PUSH	HL
 	LD	HL,(RETADDR)
 	PUSH	HL
@@ -2060,7 +2050,7 @@ TRACE_E:LD	HL,L1303
 	CP	$1C
 	JP	NC,REPORT
 TRACE_EO:
-	LD	DE,L1391
+	LD	DE,L1391	; REPORTS
 	RST	$30
 	DEFW	L0C0A		; PO-MSG
 	LD	A,$0D
@@ -2597,9 +2587,7 @@ ONERROR:CALL	SYNTAX_Z
 	LD	HL,ONERR_HOOK	; stack new error address
 	PUSH	HL
 	LD	(ERR_SP),SP
-	BIT	5,B
-	JP	Z,ELSE_0	; LINE-END
-	JP	ST_REM
+	JP	ELSE_0	; LINE-END
 
 ONERR_CONT:
 	LD	C,ONERROR_M
