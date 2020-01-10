@@ -1038,8 +1038,9 @@ LCL_DM:	EXX
 	EXX
 	LD	A,C
 	AND	$1F
-	PUSH	AF		; array name and type
-	INC	SP
+	LD	C,A
+	LD	B,$3E
+	PUSH	BC		; array name and type
 	PUSH	HL		; error address
 	LD	(ERR_SP),SP
 	PUSH	DE		; return address
