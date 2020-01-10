@@ -855,6 +855,11 @@ LOCAL_I:CP	"="
 	JR	NZ,ERRC_NZ	; type mismatch
 	JR	LOCAL_E
 
+LCL_NX:	PUSH	BC
+	PUSH	DE
+	PUSH	AF
+	JR	LCL_EX
+
 LOCAL:	CALL	SYNTAX_Z
 	JR	Z,LOCAL_S
 LOCAL_L:AND	$1F
@@ -892,14 +897,6 @@ LCL_L:	RST	$18
 	PUSH	BC
 	JR	LCL_EXX
 
-LCL_A:	call	ERROR
-	defb	$02		; 3 Subscript wrong
-
-LCL_NX:	PUSH	BC
-	PUSH	DE
-	PUSH	AF
-	JR	LCL_EX
-
 LCL_E:	POP	DE		; return address
 	POP	HL		; error address
 	BIT	5,C
@@ -922,7 +919,6 @@ LCL_CM:	RST	$18
 	JP	NZ,SWAP
 	RST	$20
 	JR	LOCAL_L
-
 
 LCL_F:	DEC	HL
 	BIT	7,(HL)
@@ -955,6 +951,99 @@ LCL_STR:LD	(STRLEN),BC
 	RET	Z
 	LDIR
 	RET
+
+; Initialize local array
+; In: C letter and type
+LCL_A:	XOR	A
+	LD	(MEMBOT),A	; reset dimension counter
+	PUSH	BC		; save variable name and type
+	LD	HL,$0001	; string element is 1 byte
+	BIT	5,C
+	JR	Z,LCL_SA	; string array
+	LD	L,$05		; numeric element is 5 bytes
+LCL_SA:	PUSH	HL		; save size
+	RST	$20		; advance past separator
+	RST	$30
+	DEFW	L24FB + 1	; SCANNING + 1, read dimension
+	PUSH	AF		; save separator
+	RST	$28
+	DEFB	$31		; duplicate
+	DEFB	$38		; end
+	RST	$30
+	DEFW	L1E99		; FIND-INT2
+	LD	E,C
+	LD	D,B
+	POP	BC		; restore separator
+	POP	HL		; restore size
+	RST	$30
+	DEFW	L2AF4 + 4	; HLxDE + 4
+	INC	(IY+MEMBOT-ERR_NR)
+	LD	A,B
+	CP	","
+	JR	Z,LCL_SA	; loop through all dimensions
+	EXX
+	POP	BC		; restore variable name and type
+	POP	DE		; return address
+	POP	HL		; error address
+	EXX
+	LD	(MEMBOT+2),HL
+	LD	C,L		; TODO: add dimensions to memory check
+	LD	B,H
+	RST	$20		; skip through closing bracket
+	RST	$30
+	DEFW	L1F05		; TEST-ROOM
+	AND	A
+	LD	HL,$0000
+	SBC	HL,BC		; -size
+	ADD	HL,SP
+	LD	SP,HL
+	LD	E,L
+	LD	D,H
+	INC	DE
+	DEC	BC
+	XOR	A
+	EXX
+	BIT	5,C
+	EXX
+	JR	NZ,LCL_IN
+	LD	A," "
+LCL_IN:	LD	(HL),A
+	LD	A,B
+	OR	C
+	JR	Z,LCL_1S	; 1 element string array
+	LDIR
+LCL_1S:	LD	A,(MEMBOT)
+	LD	(MEMBOT+1),A
+LCL_DM:	EXX
+	PUSH	DE
+	EXX
+	RST	$30
+	DEFW	L1E99		; FIND-INT2
+	EXX
+	POP	DE
+	EXX
+	PUSH	BC		; save dimension
+	DEC	(IY+MEMBOT-ERR_NR)
+	JR	NZ,LCL_DM
+	LD	BC,(MEMBOT)
+	PUSH	BC
+	INC	SP		; save number of dims
+	LD	C,B
+	LD	B,0
+	LD	HL,(MEMBOT+2)
+	ADD	HL,BC
+	ADD	HL,BC
+	INC	HL
+	PUSH	HL		; save total size
+	EXX
+	LD	A,C
+	AND	$1F
+	PUSH	AF		; array name and type
+	INC	SP
+	PUSH	HL		; error address
+	LD	(ERR_SP),SP
+	PUSH	DE		; return address
+	JP	SWAP
 
 STACKQ:	POP	DE		; discard STACKE
 STCK_SW:JP	SWAP
