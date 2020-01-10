@@ -20426,6 +20426,42 @@ LOOP_VARS:
 	CALL	LV_HOOK
 	JP	L28B2		; LOOK-VARS
 
+; Check pressed key
+; In: A - key code (ENTER: CHR$ 13, SYM: CHR$ 14, CAPS: CHR$ 227)
+; Out: CF - set if not pressed
+KEYDOWN:CALL	L2C8D		; ALPHA
+	JR	NC,KEYDWN1
+	AND	$5F		; to Capitals
+KEYDWN1:LD	HL,L0205	; MAIN-KEYS
+	LD	BC,$0028	; 40 keys
+	CPIR
+	SCF			; not pressed
+	RET	NZ		; key not found
+	LD	A,C
+	AND	$07
+	LD	B,A
+	INC	B
+	LD	A,$7F
+ROWLOOP:RLCA
+	DJNZ	ROWLOOP
+	IN	A,($FE)		; read the row
+	EX	AF,AF'
+	LD	A,C
+	RRCA
+	RRCA
+	RRCA
+	AND	$07
+	INC	A
+	LD	B,A
+	EX	AF,AF'
+COLLOOP:RRCA
+	DJNZ	COLLOOP
+	RET
+CTRKEYS:DEFB	"$",$0E
+	DEFB	"^",$E3
+	DEFB	".",$0D
+	DEFB	0
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
