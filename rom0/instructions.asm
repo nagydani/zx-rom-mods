@@ -1037,14 +1037,14 @@ LCL_DM:	EXX
 	PUSH	HL		; save total size
 	EXX
 	LD	A,C
-	AND	$1F
+	AND	$3F
 	LD	C,A
 	LD	B,$3E
 	PUSH	BC		; array name and type
 	PUSH	HL		; error address
 	LD	(ERR_SP),SP
 	PUSH	DE		; return address
-	JP	SWAP
+	JR	STCK_SW
 
 STACKQ:	POP	DE		; discard STACKE
 STCK_SW:JP	SWAP
@@ -1088,18 +1088,25 @@ STACKE:	LD	A,$0D
 	RST	$10
 	JR	STACKL
 
-
-
-ST_NFOR:CP	REPEAT_M * 2
+ST_NFOR:RRA
+	SUB	REPEAT_M
 	JR	C,ST_VAR
 	JR	Z,ST_REP
-	CP	WHILE_M * 2
+	DEC	A
 	JR	Z,ST_WHL
-	CP	ONERROR_M * 2
+	DEC	A
+	JR	Z,ST_PRC
+	DEC	A
 	JR	Z,ST_ONE
-	CP	ERROR_M * 2
-	JR	Z,ST_ERR
-	LD	A,PROC_T
+ST_ERR:	LD	A,STOP_T
+	RST	$10
+	LD	A,(HL)
+	CALL	PR_DIGIT
+	LD	A," "
+	RST	$10
+	JR	ST_ON2
+
+ST_PRC:	LD	A,PROC_T
 ST_PRCR:CALL	ST_CTX
 	INC	HL
 	INC	HL		; skip duplicated error address
@@ -1134,14 +1141,6 @@ ST_STMT:LD	A,AT_T
 	INC	HL
 	RET
 
-ST_ERR:	LD	A,STOP_T
-	RST	$10
-	LD	A,(HL)
-	CALL	PR_DIGIT
-	LD	A," "
-	RST	$10
-	JR	ST_ON2
-
 ST_GOSUB:
 	LD	A,GOSUB_T
 	RST	$10
@@ -1164,68 +1163,28 @@ ST_NUMV:RST	$30
 	RET
 
 ST_STR:	CALL	ST_VARN
-	LD	A,"$"
-	RST	$10
-	LD	A,"="
-	RST	$10
-	LD	A,"\""
-	RST	$10
-	LD	E,(HL)
+ST_SKIP:LD	E,(HL)
 	INC	HL
 	LD	D,(HL)
+	ADD	HL,DE
 	INC	HL
-	DEC	DE
-	DEC	DE		; max length in DE
-	LD	C,(HL)
-	INC	HL
-	LD	B,(HL)		; length in BC
-	EX	DE,HL
-	AND	A
-	SBC	HL,BC
-	PUSH	HL		; stack remainder
-	EX	DE,HL
-	INC	HL
-	EX	DE,HL
-	LD	HL,5		; print at most 5 characters
-	SBC	HL,BC
-	EX	DE,HL
-;;	JR	C,ST_LNG	; long string
-	
-ST_STRL:LD	A,B
-	OR	C
-	JR	NZ,ST_NXT
-	LD	A,"\""
-	RST	$10
-	POP	DE
-	ADD	HL,DE		; skip reserved space
 	RET
-ST_NXT:	LD	A,(HL)
-	CP	$18
-	JR	C,ST_CTRL	; control character
-	RST	$10
-	CP	"\""
-	CALL	Z,$0010
-ST_NXT0:DEC	BC
-	INC	HL
-	JR	ST_STRL
-ST_CTRL:LD	A,"\""
-	RST	$10
-	LD	A,"+"
-	RST	$10
-	LD	A,CHR_T
-	RST	$10
-	LD	A,(HL)
-	CALL	DECBYTE
-	LD	A,"+"
-	RST	$10
-	LD	A,"\""
-	RST	$10
-	JR	ST_NXT0
 
 ST_VARN:LD	A,C
 	AND	$1F		; bottom 5 bits
 	OR	"a"-1
 	RST	$10
+	BIT	5,C
+	LD	A,"$"
+	CALL	Z,$0010
+	BIT	6,C
+	RET	NZ
+	LD	A,"("
+	RST	$10
+	LD	A,")"
+	RST	$10
+	CALL	ST_SKIP
+	POP	DE		; discard return address
 	RET
 
 ; unimplemented instruction, reports error, if executed
