@@ -111,7 +111,15 @@ LOC_GS:	INC	HL		; skip line number
 LOCAL_CONT:
 	DEC	A
 	JR	NZ,FN_ARG
-	CALL	LOOK_LC
+	LD	HL,7
+	ADD	HL,SP
+	LD	A,(HL)
+	CP	$06		; called from LOAD/SAVE?
+	JR	Z,LC_SW
+	CP	$2C		; called from DIM?
+	JR	Z,LC_SW
+
+LC_DO:	CALL	LOOK_LC
 LC_LL:	JR	C,LC_FND
 	OR	A
 	JR	Z,LC_NOTF
@@ -123,7 +131,7 @@ LC_LOOP:CALL	LOC_L
 	JR	LC_LL
 LC_NOTF:LD	HL,L28EF
 LC_JP:	EX	(SP),HL		; replace the return address with V_RUN_SYN
-	JP	SWAP
+LC_SW:	JP	SWAP
 
 FN_ARG:	LD	HL,L2951	; STK-FN-ARK
 	JR	LC_JP
@@ -148,6 +156,7 @@ LC_FND:	POP	DE		; discard return address
 	ADD	HL,BC
 	POP	BC
 	JP	(HL)
+
 LC_TAB:	DEFB	LC_SARR - $	; string array
 	DEFB	LC_NARR - $	; numeric array
 	DEFB	LC_STR - $	; simple string
@@ -161,8 +170,8 @@ LC_NARR:LD	HL,2
 	ADD	HL,SP
 	LD	A,(HL)
 	OR	A
-	JR	Z,LC_AS1
-LC_AS2:	EX	DE,HL
+	JR	Z,LC_ARR	; called from DELETE
+	EX	DE,HL
 	RST	$30
 	DEFW	L29AE		; SV-ARRAYS
 	OR	H		; clear both ZF and CF
@@ -173,18 +182,13 @@ LC_STR:	EX	DE,HL
 	INC	HL		; skip first byte of max. length
 	POP	DE		; discard pointer
 	CP	A		; set Z flag
-	JP	SWAP
-
-LC_AS1:	INC	HL
-	LD	A,(HL)
-	CP	$5B
-	JR	NZ,LC_AS2
+	JR	LC_SW
 
 LC_ARR:	CP	A		; set Z flag
 	LD	C,$7F
 LC_NUM:	EX	DE,HL
 LC_STRR:POP	DE		; discard pointer
-	JP	SWAP
+	JR	LC_SW
 LC_SREF:	
 LC_NREF:	
 
@@ -193,9 +197,9 @@ STRNG_CONT:
 	AND	A
 	SBC	HL,SP
 	ADD	HL,SP
-	JP	C,SWAP		; global variable
+	JR	C,LC_SW		; global variable
 	BIT	0,(IY+$37)	; FLAGX, complete string
-	JP	Z,SWAP
+	JR	Z,LC_SW
 	PUSH	HL
 	RST	$30
 	DEFW	L2BF1		; STK-FETCH
@@ -222,6 +226,7 @@ STRNG_CONT:
 	LDIR
 STRNG_Z:POP	BC		; discard return value
 	JP	SWAP
+
 STRNG_LONG:
 	PUSH	BC		; string length
 	PUSH	HL		; room to make (negative)
