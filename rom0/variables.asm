@@ -12,8 +12,8 @@
 ; 7E ON ERROR, 5 bytes (CHADD)-(PROG), (PPC), (SUBPPC)
 ; 7F ERROR, 4 bytes (ERRNO)+1, (PPC), (SUBPPC)
 
-; 81..9A string reference: 2 bytes of length + symbolic reference
-; A1..BA numeric reference: 2 bytes of length + symbolic reference
+; 81..9A string function (reserved)
+; A1..BA numeric function (reserved)
 ; E1..FA for loop variable: 22 bytes: value, target, step, (PPC), (SUBPPC), (NXTLIN-PROG), (CHADD)-(PROG)
 
 
@@ -59,12 +59,7 @@ LOC_L:	LD	A,$3E + 1
 	JR	Z,LOC_PRC
 	CP	ERROR_M
 	JR	Z,LOC_ERR
-	BIT	7,A
-	JR	Z,LOC_SA	; simple variables and arrays
-	SUB	$E0
-	JR	NC,LOC_LV	; loop variables
-	ADD	$A0		; references
-LOC_LV:	OR	$60		; adjust loop type
+	AND	$7F		; treat loop variables as simple numerics
 LOC_SA:	BIT	5,A
 	JR	NZ,LOC_NM	; numeric
 	OR	$40		; strings and string arrays are the same
@@ -145,6 +140,7 @@ LC_FND:	POP	DE		; discard return address
 	RLCA
 	RLCA
 	RLCA
+	INC	A
 	AND	$07
 	PUSH	BC
 	LD	C,A
@@ -155,16 +151,15 @@ LC_FND:	POP	DE		; discard return address
 	LD	C,(HL)
 	ADD	HL,BC
 	POP	BC
+	OR	H		; reset Z flag
 	JP	(HL)
 
-LC_TAB:	DEFB	LC_SARR - $	; string array
+LC_TAB:	DEFB	LC_NUM - $	; FOR loop variable
+	DEFB	LC_SARR - $	; string array
 	DEFB	LC_NARR - $	; numeric array
 	DEFB	LC_STR - $	; simple string
 	DEFB	LC_NUM - $	; simple numeric
-	DEFB	LC_SREF - $	; string reference
-	DEFB	LC_NREF - $	; numeric reference
-	DEFB	0
-	DEFB	LC_NUM - $	; FOR loop variable
+
 LC_SARR:LD	C,$7F
 LC_NARR:LD	HL,2
 	ADD	HL,SP
@@ -189,8 +184,6 @@ LC_ARR:	CP	A		; set Z flag
 LC_NUM:	EX	DE,HL
 LC_STRR:POP	DE		; discard pointer
 	JR	LC_SW
-LC_SREF:	
-LC_NREF:	
 
 ; string variable assignment L-DELETE
 STRNG_CONT:
