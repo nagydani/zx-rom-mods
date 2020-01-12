@@ -64,8 +64,9 @@ LOC_L:	LD	A,$3E + 1
 	SUB	$E0
 	JR	NC,LOC_LV	; loop variables
 	ADD	$A0		; references
-LOC_LV:	OR	$60		; adjust type bits
-LOC_SA:	CP	C
+LOC_LV:	OR	$20		; adjust loop type
+LOC_SA:	OR	$40		; adjust array type
+	CP	C
 	JR	NZ,LOC_NX
 	SCF
 	RET			; local variable found
@@ -125,6 +126,9 @@ FN_ARG:	LD	HL,L2951	; STK-FN-ARK
 LC_FND:	POP	DE		; discard return address
 	POP	DE		; discard variable pointer
 ;;	LD	DE,L28EF	; V-RUN-SYN TODO: ???
+	DEC	HL
+	LD	A,(HL)
+	INC	HL
 	RLCA
 	RLCA
 	RLCA
@@ -147,17 +151,32 @@ LC_TAB:	DEFB	LC_SARR - $	; string array
 	DEFB	LC_NREF - $	; numeric reference
 	DEFB	0
 	DEFB	LC_NUM - $	; FOR loop variable
-LC_SARR:	
-LC_NARR:	
+LC_SARR:LD	C,$7F
+LC_NARR:LD	HL,2
+	ADD	HL,SP
+	LD	A,(HL)
+	CP	$CC
+	JR	NZ,LC_ARR
+	INC	HL
+	LD	A,(HL)
+	CP	$26
+	JR	NZ,LC_ARR
+	EX	DE,HL
+	RST	$30
+	DEFW	L29AE		; SV-ARRAYS
+	AND	A
+	JR	LC_STRR
+
 LC_STR:	EX	DE,HL
 	INC	HL		; skip marker
 	INC	HL		; skip first byte of max. length
-	POP	DE
+	POP	DE		; discard pointer
 	CP	A		; set Z flag
 	JP	SWAP
 
+LC_ARR:	CP	A		; set Z flag
 LC_NUM:	EX	DE,HL
-	POP	DE		; discard pointer
+LC_STRR:POP	DE		; discard pointer
 	JP	SWAP
 LC_SREF:	
 LC_NREF:	
