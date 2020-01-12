@@ -13800,7 +13800,9 @@ L28B2:  SET     6,(IY+$01)      ; update FLAGS - presume numeric result
         RST     20H             ; NEXT-CHAR
         PUSH    HL              ; save pointer to second character   ^2
         CP      $28             ; is it '(' - an array ?
-        JR      Z,L28EF         ; forward to V-RUN/SYN if so.
+;;; BUGFIX: allow for local numeric arrays (costs 26 T-states per access)
+	JR	Z,L28E3
+;;;	JR      Z,L28EF         ; forward to V-RUN/SYN if so.
 
         SET     6,C             ; set 6 signaling string if solitary  010
         CP      $24             ; is character a '$' ?

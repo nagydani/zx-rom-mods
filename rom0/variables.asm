@@ -36,7 +36,7 @@ SKIPLL:	BIT	7,A
 SKIP_LC:LD	C,0		; this will never be found
 
 ; Look up local variables
-; Input: C variable discriminator
+; Input: C variable discriminator (a:$61, a():$01, a$:$41)
 ; Output: CF set, if variable found, HL pointing to variable found or next candidate, A context type $3F for GO SUB
 LOOK_LC:LD	HL,(ERR_SP)
 	INC	HL
@@ -64,9 +64,14 @@ LOC_L:	LD	A,$3E + 1
 	SUB	$E0
 	JR	NC,LOC_LV	; loop variables
 	ADD	$A0		; references
-LOC_LV:	OR	$20		; adjust loop type
-LOC_SA:	OR	$40		; adjust array type
-	CP	C
+LOC_LV:	OR	$60		; adjust loop type
+LOC_SA:	BIT	5,A
+	JR	NZ,LOC_NM	; numeric
+	OR	$40		; strings and string arrays are the same
+LOC_NM:	BIT	6,C
+	JR	NZ,LOC_NA	; not an array
+	SUB	$20
+LOC_NA:	CP	C
 	JR	NZ,LOC_NX
 	SCF
 	RET			; local variable found
@@ -155,16 +160,18 @@ LC_SARR:LD	C,$7F
 LC_NARR:LD	HL,2
 	ADD	HL,SP
 	LD	A,(HL)
+	CP	$22
+	JR	Z,LC_AS1
 	CP	$CC
 	JR	NZ,LC_ARR
 	INC	HL
 	LD	A,(HL)
 	CP	$26
 	JR	NZ,LC_ARR
-	EX	DE,HL
+LC_AS2:	EX	DE,HL
 	RST	$30
 	DEFW	L29AE		; SV-ARRAYS
-	AND	A
+	OR	H		; clear both ZF and CF
 	JR	LC_STRR
 
 LC_STR:	EX	DE,HL
@@ -174,7 +181,13 @@ LC_STR:	EX	DE,HL
 	CP	A		; set Z flag
 	JP	SWAP
 
+LC_AS1:	INC	HL
+	LD	A,(HL)
+	CP	$1C
+	JR	Z,LC_AS2
+
 LC_ARR:	CP	A		; set Z flag
+	LD	C,$7F
 LC_NUM:	EX	DE,HL
 LC_STRR:POP	DE		; discard pointer
 	JP	SWAP
