@@ -11,6 +11,7 @@
 ; 7D PROC, 9 bytes: (DATADD)-(PROG), (NXTLIN)-(PROG), (PPC), (SUBPPC), error
 ; 7E ON ERROR, 5 bytes (CHADD)-(PROG), (PPC), (SUBPPC)
 ; 7F ERROR, 4 bytes (ERRNO)+1, (PPC), (SUBPPC)
+; 80 REF, 2 bytes (DATADD)-(PROG)
 
 ; 81..9A string function (reserved)
 ; A1..BA numeric function (reserved)
@@ -22,14 +23,16 @@ WHILE_M:	EQU	$7C
 PROC_M:		EQU	$7D
 ONERROR_M:	EQU	$7E
 ERROR_M:	EQU	$7F
+REF_M:		EQU	$80
 
 ; Skip all local variables, incl. loops
 SKIP_LL:CALL	SKIP_LC
-SKIPLL:	BIT	7,A
-	RET	Z
+SKIPLL:	CP	$80
+	JR	Z,SKIPRF	; TODO: handle references
+	RET	C
 	LD	DE,$0017
 	ADD	HL,DE
-	CALL	LOC_L
+SKIPRF:	CALL	LOC_L
 	JR	SKIPLL
 
 ; Skip local variables excl. loops
@@ -52,13 +55,23 @@ LOC_L:	LD	A,$3E + 1
 	OR	A
 	RET	Z		; end-of-stack, local variable not found
 	CP	REPEAT_M
-	JR	Z,LOC_REP	; REPEAT entry
-	CP	WHILE_M
-	JR	Z,LOC_WHL	; WHILE entry
-	CP	PROC_M
-	JR	Z,LOC_PRC
-	CP	ERROR_M
-	JR	Z,LOC_ERR
+	JR	C,LOC_VAR
+	CP	REF_M + 1
+	JR	NC,LOC_VAR
+
+	EX	DE,HL
+	LD	HL,LOC_TAB - REPEAT_M
+	PUSH	BC
+	LD	C,A
+	LD	B,0
+	ADD	HL,BC
+	LD	L,(HL)
+	LD	H,B
+	POP	BC
+	ADD	HL,DE
+	RET
+
+LOC_VAR:LD	A,E
 	AND	$7F		; treat loop variables as simple numerics
 LOC_SA:	BIT	5,A
 	JR	NZ,LOC_NM	; numeric
@@ -70,18 +83,9 @@ LOC_NA:	CP	C
 	JR	NZ,LOC_NX
 	SCF
 	RET			; local variable found
-LOC_PRC:
-LOC_WHL:
-	LD	DE,$000A
-ADDHLDE:ADD	HL,DE
-	RET
-LOC_ERR:LD	DE,$0005
-	ADD	HL,DE
-	RET
-LOC_REP:LD	DE,$0008
-	ADD	HL,DE
-	RET			; REPEAT, WHILE or PROC entry,
-				; local variable not found
+
+LOC_TAB:DEFB	$08, $0A, $0A, $06, $05, $03
+
 LOC_NX:	LD	A,E
 	CP	$E0
 	RET	NC		; stop at loop variable, not ours
@@ -119,6 +123,7 @@ LC_LL:	JR	C,LC_FND
 	OR	A
 	JR	Z,LC_NOTF
 	ADD	A,A
+	JR	Z,LC_LOOP
 	JR	NC,LC_LOOP	; not a loop variable
 	LD	DE,$0017	; skip loop variable
 	ADD	HL,DE
