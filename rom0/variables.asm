@@ -25,6 +25,30 @@ ONERROR_M:	EQU	$7E
 ERROR_M:	EQU	$7F
 REF_M:		EQU	$80
 
+; Dereference
+DEREF:	LD	HL,(STKBOT)
+	LD	DE,(STKEND)
+	AND	A
+	SBC	HL,DE
+	RET	Z		; nothing to dereference
+	RST	$30
+	DEFW	L2BF1		; STK-FETCH
+	PUSH	AF		; save FLAGS
+	LD	HL,(CH_ADD)
+	PUSH	HL
+	LD	HL,(PROG)
+	ADD	HL,DE
+	LD	(CH_ADD),HL
+	RST	$20		; advance past separator
+	RST	$30
+	DEFW	L1C1F		; CLASS_01
+	POP	HL
+	LD	(CH_ADD),HL
+	POP	AF		; restore FLAGS
+	RST	$30
+	DEFW	L1C59 + 5	; VAL-FET-2 + 5
+	JR	DEREF
+
 ; Skip all local variables, incl. loops
 SKIP_LL:CALL	SKIP_LC
 SKIPLL:	CP	$80
@@ -32,8 +56,41 @@ SKIPLL:	CP	$80
 	RET	C
 	LD	DE,$0017
 	ADD	HL,DE
-SKIPRF:	CALL	LOC_L
+SKIPRF:	PUSH	HL		; save pointer
+	LD	HL,(MEMBOT)	; new value
+	DEC	HL
+	BIT	5,(HL)		; numeric?
+	INC	HL
+	INC	HL
+	JR	NZ,DREFN		; jump, if so
+	INC	HL
+	INC	HL		; skip buffer length
+	LD	C,(HL)
+	INC	HL
+	LD	B,(HL)		; string length to BC
+	INC	HL
+	EX	DE,HL		; string address to DE
+	RST	$30
+	DEFW	L2AB1		; STK-ST-0
+DREF:	POP	HL		; restore pointer
+	PUSH	HL		; save pointer
+	LD	A,(FLAGS)
+	DEC	HL
+	LD	D,(HL)
+	DEC	HL
+	LD	E,(HL)
+	RST	$30
+	DEFW	L2AB6		; STK-STORE for type and target
+	POP	HL		; restore pointer
+	CALL	LOC_L
 	JR	SKIPLL
+DREFN:	LD	DE,(STKEND)
+	RST	$30
+	DEFW	L33C0		; duplicate
+	SET	6,(IY+$01)	; indicate numeric in FLAGS
+	LD	(STKEND),DE
+	JR	DREF
+
 
 ; Skip local variables excl. loops
 SKIP_LC:LD	C,0		; this will never be found
@@ -71,7 +128,8 @@ LOC_L:	LD	A,$3E + 1
 	ADD	HL,DE
 	RET
 
-LOC_VAR:LD	A,E
+LOC_VAR:LD	(MEMBOT),HL	; save variable for dereferencing
+	LD	A,E
 	AND	$7F		; treat loop variables as simple numerics
 LOC_SA:	BIT	5,A
 	JR	NZ,LOC_NM	; numeric

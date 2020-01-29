@@ -2205,6 +2205,7 @@ ENDPROC:CALL	SKIP_LL
 RETPROC:PUSH	HL		; new marker address
 	DEC	HL
 	DEC	HL		; skip saved error address
+	LD	(ERR_SP),HL
 	DEC	HL
 	LD	DE,SUBPPC
 	LDD
@@ -2247,12 +2248,12 @@ ENDP_L:	CALL	SKIPEX
 	JR	NC,ENDP_L	; skip unread arguments of PROC
 	DEC	HL
 ENDP_C:	LD	(CH_ADD),HL
+	CALL	DEREF		; dereference
 	POP	HL		; new marker address
 	POP	BC		; return address
 	POP	DE		; error address
 	LD	SP,HL
 	PUSH	DE		; error address
-	LD	(ERR_SP),SP
 	PUSH	BC		; return address
 	RST	$20		; advance
 	DEC	(IY+$0D)	; adjust SUBPPC
@@ -2284,6 +2285,9 @@ RETURN_CONT:
 	DEC	HL
 	DEC	HL
 	LD	(ERR_SP),HL
+	PUSH	HL
+	CALL	DEREF			; dereference
+	POP	HL
 	LD	DE,-9
 	ADD	HL,DE			; HL pointing to PROC frame marker
 	POP	DE			; return address
