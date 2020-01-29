@@ -529,7 +529,9 @@ PLAY_RANGE:
 ENVELOPES:
 	DEFB	$09, $0F, $0B, $0D, $08, $0C, $0E, $0A
 
-DURATIONS: 			; multiply by 125 for BPM
+DURATIONS:
+	; multiply by	125 for BPM with 50Hz frame counter
+	;		150 for BPM with 60Hz frame counter
 	DEFB	3, 6, 9, 12, 18, 24, 36, 48, 72, 96, 4, 8, 16
 
 NOTES:	DEFW	$1C0E		; Cb0	15.43 Hz
