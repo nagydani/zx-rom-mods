@@ -14970,7 +14970,9 @@ L2BF1:  LD      HL,(STKEND)      ; STKEND
 ; a minimal size of 1, after use, to free up memory.
 
 ;; DIM
-L2C02:  CALL    L28B2           ; routine LOOK-VARS
+;;; BUGFIX: only global variables
+L2C02:  CALL    LOOK_GLOBAL
+;;;L2C02:  CALL    L28B2           ; routine LOOK-VARS
 
 ;; D-RPORT-C
 L2C05:  JP      NZ,L1C8A        ; jump to REPORT-C if a long-name variable.
@@ -20458,6 +20460,13 @@ ROWLOOP:RLCA
 	EX	AF,AF'
 COLLOOP:RRCA
 	DJNZ	COLLOOP
+	RET
+
+; Look for global variables
+LOOK_GLOBAL:
+	LD	(IY+DEFADD+1-ERR_NR),0	; disable locals
+	CALL	L28B2			; LOOK-VARS
+	LD	(IY+DEFADD+1-ERR_NR),1	; enable locals
 	RET
 
 ; ---------------------

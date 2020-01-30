@@ -2131,8 +2131,11 @@ PROC_NX:PUSH	BC
 	PUSH	AF
 	INC	SP
 PROC_X:	EXX
-	BIT	5,C
-	JR	Z,ERROR_Q
+	LD	A,(FLAGS)
+	RRCA
+	XOR	C
+	AND	$20
+	JR	NZ,ERROR_Q
 	LD	B,$3E
 	PUSH	BC		; marker
 	PUSH	HL		; error address

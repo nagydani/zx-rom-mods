@@ -67,6 +67,7 @@
 ED_COPY:PUSH	HL		; save K_STATE address
 	RES	3,(HL)		; begin with instructions
 	RES	7,(IY+BORDCR-ERR_NR)	; flashing cursor OFF
+	CALL	R_SPCC
 	RST	$30
 	DEFW	L111D			; just use ROM1
 	SET	7,(IY+BORDCR-ERR_NR)	; flashing cursor ON

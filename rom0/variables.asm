@@ -45,7 +45,29 @@ DEREF:	LD	HL,(STKBOT)
 	POP	HL
 	LD	(CH_ADD),HL
 	POP	AF		; restore FLAGS
-	RST	$30
+	BIT	6,A
+	JR	NZ,DEREFX	; numeric
+	LD	HL,(DEST)
+	SCF
+	SBC	HL,SP
+	JR	C,DEREFX	; global
+	ADD	HL,SP
+	DEC	HL
+	DEC	HL
+	LD	D,(HL)
+	DEC	HL
+	LD	E,(HL)
+	DEC	DE		; DE=maximum length + 1
+	LD	HL,(STKEND)
+	DEC	HL
+	LD	B,(HL)
+	DEC	HL
+	LD	C,(HL)		; BC=string length
+	EX	DE,HL
+	SCF
+	SBC	HL,BC
+	JP	C,ERROR_G	; G No room for line
+DEREFX:	RST	$30
 	DEFW	L1C59 + 5	; VAL-FET-2 + 5
 	JR	DEREF
 
@@ -133,7 +155,7 @@ LOC_VAR:LD	(MEMBOT),HL	; save variable for dereferencing
 	AND	$7F		; treat loop variables as simple numerics
 LOC_SA:	BIT	5,A
 	JR	NZ,LOC_NM	; numeric
-	OR	$40		; strings and string arrays are the same
+	OR	$40		; find string arrays as well
 LOC_NM:	BIT	6,C
 	JR	NZ,LOC_NA	; not an array
 	SUB	$20
@@ -230,6 +252,7 @@ LC_NARR:LD	HL,2
 	OR	A
 	JR	Z,LC_ARR	; called from DELETE
 	EX	DE,HL
+	XOR	A		; signal array
 	RST	$30
 	DEFW	L29AE		; SV-ARRAYS
 	OR	H		; clear both ZF and CF
