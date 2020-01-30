@@ -20469,6 +20469,20 @@ LOOK_GLOBAL:
 	LD	(IY+DEFADD+1-ERR_NR),1	; enable locals
 	RET
 
+; Reverse numeric array (e.g. the stack)
+; In: DE=beginning, HL=past end
+REVERSE:LD	BC,-5
+	ADD	HL,BC
+	AND	A
+	SBC	HL,DE
+	RET	C
+	RET	Z
+	ADD	HL,DE
+	PUSH	HL
+	CALL	EXCHANGE
+	POP	HL
+	JR	REVERSE
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
