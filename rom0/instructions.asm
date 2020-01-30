@@ -2205,6 +2205,8 @@ ENDPROC:CALL	SKIP_LL
 	JR	Z,ENDPROC
 	CP	PROC_M
 	JR	NZ,ERROR_X
+
+; RETURN from PROC
 RETPROC:PUSH	HL		; new marker address
 	DEC	HL
 	DEC	HL		; skip saved error address
@@ -2274,37 +2276,41 @@ RETURN_CONT:
 	CP	PROC_M
 	JR	NZ,ENDP_SW		; TODO: consider other contexts
 ; returning from a PROC
-	PUSH	HL
-	RST	$18			; fetch character after RETURN
-	POP	HL
-	CP	":"
-	JR	NZ,RETPROC		; just return from PROC
-	PUSH	HL
-	RST	$20			; fetch instruction token after RETURN :
-	POP	HL
-	CP	PROC_T
-	JR	NZ,RETPROC		; not a tail call
+	JP	RETPROC
+;; alternative with tailcall
+;;	PUSH	HL
+;;	RST	$18			; fetch character after RETURN
+;;	POP	HL
+;;	CP	":"
+;;	JR	NZ,RETPROC		; just return from PROC
+;;	PUSH	HL
+;;	RST	$20			; fetch instruction token after RETURN :
+;;	POP	HL
+;;	CP	PROC_T
+;;	JR	NZ,RETPROC		; not a tail call
 ; tail call
-	DEC	HL
-	DEC	HL
-	LD	(ERR_SP),HL
-	PUSH	HL
-	CALL	DEREF			; dereference
-	POP	HL
-	LD	DE,-9
-	ADD	HL,DE			; HL pointing to PROC frame marker
-	POP	DE			; return address
-	POP	BC			; error address
-	LD	SP,HL			; clear local variables and loops
-	RST	$20			; advance past PROC
-	PUSH	BC			; stack error address
-	JP	T_PROC
+;;	DEC	HL
+;;	DEC	HL
+;;	LD	(ERR_SP),HL
+;;	PUSH	HL
+;;	CALL	DEREF			; dereference
+;;	POP	HL
+;;	LD	DE,-9
+;;	ADD	HL,DE			; HL pointing to PROC frame marker
+;;	POP	DE			; return address
+;;	POP	BC			; error address
+;;	LD	SP,HL			; clear local variables and loops
+;;	RST	$20			; advance past PROC
+;;	PUSH	BC			; stack error address
+;;	JP	T_PROC
 
+; RETURN from ON ERROR
 RETURN_ER:
 	POP	BC
 	LD	DE,ONERR_HOOK
 	JR	RET_E
 
+; RETURN from GO SUB
 RETURN_GS:
 	POP	BC
 	POP	DE
