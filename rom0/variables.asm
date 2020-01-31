@@ -11,7 +11,6 @@
 ; 7D PROC, 9 bytes: (DATADD)-(PROG), (NXTLIN)-(PROG), (PPC), (SUBPPC), error
 ; 7E ON ERROR, 5 bytes (CHADD)-(PROG), (PPC), (SUBPPC)
 ; 7F ERROR, 4 bytes (ERRNO)+1, (PPC), (SUBPPC)
-; 80 REF, 2 bytes (DATADD)-(PROG)
 
 ; 81..9A string function (reserved)
 ; A1..BA numeric function (reserved)
@@ -23,96 +22,15 @@ WHILE_M:	EQU	$7C
 PROC_M:		EQU	$7D
 ONERROR_M:	EQU	$7E
 ERROR_M:	EQU	$7F
-REF_M:		EQU	$80
-
-; Dereference
-DEREF:	LD	HL,(STKBOT)
-	LD	DE,(STKEND)
-	AND	A
-	SBC	HL,DE
-	RET	Z		; nothing to dereference
-	RST	$30
-	DEFW	L2BF1		; STK-FETCH
-	PUSH	AF		; save FLAGS
-	LD	HL,(CH_ADD)
-	PUSH	HL
-	LD	HL,(PROG)
-	ADD	HL,DE
-	LD	(CH_ADD),HL
-	RST	$20		; advance past separator
-	RST	$30
-	DEFW	L1C1F		; CLASS_01
-	POP	HL
-	LD	(CH_ADD),HL
-	POP	AF		; restore FLAGS
-	BIT	6,A
-	JR	NZ,DEREFX	; numeric
-	LD	HL,(DEST)
-	SCF
-	SBC	HL,SP
-	JR	C,DEREFX	; global
-	ADD	HL,SP
-	DEC	HL
-	DEC	HL
-	LD	D,(HL)
-	DEC	HL
-	LD	E,(HL)
-	DEC	DE		; DE=maximum length + 1
-	LD	HL,(STKEND)
-	DEC	HL
-	LD	B,(HL)
-	DEC	HL
-	LD	C,(HL)		; BC=string length
-	EX	DE,HL
-	SCF
-	SBC	HL,BC
-	JP	C,ERROR_G	; G No room for line
-DEREFX:	RST	$30
-	DEFW	L1C59 + 5	; VAL-FET-2 + 5
-	JR	DEREF
 
 ; Skip all local variables, incl. loops
 SKIP_LL:CALL	SKIP_LC
-SKIPLL:	CP	$80
-	JR	Z,SKIPRF	; TODO: handle references
+SKIPLL:	CP	ERROR_M + 1
 	RET	C
 	LD	DE,$0017
 	ADD	HL,DE
-SKIPRF:	PUSH	HL		; save pointer
-	LD	HL,(MEMBOT)	; new value
-	DEC	HL
-	BIT	5,(HL)		; numeric?
-	INC	HL
-	INC	HL
-	JR	NZ,DREFN		; jump, if so
-	INC	HL
-	INC	HL		; skip buffer length
-	LD	C,(HL)
-	INC	HL
-	LD	B,(HL)		; string length to BC
-	INC	HL
-	EX	DE,HL		; string address to DE
-	RST	$30
-	DEFW	L2AB1		; STK-ST-0
-DREF:	POP	HL		; restore pointer
-	PUSH	HL		; save pointer
-	LD	A,(FLAGS)
-	DEC	HL
-	LD	D,(HL)
-	DEC	HL
-	LD	E,(HL)
-	RST	$30
-	DEFW	L2AB6		; STK-STORE for type and target
-	POP	HL		; restore pointer
 	CALL	LOC_L
 	JR	SKIPLL
-DREFN:	LD	DE,(STKEND)
-	RST	$30
-	DEFW	L33C0		; duplicate
-	SET	6,(IY+$01)	; indicate numeric in FLAGS
-	LD	(STKEND),DE
-	JR	DREF
-
 
 ; Skip local variables excl. loops
 SKIP_LC:LD	C,0		; this will never be found
@@ -135,7 +53,7 @@ LOC_L:	LD	A,$3E + 1
 	RET	Z		; end-of-stack, local variable not found
 	CP	REPEAT_M
 	JR	C,LOC_VAR
-	CP	REF_M + 1
+	CP	ERROR_M + 1
 	JR	NC,LOC_VAR
 
 	EX	DE,HL
@@ -150,8 +68,7 @@ LOC_L:	LD	A,$3E + 1
 	ADD	HL,DE
 	RET
 
-LOC_VAR:LD	(MEMBOT),HL	; save variable for dereferencing
-	LD	A,E
+LOC_VAR:LD	A,E
 	AND	$7F		; treat loop variables as simple numerics
 LOC_SA:	BIT	5,A
 	JR	NZ,LOC_NM	; numeric
@@ -164,7 +81,8 @@ LOC_NA:	CP	C
 	SCF
 	RET			; local variable found
 
-LOC_TAB:DEFB	$08, $0A, $0A, $06, $05, $03
+; structure lengths + 1
+LOC_TAB:DEFB	$08, $0A, $0A, $06, $05
 
 LOC_NX:	LD	A,E
 	CP	$E0
@@ -174,7 +92,7 @@ LOC_NX:	LD	A,E
 	ADD	A,A
 	LD	DE,$0006
 	JR	NC,LOC_SK	; skip numeric variables
-LOC_SKL:INC	HL		; skip references
+LOC_SKL:INC	HL		; skip functions
 	LD	E,(HL)
 	INC	HL
 	LD	D,(HL)

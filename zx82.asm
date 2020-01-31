@@ -20469,7 +20469,11 @@ LOOK_GLOBAL:
 	LD	(IY+DEFADD+1-ERR_NR),1	; enable locals
 	RET
 
-; Reverse numeric array (e.g. the stack)
+; Reverse calculator stack
+REVERSE_STACK:
+	LD	DE,(STKBOT)
+	LD	HL,(STKEND)
+; Reverse numeric array
 ; In: DE=beginning, HL=past end
 REVERSE:LD	BC,-5
 	ADD	HL,BC

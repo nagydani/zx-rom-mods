@@ -85,7 +85,7 @@ P_DEFPROC:
 	DEFW	DEFPROC
 
 P_ENDPROC:
-	DEFB	$00
+	DEFB	$05
 	DEFW	ENDPROC
 
 P_LOCAL:DEFB	$05
@@ -598,6 +598,7 @@ ENDWHILE:
 	LD	(ERR_SP),SP
 	PUSH	HL
 	JP	SWAP
+
 WEND:	LD	(CH_ADD),HL
 	POP	HL		; context
 	POP	BC		; return address
@@ -789,10 +790,7 @@ UPD_DO:	POP	BC		; discard marker, B=0
 DEFPROC:RST	$18
 	CP	")"
 	JR	Z,DP_E
-DP_L:	CP	REF_T
-	JR	NZ,DP_REF
-	RST	$20
-DP_REF:	RST	$30
+DP_L:	RST	$30
 	DEFW	L2C8D		; ALPHA
 	JR	NC,ERROR_C_J
 	RST	$20
@@ -2010,7 +2008,10 @@ PROC_SL:RST	$20
 	CP	")"
 ERR_PR:	JP	NZ,ERROR_C
 PROC_SE:RST	$20
-	JP	END05
+	CP	TO_T
+	JP	NZ,END05
+	LD	HL,L1DEC	; READ-3
+	JP	TR_SW
 
 PROC:	CALL	SYNTAX_Z
 	JR	Z,PROC_S
@@ -2078,8 +2079,6 @@ PROC_L1:INC	HL
 PROC_L:	RST	$20
 	CP	")"		; no more default arguments in DEF PROC?
 	JR	Z,PROC_E	; jump, if so
-	CP	REF_T		; reference?
-	JR	Z,PROC_R	; jump if so
 	AND	$1F
 	OR	$60		; assume simple numeric
 	LD	C,A
@@ -2112,16 +2111,6 @@ PROC_N:	LD	(X_PTR),HL	; save argument pointer
 	INC	BC
 	PUSH	BC
 	JR	PROC_X
-PROC_R:	LD	HL,(DATADD)
-	LD	BC,(PROG)
-	SBC	HL,BC
-	POP	DE		; return address
-	EX	(SP),HL		; error address to HL, reference pointer to stack
-	LD	BC,$3E80
-	PUSH	BC		; reference marker
-	PUSH	HL		; error address
-	PUSH	DE		; return address
-	JR	PROC_L
 
 ERROR_Q:RST	$30
 	DEFW	L288B		; Q Parameter error
@@ -2198,11 +2187,44 @@ WHILE0:	LD	DE,T_WHILE
 ERROR_X:CALL	ERROR
 	DEFB	$20		; X END PROC without DEF
 
-ENDPROC:CALL	SKIP_LL
-	CP	REPEAT_M
-	JR	Z,ENDPROC
+ENDPROC:CP	$0D
+	JR	Z,ENDPR
+	CP	":"
+	JR	Z,ENDPR
+	LD	HL,1		; types
+	PUSH	HL
+ENDPRL:	RST	$30
+	DEFW	L24FB + 1	; SCANNING + 1
+	EX	AF,AF'
+	POP	HL
+	LD	A,(FLAGS)
+	ADD	A,A
+	ADD	A,A
+	ADC	HL,HL
+	JP	C,ERROR_C
+	EX	AF,AF'
+	CP	","
+	JR	NZ,ENDPRE
+	PUSH	HL
+	RST	$20		; advance past the comma
+	JR	ENDPRL
+
+ENDPR1:	CALL	SKIPLL
+	JR	ENDPR2
+
+ENDPRE:	CP	$0D
+	JR	Z,ENDPR
+	CP	":"
+	JP	NZ,ERROR_C
+
+ENDPR:	CALL	SYNTAX_Z
+	JP	Z,END05
+	LD	(RETADDR),HL
+	CALL	SKIP_LL
+ENDPR2:	CP	REPEAT_M
+	JR	Z,ENDPR1
 	CP	WHILE_M
-	JR	Z,ENDPROC
+	JR	Z,ENDPR1
 	CP	PROC_M
 	JR	NZ,ERROR_X
 
@@ -2253,7 +2275,6 @@ ENDP_L:	CALL	SKIPEX
 	JR	NC,ENDP_L	; skip unread arguments of PROC
 	DEC	HL
 ENDP_C:	LD	(CH_ADD),HL
-	CALL	DEREF		; dereference
 	POP	HL		; new marker address
 	POP	BC		; return address
 	POP	DE		; error address
@@ -2262,6 +2283,33 @@ ENDP_C:	LD	(CH_ADD),HL
 	PUSH	BC		; return address
 	RST	$20		; advance
 	DEC	(IY+$0D)	; adjust SUBPPC
+	CP	TO_T
+	JR	NZ,ENDP_SW
+	RST	$30
+	DEFW	REVERSE_STACK
+	LD	HL,(RETADDR)	; stack entry types
+	PUSH	HL
+ENDP_A:	RST	$20		; advance past TO
+	RST	$30
+	DEFW	L1C1F		; CLASS_01, find or create variable to assign
+	POP	HL
+	RR	H
+	RR	L
+	RRA
+	RRA			; move type to bit 6
+	PUSH	HL
+	LD	HL,(STKEND)
+	LD	DE,(STKBOT)
+	AND	A
+	SBC	HL,DE
+	JR	NZ,ENDP_R
+	RST	$30
+	DEFW	L1E08		; REPORT-E out of data
+ENDP_R:	RST	$30
+	DEFW	L1C59 + 5	; VAL-FET-2 + 5, do the assignment
+	RST	$18
+	CP	","
+	JR	Z,ENDP_A
 ENDP_SW:JP	SWAP
 
 ; Discard local variables before RETURN
@@ -2332,8 +2380,6 @@ RET_L:	CALL	NC,LOC_L
 	CP	REPEAT_M
 	JR	Z,RET_L
 	CP	WHILE_M
-	JR	Z,RET_L
-	CP	REF_M
 	JR	Z,RET_L
 	RET
 
