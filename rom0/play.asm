@@ -414,7 +414,7 @@ PLAY_NOISE:
 	LD	E,6
 	CALL	OUTAY
 PLAY_TOO_LOW:
-	LD	DE,125
+	LD	DE,125		; change this to 150 for 60Hz machines
 	LD	L,(IX+DURATION)
 	LD	H,D
 	RST	$30
@@ -606,7 +606,7 @@ PLAY_TIE:
 	POP	BC
 	LD	H,(HL)
 	LD	A,(IX+DURATION)
-	PUSH	AF		; save last note's duration
+	PUSH	HL		; save last note's duration
 	ADD	A,H
 	JP	C,PLAY_ERROR
 	LD	(IX+DURATION),A
