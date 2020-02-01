@@ -135,7 +135,7 @@
 | DE | OVER
 | DF | OCT
 | E0 | SQ
-| ... |
+| E1 | FPEEK
 | E2 | ><
 | E3 | <<
 | E4 | DATA
@@ -162,6 +162,8 @@
 | B8 | LOCAL
 | B9 | DELETE
 | BA | REPEAT
+| ... |
+| BC | FPOKE
 | ... |
 | C0 | USR
 | ... |

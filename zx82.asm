@@ -3466,6 +3466,7 @@ PO_FILL:CALL    L0B03           ; routine PO-FETCH, HL-addr, BC=line/column.
         RET     Z               ; return if result zero
 
 	LD      D,A             ; Counter to D
+PO_SPACES:
         SET     0,(IY+$01)      ; update FLAGS  - signal suppress leading space.
 
 ;; PO-SPACE
