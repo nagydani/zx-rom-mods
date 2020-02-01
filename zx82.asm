@@ -20371,7 +20371,7 @@ IOS_END:EQU	$
 ; Extensible POKE
 POKE:	CALL	L1C82		; CLASS-06, numeric expression
 	CP	","
-	JR	NZ,REPORT_C_EXTRA
+	JR	NZ,REPORT_C_EXTRA2
 	RST	$20
 	CALL	L24FB + 1	; SCANNING + 1
 	BIT	6,(IY+$01)	; numeric?
