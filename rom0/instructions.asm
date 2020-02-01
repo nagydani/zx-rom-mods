@@ -2231,9 +2231,7 @@ ENDPR2:	CP	REPEAT_M
 	JR	Z,ENDPR1
 	CP	PROC_M
 	JR	NZ,ERROR_X
-
-; RETURN from PROC
-RETPROC:PUSH	HL		; new marker address
+	PUSH	HL		; new marker address
 	DEC	HL
 	DEC	HL		; skip saved error address
 	LD	(ERR_SP),HL
@@ -2293,7 +2291,7 @@ ENDP_C:	LD	(CH_ADD),HL
 	DEFW	REVERSE_STACK
 	LD	HL,(RETADDR)	; stack entry types
 	PUSH	HL
-ENDP_A:	RST	$20		; advance past TO
+ENDP_A:	RST	$20		; advance past TO or comma
 	RST	$30
 	DEFW	L1C1F		; CLASS_01, find or create variable to assign
 	POP	HL
@@ -2314,6 +2312,7 @@ ENDP_R:	RST	$30
 	RST	$18
 	CP	","
 	JR	Z,ENDP_A
+	POP	HL		; discard remaining type bits
 ENDP_SW:JP	SWAP
 
 ; Discard local variables before RETURN
@@ -2328,7 +2327,8 @@ RETURN_CONT:
 	CP	PROC_M
 	JR	NZ,ENDP_SW		; TODO: consider other contexts
 ; returning from a PROC
-	JP	RETPROC
+	RST	$18
+	JP	ENDPROC
 ;; alternative with tailcall
 ;;	PUSH	HL
 ;;	RST	$18			; fetch character after RETURN
