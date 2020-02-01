@@ -2092,7 +2092,7 @@ PROC_N:	LD	(X_PTR),HL	; save argument pointer
 	LD	(CH_ADD),HL
 	RST	$20		; skip separator
 	CP	")"		; empty PROC with non-empty DEF PROC?
-	JR	Z,ERROR_Q	; that is an error!
+	JR	Z,ERROR_Q1	; that is an error!
 	PUSH	BC		; save variable name and type
 	RST	$30
 	DEFW	L24FB + 1	; SCANNING + 1
@@ -2112,9 +2112,6 @@ PROC_N:	LD	(X_PTR),HL	; save argument pointer
 	PUSH	BC
 	JR	PROC_X
 
-ERROR_Q:RST	$30
-	DEFW	L288B		; Q Parameter error
-
 PROC_NX:PUSH	BC
 	PUSH	DE
 	PUSH	AF
@@ -2124,19 +2121,34 @@ PROC_X:	EXX
 	RRCA
 	XOR	C
 	AND	$20
-	JR	NZ,ERROR_Q
+	JR	NZ,ERROR_Q1
 	LD	B,$3E
 	PUSH	BC		; marker
 	PUSH	HL		; error address
 	PUSH	DE		; return address
 	RST	$18		; separator of PROC arguments
+	LD	E,A
 	LD	(DATADD),HL
 	LD	HL,(X_PTR)
 	LD	(CH_ADD),HL
 	INC	HL
 	RST	$18		; separator in DEF PROC
 	CP	","
+	JR	NZ,PROC_E
+	XOR	E
 	JR	Z,PROC_L
+
+ERROR_Q1:
+	LD	HL,(ERR_SP)
+	DEC	HL
+	DEC	(HL)
+	LD	DE,SUBPPC
+	LDD
+	LDD
+	LDD
+ERROR_Q:RST	$30
+	DEFW	L288B		; Q Parameter error
+
 PROC_E:	POP	DE		; return address
 	LD	(ERR_SP),SP
 	PUSH	DE
@@ -2304,10 +2316,8 @@ ENDP_A:	RST	$20		; advance past TO or comma
 	LD	DE,(STKBOT)
 	AND	A
 	SBC	HL,DE
-	JR	NZ,ENDP_R
+	JP	Z,ERROR_Q
 	RST	$30
-	DEFW	L1E08		; REPORT-E out of data
-ENDP_R:	RST	$30
 	DEFW	L1C59 + 5	; VAL-FET-2 + 5, do the assignment
 	RST	$18
 	CP	","
