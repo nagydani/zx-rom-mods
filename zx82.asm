@@ -30,6 +30,7 @@
 ;						POKE 23750,PEEK 23752
 ;						LPRINT ;: CIRCLE INK 2;128,87,87]
 ; LIST, LLIST fixed, does not print cursor, accepts range [LIST 10 TO 20]
+; NEXT and RETURN sped up considerably, by re-defining PPC as the PROG offset of current line
 ; "scroll?" prompt fixed [PRINT #0;1'2'3'4: FOR i=1 TO 30: PRINT i: NEXT i]
 ; I/O abstraction layer significantly improved
 ; - PIP moved to KEY_INPUT, no clicking during INPUT from other channels
@@ -56,7 +57,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 02-JAN-2020
+; Last updated: 02-FEB-2020
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -5898,7 +5899,8 @@ L121C:
 
         LD      HL,(RAMTOP)      ; fetch RAMTOP to HL again as we've lost it.
 
-        LD      (HL),$3E        ; top of user ram holds GOSUB end marker
+MM:	EQU	$3E
+        LD      (HL),MM		; top of user ram holds GOSUB end marker
                                 ; an impossible line number - see RETURN.
                                 ; no significance in the number $3E. It has
                                 ; been traditional since the ZX80.
@@ -6185,7 +6187,9 @@ X1349:	XOR     A               ; clear accumulator to directly
                                 ; be more succinct to use RST $10.
 
         LD      BC,(PPC)      ; fetch PPC the current line number.
-        CALL    L1A1B           ; routine OUT-NUM-1 will print that
+;;; BUGFIX: PPC holds the PROG-offset of the current line, not its number
+	CALL	OUT_PPC
+;;;        CALL    L1A1B           ; routine OUT-NUM-1 will print that
 
         LD      A,$3A           ; then a ':' character.
         RST     10H             ; PRINT-A
@@ -8808,7 +8812,9 @@ L1B8A:  LD      HL,$FFFE        ; The dummy value minus two
 ; ------------------------------
 ; The branch was to here if a jump is to made to a new line number
 ; and statement.
-; That is the previous statement was a GO TO, GO SUB, RUN, RETURN, NEXT etc..
+; That is the previous statement was a GO TO, GO SUB, RUN
+;;; BUGFIX: RETURN, NEXT etc.. use a different mechanism
+;;;
 
 ;; LINE-NEW
 L1B9E:  CALL    L196E           ; routine LINE-ADDR gets address of line
@@ -8880,10 +8886,15 @@ L1BB3:  CALL    L2530           ; routine SYNTAX-Z  (UNSTACK-Z?)
 L1BBF:  CP      $01             ; will set carry if zero.
         ADC     A,$00           ; add in any carry.
 
+;;; BUGFIX: PPC holds PROG offset to current line, not its number
+	EX	DE,HL
+	CALL	STORE_PPC
+;;;
         LD      D,(HL)          ; high byte of line number to D.
         INC     HL              ; advance pointer.
         LD      E,(HL)          ; low byte of line number to E.
-        LD      (PPC),DE      ; set system variable PPC.
+;;; BUGFIX: PPC holds pointer to current line, not its number
+;;;        LD      (PPC),DE      ; set system variable PPC.
 
         INC     HL              ; advance pointer.
         LD      E,(HL)          ; low byte of line length to E.
@@ -9568,7 +9579,9 @@ X1DB9:	INC     HL              ; step past variable name
         INC     HL              ; address looping statement
         LD      H,(HL)          ; and store in H
         EX      DE,HL           ; swap registers
-        JP      L1E73           ; exit via GO-TO-2 to execute another loop.
+;;; BUGFIX: Use PROG offset in HL
+	JP	GOTO_3
+;;;	JP      L1E73           ; exit via GO-TO-2 to execute another loop.
 
 ; ---
 
@@ -10082,7 +10095,9 @@ L1F23:  POP     BC              ; drop the address STMT-RET.
         POP     HL              ; now the error address.
         POP     DE              ; now a possible BASIC return line.
         LD      A,D             ; the high byte $00 - $27 is
-        CP      $3E             ; compared with the traditional end-marker $3E.
+;;; BUGFIX:
+	CP	MM
+;;;	CP      $3E             ; compared with the traditional end-marker $3E.
         JR      Z,L1F36         ; forward to REPORT-7 with a match.
                                 ; 'RETURN without GOSUB'
 
@@ -10096,7 +10111,9 @@ L1F23:  POP     BC              ; drop the address STMT-RET.
         EX      DE,HL           ; statement to D,  BASIC line number to HL.
         LD      (ERR_SP),SP      ; adjust ERR_SP to point to new stack pointer
         PUSH    BC              ; now re-stack the address STMT-RET
-        JP      L1E73           ; to GO-TO-2 to update statement and line
+;;; BUGFIX: use the PROG offset in HL
+	JP	GOTO_3
+;;;	JP      L1E73           ; to GO-TO-2 to update statement and line
                                 ; system variables and exit indirectly to the
                                 ; address just pushed on stack.
 
@@ -20469,6 +20486,46 @@ LOOK_GLOBAL:
 	CALL	L28B2			; LOOK-VARS
 	LD	(IY+DEFADD+1-ERR_NR),1	; enable locals
 	RET
+
+; Print current line number
+OUT_PPC:LD	A,$FF
+	CP	B
+	JR	NZ,PPC_DO
+	DEC	A
+	CP	C
+	JR	Z,OUT_NUM
+PPC_DO:	LD	HL,(PROG)
+	SBC	HL,BC
+	LD	B,(HL)
+	INC	HL
+	LD	C,(HL)
+OUT_NUM:JP	L1A1B		; OUT-NUM-1
+
+; Store PPC
+; In: curent line address in DE
+; Out:  current line address in HL
+STORE_PPC:
+	LD	HL,(PROG)
+	AND	A
+	SBC	HL,DE
+	LD	(PPC),HL
+	EX	DE,HL
+	RET
+
+; Jump to address pointed by PROG offset in HL
+GOTO_3:	LD	A,$FF
+	CP	H
+	JR	NZ,GOTO_4
+	SUB	L
+	DEC	A
+	JP	Z,L1E73		; GO-TO-2
+GOTO_4:	LD	(PPC),HL
+	LD	A,D
+	EX	DE,HL
+	POP	HL		; discard STMT-RET
+	LD	HL,(PROG)
+	SBC	HL,DE
+	JP	L1BBF		; LINE-USE
 
 ; Reverse calculator stack
 REVERSE_STACK:
