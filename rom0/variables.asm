@@ -112,9 +112,9 @@ LOCAL_CONT:
 	ADD	HL,SP
 	LD	A,(HL)
 	CP	$06		; called from LOAD/SAVE?
-	JR	Z,LC_SW
+	JR	Z,LC_NOTF
 	CP	$2C		; called from DIM?
-	JR	Z,LC_SW
+	JR	Z,LC_NOTF
 
 LC_DO:	CALL	LOOK_LC
 LC_LL:	JR	C,LC_FND
@@ -127,8 +127,8 @@ LC_LL:	JR	C,LC_FND
 	ADD	HL,DE
 LC_LOOP:CALL	LOC_L
 	JR	LC_LL
-LC_NOTF:LD	HL,L28EF
-LC_JP:	EX	(SP),HL		; replace the return address with V_RUN_SYN
+LC_NOTF:LD	HL,L28EF	; V-RUN-SYN
+LC_JP:	EX	(SP),HL		; replace the return address
 LC_SW:	JP	SWAP
 
 FN_ARG:	LD	HL,L2951	; STK-FN-ARK
