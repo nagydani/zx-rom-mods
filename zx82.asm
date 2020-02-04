@@ -6332,9 +6332,9 @@ L1555:  LD      A,$10           ; i.e. 'G' -$30 -$07
 ;;;     LD      BC,$0000        ; this seems unnecessary.
         JP      L1313           ; jump back to MAIN-G
 
-;;; BUGFIX: perform optional housekeeping before adding a line
+;;; BUGFIX: perform some housekeeping before adding a line
 MAIN_ADD:
-	CALL	MAINADD_HOOK
+	CALL	LINEREF		; turns PROG offsets to line numbers
 ; -----------------------------
 ; Handle addition of BASIC line
 ; -----------------------------
@@ -20157,12 +20157,6 @@ LIST_RANGE_2:
 	LD	(MEMBOT+28),BC	; set interval end
 	RET
 
-; CONTINUE moved out of the way of GO TO (9 bytes)
-CONTINUE:
-	LD	HL,(OLDPPC)
-	LD	D,(IY+$36)	; fetch OSPPC statement.
-	JP	L1E73		; forward to GO-TO-2
-
 ; Clean up after report in MAIN-EXEC (8 bytes)
 REP_CLEAR:
 	LD	A,$0D
@@ -20226,6 +20220,11 @@ C2FLAGX4:
 	JR	C,SETFX4
 	RES	4,(IY+FLAGX-ERR_NR)
 SSTMTL1:JP	L1B29		; SSTMT-L-1
+
+; LOOK-VARS for loop variables (6 bytes)
+LOOP_VARS:
+	CALL	LV_HOOK
+	JP	L28B2		; LOOK-VARS
 
 ; These must be FF for IM2 vectoring
 	DEFS	$3A01 - $, $FF
@@ -20314,25 +20313,6 @@ RTURBO:	LD	BC,$FC3B
 	OUT	(C),H		; restore TURBO mode
 	RET
 
-; Extensible FIND INT 2 that can handle negative subscripts in ROM0 (11 bytes)
-FIND_INT2A:
-	CALL	L2DA2		; FP-TO-BC
-	JR	C,REPORT_B_3
-	RET	Z
-	CALL	SUB_HOOK
-REPORT_B_3:
-	RST	$08
-	DEFB	$0A		; B Integer out of range
-
-; Move cursor forward
-PR_RIGHT:
-	DEC	C
-	JR	NZ,CL_SCRL
-	DEC	B
-	CALL	PR_ENTER
-	INC	B
-	JR	PR_RIGHT
-
 ; Move cursor down
 PR_DOWN:CALL	PR_ENTER
 	POP	AF
@@ -20351,6 +20331,15 @@ PR_UP:	BIT	1,(IY+$01)	; ZX Printer ?
 	JR	NZ,CL_SET2	; Set position, if not
 	DEC	B		; Do nothing
 	RET
+
+; Move cursor forward
+PR_RIGHT:
+	DEC	C
+	JR	NZ,CL_SCRL
+	DEC	B
+	CALL	PR_ENTER
+	INC	B
+	JR	PR_RIGHT
 
 ; Movable printer buffer
 PRBUF_ADD:
@@ -20397,6 +20386,16 @@ POKE:	CALL	L1C82		; CLASS-06, numeric expression
 	CALL	L1BEE		; CHECK-END
 	JP	L1E80		; POKE
 
+; Extensible FIND INT 2 that can handle negative subscripts in ROM0 (11 bytes)
+FIND_INT2A:
+	CALL	L2DA2		; FP-TO-BC
+	JR	C,REPORT_B_3
+	RET	Z
+	CALL	SUB_HOOK
+REPORT_B_3:
+	RST	$08
+	DEFB	$0A		; B Integer out of range
+
 ; Extensible instruction set (7 bytes)
 REPORT_C_EXTRA2:
 	LD	B,$1B		; just like separators
@@ -20428,6 +20427,12 @@ OUT_INV:PUSH	AF
 	LD	A,$0F
 	JP	OUT_INV_1
 
+; Find closing NEXT (6 bytes)
+LOOK_PROG_FOR:
+	CALL	SKIP_FOR_HOOK
+LOOK_PROG_R:
+	JP	L1D86		; LOOK-PROG
+
 ; Find next argument of PROC or DATA (9 bytes)
 LOOK_READ:
 	CP	"("
@@ -20436,17 +20441,6 @@ LOOK_READ:
 	JR	NZ,LOOK_PROG_R
 	RST	$08
 	DEFB	$19		; Q Parameter error
-
-; Find closing NEXT (6 bytes)
-LOOK_PROG_FOR:
-	CALL	SKIP_FOR_HOOK
-LOOK_PROG_R:
-	JP	L1D86		; LOOK-PROG
-
-; LOOK-VARS for loop variables (6 bytes)
-LOOP_VARS:
-	CALL	LV_HOOK
-	JP	L28B2		; LOOK-VARS
 
 ; Check pressed key
 ; In: A - key code (ENTER: CHR$ 13, SYM: CHR$ 14, CAPS: CHR$ 227)
@@ -20501,25 +20495,20 @@ PPC_DO:	LD	HL,(PROG)
 	LD	C,(HL)
 OUT_NUM:JP	L1A1B		; OUT-NUM-1
 
-; Store PPC
-; In: curent line address in DE
-; Out:  current line address in HL
-STORE_PPC:
-	LD	HL,(PROG)
-	AND	A
-	SBC	HL,DE
-	LD	(PPC),HL
-	EX	DE,HL
-	RET
-
-; Jump to address pointed by PROG offset in HL
-GOTO_3:	LD	A,$FF
-	CP	H
-	JR	NZ,GOTO_4
-	SUB	L
-	DEC	A
-	JP	Z,L1E73		; GO-TO-2
-GOTO_4:	LD	(PPC),HL
+; CONTINUE moved out of the way of GO TO
+CONTINUE:
+	LD	HL,(OLDPPC)
+	LD	D,(IY+$36)	; fetch OSPPC statement.
+; Jump to line number or PROG offset in HL
+GOTO_3:	LD	A,H
+	CP	$3E
+GOTO_2:	JP	C,L1E73		; GO-TO-2
+	CP	$FF
+	JR	NZ,GOTO_5
+	LD	A,$FD
+	CP	L
+	JR	C,GOTO_2	; GO-TO-2
+GOTO_5:	LD	(PPC),HL
 	LD	A,D
 	EX	DE,HL
 	POP	HL		; discard STMT-RET
@@ -20528,28 +20517,61 @@ GOTO_4:	LD	(PPC),HL
 	JP	L1BBF		; LINE-USE
 
 ; Reverse calculator stack
-REVERSE_STACK:
-	LD	DE,(STKBOT)
-	LD	HL,(STKEND)
+;;REVERSE_STACK:
+;;	LD	DE,(STKBOT)
+;;	LD	HL,(STKEND)
 ; Reverse numeric array
 ; In: DE=beginning, HL=past end
-REVERSE:LD	BC,-5
-	ADD	HL,BC
-	AND	A
-	SBC	HL,DE
-	RET	C
-	RET	Z
-	ADD	HL,DE
+;;REVERSE:LD	BC,-5
+;;	ADD	HL,BC
+;;	AND	A
+;;	SBC	HL,DE
+;;	RET	C
+;;	RET	Z
+;;	ADD	HL,DE
+;;	PUSH	HL
+;;	CALL	EXCHANGE
+;;	POP	HL
+;;	JR	REVERSE
+
+; Local variables in 128k mode (6 bytes)
+STK_F_ARG:
+	CALL	LOCAL_HOOK
+	JP	L2951		; STK_F_ARG
+
+; REPORT7, check for local variables first (6 bytes)
+REPORT7:CALL	RETURN_HOOK
 	PUSH	HL
-	CALL	EXCHANGE
-	POP	HL
-	JR	REVERSE
+REP7:	RST	$08
+	DEFB	$06		; 7 RETURN without GOSUB
 
-; ---------------------
-; THE 'SPARE' LOCATIONS
-; ---------------------
+; REPORT1, check for local variables first (5 bytes)
+REPORT1:CALL	NEXT_HOOK
+	RST	$08
+	DEFB	$00		; 1 NEXT without FOR
 
-	DEFS	$3C03 - $, $FF
+; Change BORDER color in Timex HiRes mode as well (13 bytes)
+BORDER:	RLCA
+	RLCA
+	RLCA
+	LD	B,A
+	IN	A,($FF)
+	OR	$38
+	XOR	B
+	OUT	($FF),A
+	LD	A,B
+	RET
+
+; Change RETURN targets (8 bytes)
+RETLNS:	INC	HL
+	INC	HL
+	CALL	CLNREF
+	JR	NZ,RETLNS
+	RET
+
+; Abstracted NEW routine (6 bytes)
+NEW:	CALL	NEW_HOOK
+	JP	L11B7		; NEW
 
 ; LET substitute for FOR (6 bytes)
 FOR_LET:CALL	FOR_HOOK
@@ -20603,6 +20625,12 @@ FTOK_N_R1:
 	SRL	A
 	RET
 
+; ---------------------
+; THE 'SPARE' LOCATIONS
+; ---------------------
+
+	DEFS	$3C03 - $, $FF
+
 ; Test one keyword
 ; Input: HL text to match, B length of text, DE keyword to check, C=0
 ; Output: CF set iff keyword matches fully, C length of match, DE next keyword
@@ -20644,37 +20672,99 @@ SPACEKW_R1:
 	DEC	DE
 	JR	TESTKW2_R1
 
-; Change BORDER color in Timex HiRes mode as well (13 bytes)
-BORDER:	RLCA
-	RLCA
-	RLCA
+; Change PROG offset at HL to line number
+; In: HL - pointer to line reference
+; Out: ZF set for end marker, HL incremented
+CLNREF:	LD	C,(HL)
+	INC	HL
+	LD	A,(HL)
+	CP	$3E
+	RET	Z
+	RET	C
 	LD	B,A
-	IN	A,($FF)
-	OR	$38
-	XOR	B
-	OUT	($FF),A
-	LD	A,B
+	INC	A
+	JR	NZ,CLN_DO
+	LD	A,$FD
+	CP	C
+	RET	C
+CLN_DO:	EX	DE,HL
+	LD	HL,(PROG)
+	SBC	HL,BC
+	LD	B,(HL)
+	INC	HL
+	LD	C,(HL)
+	EX	DE,HL
+	LD	(HL),B
+	DEC	HL
+	LD	(HL),C
+	INC	HL
+	DEC	A
 	RET
 
-; Local variables in 128k mode
-STK_F_ARG:
-	CALL	LOCAL_HOOK
-	JP	L2951		; STK_F_ARG
+; Store PPC (11 bytes)
+; In: curent line address in DE
+; Out:  current line address in HL
+STORE_PPC:
+	LD	HL,(PROG)
+	AND	A
+	SBC	HL,DE
+	LD	(PPC),HL
+	EX	DE,HL
+	RET
 
-; REPORT7, check for local variables first (6 bytes)
-REPORT7:CALL	RETURN_HOOK
+VTYPET:	DEFB	SKSTR - $		; 010 string
+	DEFB	SKNUM - $		; 011 numeric
+	DEFB	SKSTR - $		; 100 numeric array
+	DEFB	SKLNUM - $		; 101 numeric long name
+	DEFB	SKSTR - $		; 110 character array
+	DEFB	CHFOR - $		; 111 for variable
+
+SKSTR:	LD	C,(HL)
+	INC	HL
+	LD	B,(HL)
+	INC	HL
+	DEFB	$11			; LD DE,skip two bytes
+SKNUM:	LD	C,5
+	ADD	HL,BC
+	JR	NXTREF
+SKLNUM:	BIT	7,(HL)
+	INC	HL
+	JR	Z,SKLNUM
+	JR	SKNUM
+CHFOR:	LD	C,3*5
+	ADD	HL,BC
+	CALL	CLNREF
+	INC	HL
+	INC	HL
+	JR	NXTREF
+
+; Change all PROG offsets to line numbers
+LINEREF:PUSH	BC
+	LD	HL,OLDPPC
+	CALL	CLNREF
+	LD	HL,(ERR_SP)
+	CALL	RETLNS
+	LD	HL,(VARS)
+NXTREF:	LD	A,(HL)
+	CP	$80
+	POP	BC
+	JR	Z,MAINADD_HOOK
+	RLCA
+	RLCA
+	RLCA
+	AND	7
+	EX	DE,HL
+	PUSH	BC
+	LD	C,A
+	LD	B,0
+	LD	HL,VTYPET - 2
+	ADD	HL,BC
+	LD	C,(HL)
+	ADD	HL,BC
 	PUSH	HL
-REP7:	RST	$08
-	DEFB	$06		; 7 RETURN without GOSUB
-
-; REPORT1, check for local variables first (5 bytes)
-REPORT1:CALL	NEXT_HOOK
-	RST	$08
-	DEFB	$00		; 1 NEXT without FOR
-
-; Abstracted NEW routine (6 bytes)
-NEW:	CALL	NEW_HOOK
-	JP	L11B7		; NEW
+	EX	DE,HL
+	INC	HL
+	RET
 
 ; Abstracted PLOT routine (high speed)
 PLOT:	BIT	4,(IY+FLAGS-ERR_NR)
@@ -20728,14 +20818,6 @@ STEP_HOOK:
 	CALL	NOPAGE
 TEMPS_HOOK:
 	CALL	NOPAGE
-POUT:	CALL	NOPAGE
-PIN:	CALL	NOPAGE
-KOUT:	CALL	NOPAGE
-KIN:	CALL	NOPAGE
-XOUT:	CALL	NOPAGE
-XIN:	CALL	NOPAGE
-NXOUT:	CALL	NOPAGE
-NXIN:	CALL	NOPAGE
 FSCAN:	CALL	NOPAGE
 ; Switch to ROM0, if 128k mode
 NOPAGE:	PUSH	AF
