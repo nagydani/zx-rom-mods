@@ -2220,7 +2220,7 @@ WHILE:	LD	HL,(CH_ADD)
 	PUSH	DE		; stack return address
 	LD	BC,$0014	; why this much? see $1F02 in ROM1
 	LD	HL,L1F05	; TEST-ROOM
-	PUSH	HL
+ENDPR_E:PUSH	HL
 WHILE_E:JP	SWAP
 
 WHILE0:	LD	DE,T_WHILE
@@ -2237,36 +2237,21 @@ ENDPROC:CP	$0D
 	JR	Z,ENDPR
 	CP	":"
 	JR	Z,ENDPR
-	LD	HL,1		; types
-	PUSH	HL
-ENDPRL:	RST	$30
-	DEFW	L24FB + 1	; SCANNING + 1
-	EX	AF,AF'
-	POP	HL
-	LD	A,(FLAGS)
-	ADD	A,A
-	ADD	A,A
-	ADC	HL,HL
-	JP	C,ERROR_C
-	EX	AF,AF'
-	CP	","
-	JR	NZ,ENDPRE
-	PUSH	HL
-	RST	$20		; advance past the comma
-	JR	ENDPRL
+	CALL	SYNTAX_Z
+	JR	Z,ENDPR_S
+	RST	$18
+	LD	(RETADDR),HL	; return data pointer
+	JR	ENDPR3
+
+ENDPR_S:LD	HL,L1E2C	; DATA-1
+	JR	ENDPR_E
 
 ENDPR1:	CALL	SKIPLL
 	JR	ENDPR2
 
-ENDPRE:	CP	$0D
-	JR	Z,ENDPR
-	CP	":"
-	JP	NZ,ERROR_C
-
 ENDPR:	CALL	SYNTAX_Z
 	JP	Z,END05
-	LD	(RETADDR),HL
-	CALL	SKIP_LL
+ENDPR3:	CALL	SKIP_LL
 ENDPR2:	CP	REPEAT_M
 	JR	Z,ENDPR1
 	CP	WHILE_M
@@ -2319,41 +2304,55 @@ ENDP_L:	CALL	SKIPEX
 	JR	NC,ENDP_L	; skip unread arguments of PROC
 	DEC	HL
 ENDP_C:	LD	(CH_ADD),HL
-	POP	HL		; new marker address
+	RST	$20		; advance
+	DEC	(IY+$0D)	; adjust SUBPPC
+	CP	TO_T
+	JR	Z,ENDP_3
+ENDP_SW:POP	HL		; new marker address
 	POP	BC		; return address
 	POP	DE		; error address
 	LD	SP,HL
 	PUSH	DE		; error address
 	PUSH	BC		; return address
-	RST	$20		; advance
-	DEC	(IY+$0D)	; adjust SUBPPC
-	CP	TO_T
-	JR	NZ,ENDP_SW
+	JP	SWAP
+
+; Very similar to READ-3 except the following:
+; - uses RETADDR instead of DATADD
+; - reading past data after END PROC or RETURN is an error (Q)
+; - data is evaluated in the local context, assigment is done in outer context
+ENDP_3:	RST	$20		; advance past TO or comma
 	RST	$30
-	DEFW	REVERSE_STACK
-	LD	HL,(RETADDR)	; stack entry types
+	DEFW	L1C1F		; CLASS-01, prepare assignment
+	LD	HL,(ERR_SP)	; save ERR-SP
 	PUSH	HL
-ENDP_A:	RST	$20		; advance past TO or comma
-	RST	$30
-	DEFW	L1C1F		; CLASS_01, find or create variable to assign
-	POP	HL
-	RR	H
-	RR	L
-	RRA
-	RRA			; move type to bit 6
-	PUSH	HL
-	LD	HL,(STKEND)
-	LD	DE,(STKBOT)
-	AND	A
-	SBC	HL,DE
-	JP	Z,ERROR_Q
-	RST	$30
-	DEFW	L1C59 + 5	; VAL-FET-2 + 5, do the assignment
+	LD	HL,6
+	ADD	HL,SP
+	LD	(ERR_SP),HL	; temporarily restore ERR-SP to local context
 	RST	$18
+	LD	(X_PTR),HL	; save CH-ADD
+	LD	HL,(RETADDR)
+	CALL	TEMP_PTR2
+	LD	A,(FLAGS)
+	PUSH	AF
+	RST	$30
+	DEFW	L24FB		; SCANNING
+	LD	(MEMBOT),A	; save delimiter
+	POP	AF
+	POP	HL
+	LD	(ERR_SP),HL	; restore ERR-SP to outer context
+	RST	$30
+	DEFW	L1C59 + 5	; VAL_FET_2 + 5
+	RST	$20
+	LD	(RETADDR),HL
+	LD	HL,(X_PTR)
+	LD	(IY+X_PTR+1-ERR_SP),0
+	CALL	TEMP_PTR2
 	CP	","
-	JR	Z,ENDP_A
-	POP	HL		; discard remaining type bits
-ENDP_SW:JP	SWAP
+	JR	NZ,ENDP_SW
+	XOR	(IY+MEMBOT-ERR_NR)	; compare delimiter
+	JR	Z,ENDP_3
+	JP	ERROR_Q		; Q Parameter error
+
 
 ; Discard local variables before RETURN
 RETURN_CONT:
