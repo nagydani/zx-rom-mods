@@ -2876,12 +2876,97 @@ ERRC1:	JP	NZ,ERROR_C
 READ_L:	RST	$20		; advance past delimiter
 	RST	$30
 	DEFW	L1C1F		; CLASS-01
-	BIT	7,C
-	JR	NZ,READ_S
-	
+	CALL	SYNTAX_Z
+	JR	Z,READ_S
+	BIT	6,(IY+$01)	; numeric result?
+	JR	Z,READ_STR	; jump, if string
+	RST	$28
+	DEFB	$38		; end
+	LD	BC,5
+	CALL	READ_N
+	JR	NZ,ERROR_8
+	LD	(STKEND),DE
+READ_A:	RST	$30
+	DEFW	L2AFF		; LET
 READ_S:	RST	$18
 	CP	","
 	JR	Z,READ_L
 READ05:	JP	END05
+
+ERROR_8:RST	$30
+	DEFW	L15E4		; 8 End of file
+
+READ_STR:
+	BIT	0,(IY+$37)	; FLAGX, complete string?
+	JR	NZ,READ_C	; jump, if so
+	LD	BC,(STRLEN)
+	LD	DE,(DEST)
+	CALL	READ_ST
+	JR	Z,READ_S
+	EX	DE,HL
+READ_W:	LD	(HL)," "
+	INC	HL
+	DEC	BC
+	LD	A,B
+	OR	C
+	JR	NZ,READ_W
+	JR	READ_S
+
+READ_C:	LD	BC,1
+	RST	$30
+	DEFW	$0030		; BC-SPACES
+	LD	(K_CUR),HL
+	PUSH	HL		; start address
+READ_CL:RST	$30
+	DEFW	L15E6		; INPUT AD
+	JR	NC,READ_E
+	EX	AF,AF'
+	LD	HL,(CURCHL)
+	PUSH	HL
+	LD	A,$FF		; system channel "R"
+	RST	$30
+	DEFW	L1601		; CHAN-OPEN
+	RST	$10		; add to string
+	POP	HL
+	LD	(CURCHL),HL
+	LD	HL,(K_CUR)
+	POP	DE
+	PUSH	DE		; start
+	AND	A
+	SBC	HL,DE
+	PUSH	HL		; length
+	RST	$30
+	DEFW	L1F1A		; FREE-MEM
+	POP	BC		; length
+	SCF
+	ADC	HL,BC		; CF set if OOM
+	POP	DE		; start
+	JR	NC,READ_CL
+READEE:	RST	$30
+	DEFW	L2AB2		; STK-STO
+	JR	READ_A
+
+READ_E:	LD	HL,(K_CUR)
+	POP	DE
+	AND	A
+	SBC	HL,DE
+	LD	B,H
+	LD	C,L
+	JR	READEE
+
+READ_N:	RST	$30
+	DEFW	L15E6		; INPUT-AD
+	JR	C,READ_B
+	RET	NZ
+	RST	$30
+	DEFW	L1F54		; BREAK-KEY
+	JR	READ_N
+READ_B:	LD	(DE),A
+	INC	DE
+	DEC	BC
+READ_ST:LD	A,B
+	OR	C
+	JR	NZ,READ_N
+	RET
 
 	INCLUDE	"play.asm"
