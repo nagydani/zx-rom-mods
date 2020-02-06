@@ -20501,6 +20501,9 @@ CONTINUE:
 	LD	D,(IY+$36)	; fetch OSPPC statement.
 ; Jump to line number or PROG offset in HL
 GOTO_3:	LD	A,H
+	OR	L
+	JR	Z,GOTO_4	; line 0 is always at offset 0
+	LD	A,H
 	CP	$3E
 GOTO_2:	JP	C,L1E73		; GO-TO-2
 	INC	A
