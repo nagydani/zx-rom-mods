@@ -564,46 +564,29 @@ ENDWHILE:
 	JR	NZ,ERROR_W	; wrong context
 	DEC	HL
 	DEC	HL		; skip outer error address
-	LD	(ERR_SP),HL
 	PUSH	HL		; context
 	LD	DE,(CH_ADD)	; execution pointer
-	PUSH	DE
+	PUSH	DE		; save it
 	DEC	HL
-	DEC	HL		; skip SUBPPC
+	LD	A,(HL)		; A=(SUBPPC)
 	DEC	HL
-	DEC	HL		; skip PPC
 	LD	D,(HL)
 	DEC	HL
-	LD	E,(HL)		; condition in DE; TODO: check no caching
-	LD	HL,(PROG)
-	ADD	HL,DE
+	LD	E,(HL)		; DE=(PPC)
+	CALL	SEEK_PROG
 	LD	(CH_ADD),HL
+	RST	$20		; skip WHILE token
 	RST	$30
 	DEFW	L24FB		; SCANNING
 	CALL	TEST_ZERO
 	POP	HL		; old execution pointer
 	JR	Z,WEND
-	POP	HL		; context
-	DEC	HL
-	LD	DE,SUBPPC
-	LDD
-	LDD
-	LDD			; copy PPC and SUBPPC from context
-	DEC	HL
-	DEC	HL		; skip CH_ADD in context
-	LD	D,(HL)
-	DEC	HL
-	LD	E,(HL)
-	LD	HL,(PROG)
-	ADD	HL,DE
-	LD	(NXTLIN),HL	; copy NXTLIN from context
-	POP	HL
-	LD	(ERR_SP),SP
-	PUSH	HL
-	JP	SWAP
+	POP	DE		; discard context
+	JR	CONT_LOOP	; continue with the loop
 
 WEND:	LD	(CH_ADD),HL
 	POP	HL		; context
+	LD	(ERR_SP),HL
 	POP	BC		; return address
 	LD	SP,HL		; reclaim locals
 	PUSH	BC
@@ -647,6 +630,7 @@ UNT_NL:	EX	AF,AF'
 	PUSH	DE		; marker
 	PUSH	HL		; error address
 	PUSH	BC		; return address
+CONT_LOOP:
 	LD	HL,$0006
 	ADD	HL,SP
 UNT_C:	LD	E,(HL)
@@ -2821,5 +2805,37 @@ PAL_X:	LD	BC,$BF3B
 
 ERROR_K:RST	$30
 	DEFW	L2244		; K Invalid colour
+
+; Seek program location
+; In: DE either line number or negative PROG offset, A instruction number + 1
+SEEK_PROG:
+	EX	DE,HL
+	LD	D,A
+	PUSH	DE
+	LD	A,H
+	OR	L
+	JR	Z,SEEK_OFF	; line 0 is always at offset 0
+	CP	$3F
+	JR	NZ,SEEK_OFF
+	RST	$30
+	DEFW	L196E		; LINE-ADDR
+	JR	Z,SEEK_STMT
+ERR_N:	JP	ERROR_N
+
+SEEK_OFF:
+	EX	DE,HL
+	LD	HL,(PROG)
+	SBC	HL,DE
+	INC	HL
+	INC	HL
+	INC	HL
+	INC	HL
+SEEK_STMT:
+	POP	DE
+	LD	E,0
+	DEC	D
+	RST	$30
+	DEFW	L198B		; EACH-STMT
+	RET	Z
 
 	INCLUDE	"play.asm"
