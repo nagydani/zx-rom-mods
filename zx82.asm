@@ -13809,7 +13809,9 @@ L28B2:  SET     6,(IY+$01)      ; update FLAGS - presume numeric result
 
         RST     18H             ; GET-CHAR
         CALL    L2C8D           ; routine ALPHA tests for A-Za-z
-        JP      NC,L1C8A        ; jump to REPORT-C if not.
+;;; BUGFIX: extensible variable lookups
+	JP	NC,REPORT_C_EXTRA
+;;;	JP      NC,L1C8A        ; jump to REPORT-C if not.
                                 ; 'Nonsense in BASIC'
 
         PUSH    HL              ; save pointer to first letter       ^1

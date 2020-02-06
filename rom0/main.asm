@@ -583,6 +583,8 @@ OLD_EXT:EX	AF,AF'
 	JP	Z,N_POKE
 	CP	$8E		; EOL in RETURN
 	JP	Z,N_RETURN
+	CP	$CA		; illegal element in READ
+	JP	Z,READ_EXT
 	CP	$8B		; EOL in STOP
 	JP	Z,STOP
 	CP	$7C		; = in LET
