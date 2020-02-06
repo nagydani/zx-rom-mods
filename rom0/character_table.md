@@ -157,7 +157,8 @@
 | ... |
 | B3 | END WHILE
 | B4 | ON ERROR
-| ... |
+| B5 | SPECTRUM
+| B6 | WRITE #
 | B7 | TRACE
 | B8 | LOCAL
 | B9 | DELETE

@@ -10584,7 +10584,8 @@ L2070:  CP      $23             ; is character '#' ?
         CALL    L1C82           ; routine EXPT-1NUM gets stream number
         AND     A               ; prepare to exit early with carry reset
         CALL    L1FC3           ; routine UNSTACK-Z exits early if parsing
-        CALL    L1E94           ; routine FIND-INT1 gets number off stack
+;; Entry point with stream number on the stack
+X207C:	CALL    L1E94           ; routine FIND-INT1 gets number off stack
         CP      $10             ; must be range 0 - 15 decimal.
         JP      NC,L160E        ; jump back to REPORT-Oa if not
                                 ; 'Invalid stream'.
