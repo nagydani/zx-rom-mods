@@ -1992,6 +1992,12 @@ PROC:	CALL	SYNTAX_Z
 	INC	SP		; stack SUBPPC (1 byte)
 	LD	BC,(PPC)
 	PUSH	BC		; stack PPC (2 bytes)
+	PUSH	HL
+	LD	HL,(DATADD)
+	LD	BC,(PROG)
+	AND	A
+	SBC	HL,BC
+	EX	(SP),HL		; stack DATADD
 	LD	BC,$3E00 + PROC_M
 	PUSH	BC		; stack marker
 	PUSH	HL		; stack error address
@@ -2186,36 +2192,16 @@ ENDPR2:	CP	REPEAT_M
 	DEC	HL
 	DEC	HL		; skip saved error address
 	LD	(ERR_SP),HL
-	DEC	HL
 	LD	DE,SUBPPC
-	LDD
-	LD	A,(HL)
-	LDD
-	LDD
-	INC	A
-	JR	NZ,RETPR	; not returning to command line
-RETPRN:	INC	HL
-	LD	DE,NEWPPC
-	LDI
-	LDI
-	LDI
-	LD	BC,-4
-	ADD	HL,BC
-RETPR:	LD	B,(HL)
 	DEC	HL
-	LD	C,(HL)
-	EX	DE,HL
-	LD	HL,(PROG)
-	PUSH	HL		; save PROG
-	ADD	HL,BC
-	LD	(NXTLIN),HL
-	EX	DE,HL
-	DEC	HL
+	LDD
+	LDD
+	LDD			; copy return reference to PPC/SUBPPC
 	LD	B,(HL)
 	DEC	HL
-	LD	C,(HL)
+	LD	C,(HL)		; positive PROG offset
 	EX	DE,HL
-	POP	HL		; PROG
+	LD	HL,(PROG)	; PROG
 	ADD	HL,BC
 	EX	DE,HL
 	LD	HL,(DATADD)
@@ -2229,7 +2215,6 @@ ENDP_L:	CALL	SKIPEX
 	DEC	HL
 ENDP_C:	LD	(CH_ADD),HL
 	RST	$20		; advance
-	DEC	(IY+$0D)	; adjust SUBPPC
 	CP	TO_T
 	JR	Z,ENDP_3
 ENDP_SW:POP	HL		; new marker address
@@ -2238,7 +2223,8 @@ ENDP_SW:POP	HL		; new marker address
 	LD	SP,HL
 	PUSH	DE		; error address
 	PUSH	BC		; return address
-	JP	SWAP
+	LD	HL,PPC
+	JP	UNT_C
 
 ; Very similar to READ-3 except the following:
 ; - uses RETADDR instead of DATADD

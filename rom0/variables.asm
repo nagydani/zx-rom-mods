@@ -8,7 +8,7 @@
 
 ; 7B REPEAT, 3 bytes: (PPC), (SUBPPC)
 ; 7C WHILE, 5 bytes: (PPC), (SUBPPC), error
-; 7D PROC, 5 bytes: (PPC), (SUBPPC), error
+; 7D PROC, 7 bytes: (DATADD)-(PROG), (PPC), (SUBPPC), error
 ; 7E ON ERROR, 3 bytes (PPC), (SUBPPC)
 ; 7F ERROR, 4 bytes (ERRNO)+1, (PPC), (SUBPPC)
 
@@ -82,7 +82,7 @@ LOC_NA:	CP	C
 	RET			; local variable found
 
 ; structure lengths + 1
-LOC_TAB:DEFB	$04, $06, $06, $04, $05
+LOC_TAB:DEFB	$04, $06, $08, $04, $05
 
 LOC_NX:	LD	A,E
 	CP	$E0
