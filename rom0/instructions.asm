@@ -536,33 +536,6 @@ USR:	CALL	SYNTAX_Z
 	PUSH	BC
 	JR	POKE_SWAP
 
-REPEAT:	POP	DE		; DE = return address
-	LD	HL,(SUBPPC - 1)
-	INC	H
-	EX	(SP),HL		; HL = error address
-	INC	SP		; stack SUBPPC (1 byte)
-	LD	BC,(PPC)
-	PUSH	BC		; stack PPC (2 bytes)
-	PUSH	HL
-	LD	HL,(CH_ADD)
-	AND	A
-	LD	BC,(PROG)
-	SBC	HL,BC
-	EX	(SP),HL		; stack CH_ADD - PROG (2 bytes)
-	PUSH	HL
-	LD	HL,(NXTLIN)
-	SBC	HL,BC
-	EX	(SP),HL		; stack NXTLIN - PROG (2 bytes)
-	LD	BC,$3E00 + REPEAT_M
-	PUSH	BC		; stack marker
-	PUSH	HL		; stack error address
-	LD	(ERR_SP),SP
-	PUSH	DE		; stack return address
-	LD	BC,$0014	; why this much? see $1F02 in ROM1
-	LD	HL,L1F05	; TEST-ROOM
-	PUSH	HL
-REPSW:	JP	SWAP
-
 TEST_ZERO:
 	LD	HL,(STKEND)
 	DEC	HL
@@ -578,7 +551,7 @@ TEST_ZERO:
 	RET
 
 ASSERT:	CALL	TEST_ZERO
-	JR	NZ,REPSW
+	JR	NZ,POKE_SWAP
 ERROR_V:CALL	ERROR
 	DEFB	$1E		; V ASSERT failed
 
@@ -634,7 +607,7 @@ WEND:	LD	(CH_ADD),HL
 	POP	BC		; return address
 	LD	SP,HL		; reclaim locals
 	PUSH	BC
-	JR	UNTSW
+	JR	UNT_SW
 
 UNTIL:	CALL	TEST_ZERO
 	EX	AF,AF'
@@ -669,9 +642,6 @@ UNT_R:	EXX
 	EX	DE,HL
 	JR	UNT_ER		; continue after UNTIL
 
-UNT_NC:	LD	DE,NEWPPC
-	JR	UNT_PPC
-
 UNT_NL:	EX	AF,AF'
 	JR	NZ,END_REP
 	PUSH	DE		; marker
@@ -679,44 +649,24 @@ UNT_NL:	EX	AF,AF'
 	PUSH	BC		; return address
 	LD	HL,$0006
 	ADD	HL,SP
-UNT_C:	LD	BC,(PROG)
-	LD	E,(HL)
+UNT_C:	LD	E,(HL)
 	INC	HL
-	LD	D,(HL)
+	LD	D,(HL)		; DE = (PPC)
 	INC	HL
-	EX	DE,HL
-	ADD	HL,BC
-	LD	(NXTLIN),HL
-	EX	DE,HL
-	LD	E,(HL)
-	INC	HL
-	LD	D,(HL)
-	INC	HL
-	LD	A,D
-	OR	E
-	JR	Z,UNT_NC	; no cache
-	INC	HL
-	LD	A,(HL)
-	DEC	HL
-	INC	A
-	JR	Z,UNT_NC	; swap in command line
-	EX	DE,HL
-	ADD	HL,BC
-	LD	(CH_ADD),HL
-	EX	DE,HL
-	LD	DE,PPC
-UNT_PPC:LD	BC,$0003
-	LDIR
-UNTSW:	JP	SWAP
+	LD	A,(HL)		; A = (SUBPPC)
+	EX	DE,HL		; HL = (PPC)
+	LD	D,A		; D = (SUBPPC)
+GOTO_5:	LD	BC,GOTO_3
+	PUSH	BC
+UNT_SW:	JP	SWAP
 
 END_REP:EX	DE,HL
-	LD	HL,$0007
-	ADD	HL,SP
-	LD	SP,HL
+	POP	HL
+	INC	SP		; SP = SP + 3
 UNT_ER:	PUSH	DE
 UNT_E:	LD	(ERR_SP),SP
 	PUSH	BC
-	JR	UNTSW
+	JR	UNT_SW
 
 ERROR_U:PUSH	DE
 ERROR2U:PUSH	HL
@@ -776,7 +726,7 @@ UPD_X:	PUSH	HL
         LD      BC,$01F2        ; mod with priority 1
 U_NEXT:	LD      HL,L2790        ; S-NEXT
 	PUSH    HL
-REPSW1:	JR      UNTSW
+REPSW1:	JR      UNT_SW
 
 UPDNUM:	LD	HL,UPDTABN
 	CALL	INDEXER
@@ -2045,7 +1995,7 @@ PROC_SE:RST	$20
 
 PROC:	CALL	SYNTAX_Z
 	JR	Z,PROC_S
-	LD	BC,$0016
+	LD	BC,$0012
 	RST	$30
 	DEFW	L1F05		; TEST-ROOM
 	POP	DE		; DE = return address
@@ -2058,16 +2008,6 @@ PROC:	CALL	SYNTAX_Z
 	INC	SP		; stack SUBPPC (1 byte)
 	LD	BC,(PPC)
 	PUSH	BC		; stack PPC (2 bytes)
-	LD	BC,(PROG)
-	PUSH	HL
-	LD	HL,(NXTLIN)
-	AND	A
-	SBC	HL,BC
-	EX	(SP),HL		; stack NXTLIN - PROG
-	PUSH	HL
-	LD	HL,(DATADD)
-	SBC	HL,BC
-	EX	(SP),HL		; stack DATADD - PROG
 	LD	BC,$3E00 + PROC_M
 	PUSH	BC		; stack marker
 	PUSH	HL		; stack error address
@@ -2183,8 +2123,17 @@ PROC_E:	POP	DE		; return address
 	LD	(ERR_SP),SP
 	PUSH	DE
 	RST	$20		; skip closing bracket Of DEF PROC
-PROC_EE:JP	SWAP
+	JR	WHILE_E
 
+REPEAT:	POP	DE		; DE = return address
+	LD	HL,(SUBPPC - 1)
+	INC	H
+	EX	(SP),HL		; HL = error address
+	INC	SP		; stack SUBPPC (1 byte)
+	LD	BC,(PPC)
+	PUSH	BC		; stack PPC (2 bytes)
+	LD	BC,$3E00 + REPEAT_M
+	JR	LOOPFRAME
 
 WHILE:	LD	HL,(CH_ADD)
 	LD	(DEST),HL
@@ -2203,17 +2152,8 @@ WHILE:	LD	HL,(CH_ADD)
 	INC	SP		; stack SUBPPC (1 byte)
 	LD	BC,(PPC)
 	PUSH	BC		; stack PPC (2 bytes)
-	PUSH	HL
-	LD	HL,(DEST)
-	AND	A
-	LD	BC,(PROG)
-	SBC	HL,BC
-	EX	(SP),HL		; stack old CH_ADD - PROG (2 bytes)
-	PUSH	HL
-	LD	HL,(NXTLIN)
-	SBC	HL,BC
-	EX	(SP),HL		; stack NXTLIN - PROG (2 bytes)
 	LD	BC,$3E00 + WHILE_M
+LOOPFRAME:
 	PUSH	BC		; stack marker
 	PUSH	HL		; stack error address
 	LD	(ERR_SP),SP
@@ -2453,13 +2393,8 @@ ONERROR:CALL	SYNTAX_Z
 	INC	SP		; stack SUBPPC (1 byte)
 	LD	HL,(PPC)
 	PUSH	HL		; stack PPC (2 bytes)
-	LD	HL,(CH_ADD)
-	AND	A
-	LD	DE,(PROG)
-	SBC	HL,DE
-	PUSH	HL		; stack CH_ADD - PROG (2 bytes)
 	LD	HL,$3E00 + ONERROR_M
-	PUSH	HL
+	PUSH	HL		; stack marker
 	LD	HL,ONERR_HOOK	; stack new error address
 	PUSH	HL
 	LD	(ERR_SP),SP
@@ -2519,11 +2454,6 @@ ERR_NJ:	LD	A,(HL)
 	LD	(ERR_SP),SP
 	LD	L,C
 	LD	H,B
-	INC	HL
-	LD	C,(HL)
-	INC	HL
-	LD	B,(HL)			; BC = (CH_ADD) - (PROG)
-	INC	HL
 	LD	E,(HL)
 	INC	HL
 	LD	D,(HL)			; DE = (PPC)

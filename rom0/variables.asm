@@ -6,10 +6,10 @@
 ; 41..5A simple string:	2 bytes of max length + 2 bytes of actual length + content
 ; 61..7A simple numeric: 5 bytes
 
-; 7B REPEAT, 7 bytes: (NXTLIN)-(PROG), (CHADD)-(PROG), (PPC), (SUBPPC)
-; 7C WHILE, 9 bytes: (NXTLIN)-(PROG), (CHADD)-(PROG), (PPC), (SUBPPC), error
-; 7D PROC, 9 bytes: (DATADD)-(PROG), (NXTLIN)-(PROG), (PPC), (SUBPPC), error
-; 7E ON ERROR, 5 bytes (CHADD)-(PROG), (PPC), (SUBPPC)
+; 7B REPEAT, 3 bytes: (PPC), (SUBPPC)
+; 7C WHILE, 5 bytes: (PPC), (SUBPPC), error
+; 7D PROC, 5 bytes: (PPC), (SUBPPC), error
+; 7E ON ERROR, 3 bytes (PPC), (SUBPPC)
 ; 7F ERROR, 4 bytes (ERRNO)+1, (PPC), (SUBPPC)
 
 ; 81..9A string function (reserved)
@@ -82,7 +82,7 @@ LOC_NA:	CP	C
 	RET			; local variable found
 
 ; structure lengths + 1
-LOC_TAB:DEFB	$08, $0A, $0A, $06, $05
+LOC_TAB:DEFB	$04, $06, $06, $04, $05
 
 LOC_NX:	LD	A,E
 	CP	$E0
