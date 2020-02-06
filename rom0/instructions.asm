@@ -1037,17 +1037,9 @@ STACKL:	LD	DE,STACKE
 	CALL	ST_NUMV
 	LD	A," "
 	RST	$10
-	CALL	ST_SMTV
-ST_REF:	INC	HL
-	INC	HL
-	INC	HL
-	INC	HL		; skip destination cache
-	RET
+	JR	ST_SMTV
 
-STACKE:	LD	A,(HL)
-	CP	$80
-	CALL	Z,ST_REF
-ST_NREF:LD	A,$0D
+STACKE:	LD	A,$0D
 	RST	$10
 	JR	STACKL
 
@@ -1068,9 +1060,12 @@ ST_ERR:	LD	A,STOP_T
 	CALL	PR_DIGIT
 	LD	A," "
 	RST	$10
+	INC	HL
 	JR	ST_ON2
 
 ST_PRC:	LD	A,PROC_T
+	INC	HL
+	INC	HL
 ST_PRCR:CALL	ST_CTX
 	INC	HL
 	INC	HL		; skip duplicated error address
@@ -1078,37 +1073,42 @@ ST_PRCR:CALL	ST_CTX
 
 ST_ONE:	LD	A,ONERROR_T
 	RST	$10
-	JR	ST_ON1
+ST_ON2:	INC	HL
+	JR	ST_SMTV
 
 ST_WHL:	LD	A,WHILE_T
 	JR	ST_PRCR
 
+ST_GOSUB:
+	LD	A,GOSUB_T
+	RST	$10
+	JR	ST_STMT
+
 ST_REP:	LD	A,REPEAT_T
 ST_CTX:	RST	$10
-	INC	HL
-	INC	HL
-ST_ON1:	INC	HL
-ST_ON2:	INC	HL		; skip destination cache
 ST_SMTV:LD	C,(HL)
 	INC	HL
 	LD	B,(HL)
 	INC	HL
 ST_STMT:LD	A,AT_T
 	RST	$10
+	PUSH	HL
+	LD	HL,(PROG)
+	AND	A
+	SBC	HL,BC
+	LD	B,(HL)
+	INC	HL
+	LD	C,(HL)
 	RST	$30
 	DEFW	L1A1B		; OUT-NUM-1
 	LD	A,":"
 	RST	$10
+	POP	HL
 	LD	A,(HL)
 	DEC	A
 	CALL	DECBYTE
 	INC	HL
 	RET
-
-ST_GOSUB:
-	LD	A,GOSUB_T
-	RST	$10
-	JR	ST_STMT
 
 ST_VAR:	LD	A,LOCAL_T
 	RST	$10
@@ -1320,12 +1320,12 @@ SKIP_NUM:
 ; Handling argumentless NEXT
 LV_CONT:LD	A,(T_ADDR)
 	CP	$99		; interpreting NEXT?
-	JP	NZ,SWAP		; return, if not
+	JR	NZ,SW_LV	; return, if not
 	RST	$18		; get the character following NEXT
 	CP	$0D		; CR?
 	JR	Z,NEXT		; if so, it's an argumentless NEXT
 	CP	":"		; colon?
-	JP	NZ,SWAP		; return, if not
+SW_LV:	JP	NZ,SWAP		; return, if not
 NEXT:	POP	BC
 	POP	BC
 	POP	BC		; discard return addresses
@@ -1335,13 +1335,17 @@ NEXT:	POP	BC
 	ADD	A,A
 	JR	NC,ERROR_1
 	PUSH	HL
+	INC	HL
+	LD	(MEM),HL
+	RST	$28		; same calculator command as in NEXT
+	DEFB	$E0,$E2,$0F,$C0,$02,$38
 	RST	$30
-	DEFW	X1DB9		; execute NEXT
+	DEFW	L1DDA		; NEXT-LOOP
 	LD	HL,MEMBOT
 	LD	(MEM),HL	; much faster than RST	$30:DEFW X16CB, not worth 3 bytes
 	POP	HL
-	JP	NC,SWAP		; execute loop body again
-	LD	BC,$0017	; jump over loop variable
+	JR	NC,NEXT_LP	; execute loop body again
+	LD	BC,$0013	; jump over loop variable
 	ADD	HL,BC
 	POP	BC		; save return address
 	POP	DE		; save error address
@@ -1350,6 +1354,10 @@ NEXT:	POP	BC
 	LD	(ERR_SP),SP
 NEXT_SW:PUSH	BC		; restore return address
 	JP	SWAP
+
+NEXT_LP:LD	BC,$0010
+	ADD	HL,BC
+	JP	UNT_C
 
 ERROR_1:RST	$30
 	DEFW	REPORT1 + 3	; 1 NEXT without FOR

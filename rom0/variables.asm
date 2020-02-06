@@ -14,7 +14,7 @@
 
 ; 81..9A string function (reserved)
 ; A1..BA numeric function (reserved)
-; E1..FA for loop variable: 22 bytes: value, target, step, (PPC), (SUBPPC), (NXTLIN-PROG), (CHADD)-(PROG)
+; E1..FA for loop variable: 18 bytes: value, target, step, (PPC), (SUBPPC)
 
 
 REPEAT_M:	EQU	$7B
@@ -27,7 +27,7 @@ ERROR_M:	EQU	$7F
 SKIP_LL:CALL	SKIP_LC
 SKIPLL:	CP	ERROR_M + 1
 	RET	C
-	LD	DE,$0017
+	LD	DE,$0013
 	ADD	HL,DE
 	CALL	LOC_L
 	JR	SKIPLL
@@ -123,7 +123,7 @@ LC_LL:	JR	C,LC_FND
 	ADD	A,A
 	JR	Z,LC_LOOP
 	JR	NC,LC_LOOP	; not a loop variable
-	LD	DE,$0017	; skip loop variable
+	LD	DE,$0013	; skip loop variable
 	ADD	HL,DE
 LC_LOOP:CALL	LOC_L
 	JR	LC_LL
@@ -288,14 +288,14 @@ STRNG_LONG:
 
 ; LET substitute for FOR
 FOR_CONT:
-	LD	BC,22		; enough space for a FOR loop
+	LD	BC,18		; enough space for a FOR loop
 	RST	$30
 	DEFW	L1F05		; TEST-ROOM
 	POP	DE		; discard return address
 	POP	DE		; discard return address
 	POP	DE		; save return address
 	POP	BC		; save error address
-	LD	HL,-22		; 22 bytes for a FOR loop
+	LD	HL,-18		; 18 bytes for a FOR loop
 	ADD	HL,SP
 	LD	(MEM),HL	; set calculator memory area
 	LD	SP,HL
