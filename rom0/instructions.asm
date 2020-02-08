@@ -2897,7 +2897,8 @@ ERROR_8:RST	$30
 	DEFW	L15E4		; 8 End of file
 
 READ_STR:
-	BIT	0,(IY+$37)	; FLAGX, complete string?
+	LD	A,(FLAGX)
+	AND	3		; FLAGX, complete string?
 	JR	NZ,READ_C	; jump, if so
 	LD	BC,(STRLEN)
 	LD	DE,(DEST)
@@ -2926,6 +2927,7 @@ READ_CL:RST	$30
 	LD	A,$FF		; system channel "R"
 	RST	$30
 	DEFW	L1601		; CHAN-OPEN
+	EX	AF,AF'
 	RST	$10		; add to string
 	POP	HL
 	LD	(CURCHL),HL
@@ -2940,8 +2942,8 @@ READ_CL:RST	$30
 	POP	BC		; length
 	SCF
 	ADC	HL,BC		; CF set if OOM
-	POP	DE		; start
 	JR	NC,READ_CL
+	POP	DE		; start
 READEE:	RST	$30
 	DEFW	L2AB2		; STK-STO
 	JR	READ_A

@@ -142,13 +142,13 @@ CH_JP:	LD	H,CH_KO/$100
 RAMNMI:	CALL	SWAP
 	JP	NMIVEC
 
-	DEFS	2
 ; Renumber
 RCLINE:	DEFS	2		; current line being renumbered
 RCSTART:DEFW	10		; starting line number for renumbering
 RCSTEP:	DEFW	10		; step for renumbering
 ; PLAY tempo
 TEMPO:	DEFB	120		; in BPM for PLAY
+PLAY_ST:DEFS	2		; PLAY state
 ; K/S states
 K_STATE:DEFB	$00
 K_WIDTH:DEFB	$21

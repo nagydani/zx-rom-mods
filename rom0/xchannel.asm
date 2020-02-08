@@ -375,11 +375,8 @@ SWAP_SYSVARS:
 	LDDR
 	EX	DE,HL
 	POP	BC	; RET address
-	DEC	L
-	LD	(HL),B
-	DEC	L
-	LD	(HL),C	; moved to temporary stack
 	LD	SP,HL
+	PUSH	BC	; moved to temporary stack
 	LD	BC,$7FFD
 	LD	(BANK_M),A
 	OUT	(C),A
