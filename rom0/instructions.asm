@@ -1323,15 +1323,25 @@ SKIP_NUM:
 	LD	A,(HL)
 	RET
 
-; Handling argumentless NEXT
+LV_DIM:	CP	$A3		; interpreting DIM?
+	JR	NZ,SW_LV	; return, if not
+	POP	AF		; discard return address
+	XOR	A
+	LD	(DEFADD+1),A	; look for globals only
+	RST	$30
+	DEFW	L28B2		; LOOK-VARS
+	LD	(IY+DEFADD+1-ERR_NR),1	; restore without changing flags
+	JR	SW_LV		; return to DIM
+
+; Handling DIM and argumentless NEXT
 LV_CONT:LD	A,(T_ADDR)
 	CP	$99		; interpreting NEXT?
-	JR	NZ,SW_LV	; return, if not
+	JR	NZ,LV_DIM	; check DIM, if not
 	RST	$18		; get the character following NEXT
 	CP	$0D		; CR?
 	JR	Z,NEXT		; if so, it's an argumentless NEXT
 	CP	":"		; colon?
-SW_LV:	JP	NZ,SWAP		; return, if not
+	JR	NZ,SW_LV	; return, if not
 NEXT:	POP	BC
 	POP	BC
 	POP	BC		; discard return addresses
@@ -1359,7 +1369,7 @@ NEXT:	POP	BC
 	PUSH	DE		; restore error address
 	LD	(ERR_SP),SP
 NEXT_SW:PUSH	BC		; restore return address
-	JP	SWAP
+SW_LV:	JP	SWAP
 
 NEXT_LP:LD	BC,$0010
 	ADD	HL,BC

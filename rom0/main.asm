@@ -2224,7 +2224,10 @@ STACKSWAP:
 	INCLUDE "variables.asm"
 	INCLUDE	"instructions.asm"
 
-; channel service routines
+
+	DEFS	INFIX_HOOK - 24 - $
+
+; channel service routines (24 bytes)
 CH_PO:	JP	PR_OUT
 CH_PI:	JP	PR_IN
 CH_KO:	JP	K_OUT
@@ -2234,7 +2237,6 @@ CH_XI:	JP	X_IN
 CH_NO:	JP	NEW_X_OUT
 CH_NI:	JP	NEW_X_IN
 
-	DEFS	INFIX_HOOK - $
 ; jump table from ROM1
 	JP	INDEX_CONT
 	JP	INFIX_CONT
