@@ -14992,7 +14992,7 @@ L2BF1:  LD      HL,(STKEND)      ; STKEND
 
 ;; DIM
 ;;; BUGFIX: only global variables
-L2C02:  CALL    LOOK_GLOBAL
+L2C02:  CALL    LOOP_VARS
 ;;;L2C02:  CALL    L28B2           ; routine LOOK-VARS
 
 ;; D-RPORT-C
@@ -20476,15 +20476,6 @@ ROWLOOP:RLCA
 COLLOOP:RRCA
 	DJNZ	COLLOOP
 	RET
-
-; Look for global variables
-LOOK_GLOBAL:
-	LD	HL,DEFADD+1
-	XOR	A
-	CP	(HL)
-	LD	(HL),A
-	JP	Z,L28B2			; LOOK-VARS
-	JP	RUN_HOOK
 
 ; Print current line number
 OUT_PPC:LD	A,$FF
