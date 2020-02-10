@@ -8887,17 +8887,17 @@ L1BBF:  CP      $01             ; will set carry if zero.
         ADC     A,$00           ; add in any carry.
 
 ;;; BUGFIX: PPC holds PROG offset to current line, not its number
-	EX	DE,HL
-	CALL	STORE_PPC
-;;;
-        LD      D,(HL)          ; high byte of line number to D.
-        INC     HL              ; advance pointer.
-        LD      E,(HL)          ; low byte of line number to E.
-;;; BUGFIX: PPC holds pointer to current line, not its number
-;;;        LD      (PPC),DE      ; set system variable PPC.
+	EX	DE,HL		;  4
+	LD	HL,(PROG)	; 16
+	CALL	STORE_PPC	; 17 + 53 = 70 T-states
+	EX	DE,HL		; +4 = 94 T-states
 
-        INC     HL              ; advance pointer.
-        LD      E,(HL)          ; low byte of line length to E.
+;;;        LD      D,(HL)          ; high byte of line number to D.	 7
+;;;        INC     HL              ; advance pointer.			13
+;;;        LD      E,(HL)          ; low byte of line number to E.	20
+;;;        LD      (PPC),DE      ; set system variable PPC.		40
+;;;        INC     HL              ; advance pointer.			46 T-states
+LINE_DO:LD      E,(HL)          ; low byte of line length to E.
         INC     HL              ; advance pointer.
         LD      D,(HL)          ; high byte of line length to D.
 
@@ -13679,7 +13679,7 @@ L2852:  INC     HL              ; now address first of 5-byte location.
 
         XOR     (IY+$01)        ; xor with FLAGS
         AND     $40             ; and with 01000000 to test bit 6
-        JR      NZ,L288B        ; forward to REPORT-Q if type mismatch.
+        JR      NZ,REPORT_Q	; forward to REPORT-Q if type mismatch.
                                 ; 'Parameter error'
 
         POP     HL              ; pop the start address in DEF FN statement
@@ -13706,7 +13706,7 @@ L2852:  INC     HL              ; now address first of 5-byte location.
 
         RST     18H             ; GET-CHAR from FN statement
         CP      $2C             ; is it ',' ?
-        JR      NZ,L288B        ; forward to REPORT-Q if not
+        JR      NZ,REPORT_Q	; forward to REPORT-Q if not
                                 ; 'Parameter error'
 
         RST     20H             ; NEXT-CHAR in FN statement advances to next
@@ -13730,15 +13730,18 @@ SFRBR2:	PUSH    HL              ; save location of ')' in DEF FN
 
         RST     18H             ; GET-CHAR gets next character in FN
         CP      $29             ; is it a ')' also ?
-        JR      Z,L288D         ; forward to SF-VALUE if so.
-
+        JR      Z,SF_VALUE	; forward to SF-VALUE if so.
 
 ;; REPORT-Q
-L288B:  RST     08H             ; ERROR-1
+;;;L288B:
+REPORT_Q:
+	RST     08H             ; ERROR-1
         DEFB    $19             ; Error Report: Parameter error
 
 ;; SF-VALUE
-L288D:  POP     DE              ; location of ')' in DEF FN to DE.
+;;;L288D:
+SF_VALUE:
+	POP     DE              ; location of ')' in DEF FN to DE.
         EX      DE,HL           ; now to HL, FN ')' pointer to DE.
         LD      (CH_ADD),HL      ; initialize CH_ADD to this value.
 
@@ -20508,11 +20511,12 @@ GOTO_2:	JP	C,L1E73		; GO-TO-2
 	CP	L
 	JR	C,GOTO_2	; GO-TO-2
 GOTO_4:	LD	A,D
+	LD	(PPC),HL
 	EX	DE,HL
 	POP	HL		; discard STMT-RET
 	LD	HL,(PROG)
 	SBC	HL,DE
-	JP	L1BBF		; LINE-USE
+	JP	LINE_DO
 
 ; Reverse calculator stack
 ;;REVERSE_STACK:
@@ -20627,7 +20631,7 @@ FTOK_N_R1:
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
 
-	DEFS	$3C03 - $, $FF
+	DEFS	$3C06 - $, $FF
 
 ; Test one keyword
 ; Input: HL text to match, B length of text, DE keyword to check, C=0
@@ -20699,16 +20703,15 @@ CLN_DO:	EX	DE,HL
 	DEC	A
 	RET
 
-; Store PPC (11 bytes)
-; In: curent line address in DE
-; Out:  current line address in HL
+; Store PPC (8 bytes)
+; In: DE=curent line address, HL=(PROG)
+; Out:  current line address + 2 in DE
 STORE_PPC:
-	LD	HL,(PROG)
-	AND	A
-	SBC	HL,DE
-	LD	(PPC),HL
-	EX	DE,HL
-	RET
+	INC	DE		;  6
+	INC	DE		; 12
+	SBC	HL,DE		; 27
+	LD	(PPC),HL	; 43
+	RET			; 53 T-states
 
 VTYPET:	DEFB	SKSTR - $		; 010 string
 	DEFB	SKNUM - $		; 011 numeric
