@@ -20479,10 +20479,12 @@ COLLOOP:RRCA
 
 ; Look for global variables
 LOOK_GLOBAL:
-	LD	(IY+DEFADD+1-ERR_NR),0	; disable locals
-	CALL	L28B2			; LOOK-VARS
-	LD	(IY+DEFADD+1-ERR_NR),1	; enable locals
-	RET
+	LD	HL,DEFADD+1
+	XOR	A
+	CP	(HL)
+	LD	(HL),A
+	JP	Z,L28B2			; LOOK-VARS
+	JP	RUN_HOOK
 
 ; Print current line number
 OUT_PPC:LD	A,$FF
