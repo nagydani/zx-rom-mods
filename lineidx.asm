@@ -39,10 +39,26 @@ DELIDX:	CALL	CHKIDX
 	POP	DE
 	RET
 
+; Rebuild index, if PROG has moved
+IDX_RE:	EX	DE,HL		; index start to DE
+	CALL	IDXLNS		; rebuild the index
+	POP	HL		; restore line number
+; Search for line with a given number
+; In: HL target line number
+; Out: HL start address of the target line (if found) or the first line after, ZF set, if line found
 LINE_ADDR:
-	PUSH	HL
+	PUSH	HL		; save line number
 	CALL	CHKIDX
 	JP	Z,L196E + 1	; LINE-ADDR + 1, linear search if no index
+	PUSH	HL		; save index start
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)		; first entry in the index
+	LD	HL,(PROG)
+	AND	A
+	SCB	HL,DE		; check, if it matches PROG
+	POP	HL		; restore index start
+	JR	NZ,IDX_RE	; rebuild index, if needed
 IDXUSE:	LD	A,B
 	OR	A
 	LD	A,C
