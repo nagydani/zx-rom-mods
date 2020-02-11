@@ -61,7 +61,7 @@ LINE_ADDR:
 	LD	D,(HL)		; first entry in the index
 	LD	HL,(PROG)
 	AND	A
-	SCB	HL,DE		; check, if it matches PROG
+	SBC	HL,DE		; check, if it matches PROG
 	POP	HL		; restore index start
 	JR	NZ,IDX_RE	; rebuild index, if needed
 IDXUSE:	LD	A,B
