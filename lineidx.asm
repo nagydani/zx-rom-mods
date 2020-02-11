@@ -4,7 +4,6 @@ L1980:	EQU	$1980
 	ORG	$8000
 
 ; Test code
-	call MKIDX		; create index
 	ld hl,9999		; check for every possible line number
 testl:	push hl			; save line number
 	call L196E		; linear search
@@ -39,6 +38,12 @@ DELIDX:	CALL	CHKIDX
 	POP	DE
 	RET
 
+; things to do, when there is no index
+NOIDX:	CALL	MKIDX		; attempt to create it
+	CALL	CHKIDX		; check, if we succeeded
+	JR	NZ,IDXUSE	; use it, if we did
+	JP	L196E + 1	; LINE-ADDR + 1, linear search if still no index
+
 ; Rebuild index, if PROG has moved
 IDX_RE:	EX	DE,HL		; index start to DE
 	CALL	IDXLNS		; rebuild the index
@@ -49,7 +54,7 @@ IDX_RE:	EX	DE,HL		; index start to DE
 LINE_ADDR:
 	PUSH	HL		; save line number
 	CALL	CHKIDX
-	JP	Z,L196E + 1	; LINE-ADDR + 1, linear search if no index
+	JR	Z,NOIDX		; do stuff, if there is no index
 	PUSH	HL		; save index start
 	LD	E,(HL)
 	INC	HL
