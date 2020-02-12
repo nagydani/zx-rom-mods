@@ -6187,9 +6187,7 @@ X1349:	XOR     A               ; clear accumulator to directly
                                 ; be more succinct to use RST $10.
 
         LD      BC,(PPC)      ; fetch PPC the current line number.
-;;; BUGFIX: PPC holds the PROG-offset of the current line, not its number
-	CALL	OUT_PPC
-;;;        CALL    L1A1B           ; routine OUT-NUM-1 will print that
+        CALL    L1A1B           ; routine OUT-NUM-1 will print that
 
         LD      A,$3A           ; then a ':' character.
         RST     10H             ; PRINT-A
@@ -6334,7 +6332,7 @@ L1555:  LD      A,$10           ; i.e. 'G' -$30 -$07
 
 ;;; BUGFIX: perform some housekeeping before adding a line
 MAIN_ADD:
-	CALL	LINEREF		; turns PROG offsets to line numbers
+	CALL	MAINADD_HOOK	; additional housekeeping before adding a line
 ; -----------------------------
 ; Handle addition of BASIC line
 ; -----------------------------
@@ -8885,19 +8883,12 @@ L1BB3:  CALL    L2530           ; routine SYNTAX-Z  (UNSTACK-Z?)
 ;; LINE-USE
 L1BBF:  CP      $01             ; will set carry if zero.
         ADC     A,$00           ; add in any carry.
-
-;;; BUGFIX: PPC holds PROG offset to current line, not its number
-	EX	DE,HL		;  4
-	LD	HL,(PROG)	; 16
-	CALL	STORE_PPC	; 17 + 53 = 70 T-states
-	EX	DE,HL		; +4 = 94 T-states
-
-;;;        LD      D,(HL)          ; high byte of line number to D.	 7
-;;;        INC     HL              ; advance pointer.			13
-;;;        LD      E,(HL)          ; low byte of line number to E.	20
-;;;        LD      (PPC),DE      ; set system variable PPC.		40
-;;;        INC     HL              ; advance pointer.			46 T-states
-LINE_DO:LD      E,(HL)          ; low byte of line length to E.
+        LD      D,(HL)          ; high byte of line number to D.
+        INC     HL              ; advance pointer.
+        LD      E,(HL)          ; low byte of line number to E.
+        LD      (PPC),DE	; set system variable PPC.
+        INC     HL              ; advance pointer.
+	LD      E,(HL)          ; low byte of line length to E.
         INC     HL              ; advance pointer.
         LD      D,(HL)          ; high byte of line length to D.
 
@@ -9579,9 +9570,7 @@ X1DB9:	INC     HL              ; step past variable name
         INC     HL              ; address looping statement
         LD      H,(HL)          ; and store in H
         EX      DE,HL           ; swap registers
-;;; BUGFIX: Use PROG offset in HL
-	JP	GOTO_3
-;;;	JP      L1E73           ; exit via GO-TO-2 to execute another loop.
+	JP      L1E73           ; exit via GO-TO-2 to execute another loop.
 
 ; ---
 
@@ -10111,9 +10100,7 @@ L1F23:  POP     BC              ; drop the address STMT-RET.
         EX      DE,HL           ; statement to D,  BASIC line number to HL.
         LD      (ERR_SP),SP      ; adjust ERR_SP to point to new stack pointer
         PUSH    BC              ; now re-stack the address STMT-RET
-;;; BUGFIX: use the PROG offset in HL
-	JP	GOTO_3
-;;;	JP      L1E73           ; to GO-TO-2 to update statement and line
+	JP      L1E73           ; to GO-TO-2 to update statement and line
                                 ; system variables and exit indirectly to the
                                 ; address just pushed on stack.
 
@@ -20480,61 +20467,11 @@ COLLOOP:RRCA
 	DJNZ	COLLOOP
 	RET
 
-; Print current line number
-OUT_PPC:LD	A,$FF
-	CP	B
-	JR	NZ,PPC_DO
-	DEC	A
-	CP	C
-	JR	Z,OUT_NUM
-PPC_DO:	LD	HL,(PROG)
-	SBC	HL,BC
-	LD	B,(HL)
-	INC	HL
-	LD	C,(HL)
-OUT_NUM:JP	L1A1B		; OUT-NUM-1
-
-; CONTINUE moved out of the way of GO TO
+; CONTINUE moved out of the way of GO TO (9 bytes)
 CONTINUE:
 	LD	HL,(OLDPPC)
 	LD	D,(IY+$36)	; fetch OSPPC statement.
-; Jump to line number or PROG offset in HL
-GOTO_3:	LD	A,H
-	OR	L
-	JR	Z,GOTO_4	; line 0 is always at offset 0
-	LD	A,H
-	CP	$3E
-GOTO_2:	JP	C,L1E73		; GO-TO-2
-	INC	A
-	JR	NZ,GOTO_4
-	LD	A,$FD
-	CP	L
-	JR	C,GOTO_2	; GO-TO-2
-GOTO_4:	LD	A,D
-	LD	(PPC),HL
-	EX	DE,HL
-	POP	HL		; discard STMT-RET
-	LD	HL,(PROG)
-	SBC	HL,DE
-	JP	LINE_DO
-
-; Reverse calculator stack
-;;REVERSE_STACK:
-;;	LD	DE,(STKBOT)
-;;	LD	HL,(STKEND)
-; Reverse numeric array
-; In: DE=beginning, HL=past end
-;;REVERSE:LD	BC,-5
-;;	ADD	HL,BC
-;;	AND	A
-;;	SBC	HL,DE
-;;	RET	C
-;;	RET	Z
-;;	ADD	HL,DE
-;;	PUSH	HL
-;;	CALL	EXCHANGE
-;;	POP	HL
-;;	JR	REVERSE
+	JP	L1E73		; GO-TO-2
 
 ; Local variables in 128k mode (6 bytes)
 STK_F_ARG:
@@ -20562,13 +20499,6 @@ BORDER:	RLCA
 	XOR	B
 	OUT	($FF),A
 	LD	A,B
-	RET
-
-; Change RETURN targets (8 bytes)
-RETLNS:	INC	HL
-	INC	HL
-	CALL	CLNREF
-	JR	NZ,RETLNS
 	RET
 
 ; Abstracted NEW routine (6 bytes)
@@ -20631,7 +20561,7 @@ FTOK_N_R1:
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
 
-	DEFS	$3C06 - $, $FF
+	DEFS	$3C78 - $, $FF
 
 ; Test one keyword
 ; Input: HL text to match, B length of text, DE keyword to check, C=0
@@ -20673,99 +20603,6 @@ SPACEKW_R1:
 	JR	Z,TESTKW_R1
 	DEC	DE
 	JR	TESTKW2_R1
-
-; Change PROG offset at HL to line number
-; In: HL - pointer to line reference
-; Out: ZF set for end marker, HL incremented
-CLNREF:	LD	C,(HL)
-	INC	HL
-	LD	A,(HL)
-	CP	$3E
-	RET	Z
-	RET	C
-	LD	B,A
-	INC	A
-	JR	NZ,CLN_DO
-	LD	A,$FD
-	CP	C
-	RET	C
-CLN_DO:	EX	DE,HL
-	LD	HL,(PROG)
-	SBC	HL,BC
-	LD	B,(HL)
-	INC	HL
-	LD	C,(HL)
-	EX	DE,HL
-	LD	(HL),B
-	DEC	HL
-	LD	(HL),C
-	INC	HL
-	DEC	A
-	RET
-
-; Store PPC (8 bytes)
-; In: DE=curent line address, HL=(PROG)
-; Out:  current line address + 2 in DE
-STORE_PPC:
-	INC	DE		;  6
-	INC	DE		; 12
-	SBC	HL,DE		; 27
-	LD	(PPC),HL	; 43
-	RET			; 53 T-states
-
-VTYPET:	DEFB	SKSTR - $		; 010 string
-	DEFB	SKNUM - $		; 011 numeric
-	DEFB	SKSTR - $		; 100 numeric array
-	DEFB	SKLNUM - $		; 101 numeric long name
-	DEFB	SKSTR - $		; 110 character array
-	DEFB	CHFOR - $		; 111 for variable
-
-SKSTR:	LD	C,(HL)
-	INC	HL
-	LD	B,(HL)
-	INC	HL
-	DEFB	$11			; LD DE,skip two bytes
-SKNUM:	LD	C,5
-	ADD	HL,BC
-	JR	NXTREF
-SKLNUM:	BIT	7,(HL)
-	INC	HL
-	JR	Z,SKLNUM
-	JR	SKNUM
-CHFOR:	LD	C,3*5
-	ADD	HL,BC
-	CALL	CLNREF
-	INC	HL
-	INC	HL
-	JR	NXTREF
-
-; Change all PROG offsets to line numbers
-LINEREF:PUSH	BC
-	LD	HL,OLDPPC
-	CALL	CLNREF
-	LD	HL,(ERR_SP)
-	CALL	RETLNS
-	LD	HL,(VARS)
-NXTREF:	LD	A,(HL)
-	CP	$80
-	POP	BC
-	JR	Z,MAINADD_HOOK
-	RLCA
-	RLCA
-	RLCA
-	AND	7
-	EX	DE,HL
-	PUSH	BC
-	LD	C,A
-	LD	B,0
-	LD	HL,VTYPET - 2
-	ADD	HL,BC
-	LD	C,(HL)
-	ADD	HL,BC
-	PUSH	HL
-	EX	DE,HL
-	INC	HL
-	RET
 
 ; Abstracted PLOT routine (high speed)
 PLOT:	BIT	4,(IY+FLAGS-ERR_NR)
