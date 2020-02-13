@@ -1,48 +1,27 @@
-	INCLUDE	"sysvars.asm"
-L196E:	EQU	$196E
-L1980:	EQU	$1980
-	ORG	$8000
+; LOAD control (8 bytes)
+LDCTRL:	PUSH	HL
+	CALL	DELIDX
+	POP	HL
+	JP	L0808		; LD-CONTRL
 
-; Test code
-	ld hl,9999		; check for every possible line number
-testl:	push hl			; save line number
-	call L196E		; linear search
-	ex (sp),hl		; save result, get line number
-	push hl			; save line number
-	call LINE_ADDR		; binary search
-	ex (sp),hl		; save result, get line number
-	ex de,hl		; line number to DE
-	pop hl			; binary search result to HL
-	pop bc			; linear search result to BC
-	and a			; clear CF
-	sbc hl,bc		; check the two results match
-	ex de,hl		; line number to HL
-	dec hl
-	ld a,h
-	or l
-	jr nz,testl
+; MERGE control (6 bytes)
+MECTRL:	CALL	DELIDX
+	JP	L08B6		; ME-CONTRL
 
-; Delete index, if exists
+; Delete index, if exists (11 bytes)
 DELIDX:	CALL	CHKIDX
 	RET	Z
-	PUSH	HL
-	SBC	HL,SP
-	LD	C,L
-	LD	B,H
-	POP	HL
-	DEC	HL
-	LDDR
-	EX	DE,HL
-	INC	HL
-	LD	SP,HL
-	POP	DE
+	INC	BC
+	INC	BC
+	CALL	L19E8		; RECLAIM-2
+	DEC	(HL)
 	RET
 
-; things to do, when there is no index
+; things to do, when there is no index (11 bytes)
 NOIDX:	CALL	MKIDX		; attempt to create it
 	CALL	CHKIDX		; check, if we succeeded
 	JR	NZ,IDXUSE	; use it, if we did
-	JP	L196E + 1	; LINE-ADDR + 1, linear search if still no index
+	JP	L196E + 1	; LINE-ADDR + 1, linear search if not
 
 ; Rebuild index, if PROG has moved
 IDX_RE:	EX	DE,HL		; index start to DE
@@ -97,63 +76,51 @@ CHKMID:	PUSH	HL
 	INC	BC
 IDX_LO:	RES	0,C
 	JR	IDXUSE
+
+; Short index, use linear search (7 bytes)
 IDXSHRT:LD	A,(HL)
 	INC	HL
 	LD	H,(HL)
 	LD	L,A
 	JP	L196E + 4	; LINE-ADDR + 4
 
-; Check if index exists
-; Out:	ZF reset, it index exists, BC index length, HL index start, DE index end
-CHKIDX:	LD	HL,(RAMTOP)
-	LD	A,$3E
-	LD	B,(HL)
-	CP	B
+; Check if index exists (15 bytes)
+; Out:	ZF reset, it index exists, BC index length, HL index start
+CHKIDX:	LD	HL,(WORKSP)
+	DEC	HL
+	BIT	0,(HL)
 	RET	Z
-	LD	E,L
-	LD	D,H
+	DEC	HL
+	LD	B,(HL)
 	DEC	HL
 	LD	C,(HL)
+	AND	A
 	SBC	HL,BC
 	RET
 
 ; Create index, if there's enough room for it
 MKIDX:	LD	DE,0
 	CALL	IDXLNS
-	LD	HL,(STKEND)
+	LD	A,D
+	OR	E
+	RET	Z		; no empty index
 	EX	DE,HL
+	INC	HL		; 2 bytes for the length
 	ADD	HL,HL
 	LD	C,L
-	LD	B,H		; BC=index length
-	ADD	HL,DE
-	RET	C		; no room for index
-	LD	DE,$0052	; 80 bytes for stack, 2 bytes for index length
-	ADD	HL,DE
-	RET	C		; no room for index
-	SBC	HL,SP
-	RET	NC		; no room for index
-	PUSH	BC
-	LD	HL,$FFFF
-	SBC	HL,BC		; HL = -BC-2
-	ADD	HL,SP		; HL = new SP
-	LD	SP,HL		; set new SP
-	ADC	HL,BC
-	INC	HL		; HL = old SP
-	EX	DE,HL		; DE = old sp
-	LD	HL,(RAMTOP)
+	LD	B,H
+	RST	$30
+	LD	(HL),$81
 	INC	HL
-	SBC	HL,DE		; HL = size of stack to move
-	LD	C,L
-	LD	B,H		; BC = size of stack to move
-	LD	HL,0
-	ADD	HL,SP		; HL = new SP
-	EX	DE,HL
-	LDIR			; move stack
-	POP	BC
+	LD	(WORKSP),HL
 	DEC	HL
+	DEC	HL
+	DEC	BC
+	DEC	BC
 	LD	(HL),B
 	DEC	HL
 	LD	(HL),C
+	DEC	DE
 
 ; Index lines
 ; In: DE=0 for line counting or the address of the index, for building
@@ -178,4 +145,5 @@ IDXCNT:	INC	DE		; increment counter or advance address
 	INC	HL
 	ADD	HL,BC		; HL points to next line
 	JR	IDXLNL
+
 
