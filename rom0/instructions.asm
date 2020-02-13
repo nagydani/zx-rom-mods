@@ -573,13 +573,27 @@ ENDWHILE:
 	LD	DE,(CH_ADD)	; execution pointer
 	PUSH	DE		; save it
 	DEC	HL
+
 	LD	A,(HL)		; A=(SUBPPC)
 	DEC	HL
 	LD	D,(HL)
 	DEC	HL
 	LD	E,(HL)		; DE=(PPC)
-	CALL	SEEK_PROG
-	LD	(CH_ADD),HL
+
+	PUSH	AF
+	EX	DE,HL
+	RST	$30
+	DEFW	LINE_ADDR
+	JP	NZ,ERROR_N
+	INC	HL
+	INC	HL		; skip line number
+	INC	HL
+	INC	HL		; skip line length
+	POP	DE
+	DEC	D
+	LD	E,0
+	RST	$30
+	DEFW	L198B		; EACH-STMT
 	RST	$20		; skip WHILE token
 	RST	$30
 	DEFW	L24FB		; SCANNING
@@ -645,7 +659,7 @@ UNT_C:	LD	E,(HL)
 	LD	A,(HL)		; A = (SUBPPC)
 	EX	DE,HL		; HL = (PPC)
 	LD	D,A		; D = (SUBPPC)
-GOTO_5:	LD	BC,GOTO_3
+GOTO_5:	LD	BC,L1E73	; GO-TO-2
 	PUSH	BC
 UNT_SW:	JP	SWAP
 
@@ -1098,11 +1112,8 @@ ST_SMTV:LD	C,(HL)
 ST_STMT:LD	A,AT_T
 	RST	$10
 	PUSH	HL
-	LD	A,B
-	CP	$3F
-	JR	C,ST_LN
 	RST	$30
-	DEFW	OUT_PPC
+	DEFW	L1A1B		; OUT-NUM-1
 ST_REF:	LD	A,":"
 	RST	$10
 	POP	HL
@@ -1111,10 +1122,6 @@ ST_REF:	LD	A,":"
 	CALL	DECBYTE
 	INC	HL
 	RET
-
-ST_LN:	RST	$30
-	DEFW	OUT_NUM
-	JR	ST_REF
 
 ST_VAR:	LD	A,LOCAL_T
 	RST	$10
@@ -2131,7 +2138,7 @@ ERROR_Q1:
 	LDD
 	LDD
 ERROR_Q:RST	$30
-	DEFW	L288B		; Q Parameter error
+	DEFW	REPORT_Q	; Q Parameter error
 
 PROC_E:	POP	DE		; return address
 	LD	(ERR_SP),SP
@@ -2816,39 +2823,6 @@ PAL_X:	LD	BC,$BF3B
 
 ERROR_K:RST	$30
 	DEFW	L2244		; K Invalid colour
-
-; Seek program location
-; In: DE either line number or negative PROG offset, A instruction number + 1
-SEEK_PROG:
-	EX	DE,HL
-	LD	D,A
-	PUSH	DE
-	LD	A,H
-	OR	L
-	JR	Z,SEEK_OFF	; line 0 is always at offset 0
-	LD	A,H
-	CP	$3E
-	JR	NC,SEEK_OFF
-	RST	$30
-	DEFW	L196E		; LINE-ADDR
-	JR	Z,SEEK_STMT
-ERR_N:	JP	ERROR_N
-
-SEEK_OFF:
-	EX	DE,HL
-	LD	HL,(PROG)
-	SBC	HL,DE
-	INC	HL
-	INC	HL		; skip line number
-	INC	HL
-	INC	HL		; skip line length
-SEEK_STMT:
-	POP	DE
-	LD	E,0
-	DEC	D
-	RST	$30
-	DEFW	L198B		; EACH-STMT
-	RET	Z
 
 WRITE_DO:
 	RST	$30
