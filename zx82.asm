@@ -30,7 +30,7 @@
 ;						POKE 23750,PEEK 23752
 ;						LPRINT ;: CIRCLE INK 2;128,87,87]
 ; LIST, LLIST fixed, does not print cursor, accepts range [LIST 10 TO 20]
-; NEXT and RETURN sped up considerably, by re-defining PPC as the PROG offset of current line
+; GO TO and other jumps to line numbers sped up considerably, through binary search.
 ; "scroll?" prompt fixed [PRINT #0;1'2'3'4: FOR i=1 TO 30: PRINT i: NEXT i]
 ; I/O abstraction layer significantly improved
 ; - PIP moved to KEY_INPUT, no clicking during INPUT from other channels
@@ -57,7 +57,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 02-FEB-2020
+; Last updated: 13-FEB-2020
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -5742,12 +5742,12 @@ L11A7:  LD      A,(HL)          ; fetch character
 ; $0000   $4000       $5800        $5B00          KSTATE         CHINFO = CHANS
 ;
 ;
-;  --+----------+---+---------+-----------+---+------------+--+---+--
-;    | Channel  |$80|  BASIC  | Variables |$80| Edit Line  |NL|$80|
-;    |   Info   |   | Program |   Area    |   | or Command |  |   |
-;  --+----------+---+---------+-----------+---+------------+--+---+--
-;    ^              ^         ^               ^                   ^
-;  CHANS           PROG      VARS           E_LINE              WORKSP
+;  --+----------+---+---------+-----------+---+------------+--+----------+---+--
+;    | Channel  |$80|  BASIC  | Variables |$80| Edit Line  |NL| Line map |$80|
+;    |   Info   |   | Program |   Area    |   | or Command |  | for jump |$81|
+;  --+----------+---+---------+-----------+---+------------+--+----------+---+--
+;    ^              ^         ^               ^                          ^
+;  CHANS           PROG      VARS           E_LINE                     WORKSP
 ;
 ;
 ;                             ---5-->         <---2---  <--3---
