@@ -1,13 +1,9 @@
-; LOAD control (8 bytes)
-LDCTRL:	PUSH	HL
-	CALL	DELIDX
-	POP	HL
-	JP	L0808		; LD-CONTRL
-
 ; MERGE control (6 bytes)
 MECTRL:	CALL	DELIDX
 	JP	L08B6		; ME-CONTRL
 
+; LOAD BASIC program and delete the index of the previous one (LD-PROG-1 jumps here)
+LD_BAS:	CALL	L0802		; LD-BLOCK
 ; Delete index, if exists (11 bytes)
 DELIDX:	CALL	CHKIDX
 	RET	Z
