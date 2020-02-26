@@ -12576,10 +12576,10 @@ L2530:  BIT     7,(IY+$01)      ; test FLAGS  - checking syntax only ?
 ; range checking will be performed.
 
 ;; S-SCRN$-S
-L2535:  CALL    L2307           ; routine STK-TO-BC.
-;;; BUGFIX: extensibility for different screen modes
-	CALL	SCRN_HOOK
-;;;
+L2535:	NOP
+	NOP
+	NOP
+S_SCRN:	CALL    L2307           ; routine STK-TO-BC.
 	LD      HL,(CHARS)      ; fetch address of CHARS.
 ;;; Bugfix: save 3 bytes
 	INC	H		; Saves 3 bytes
@@ -12610,7 +12610,7 @@ L254F:  PUSH    BC              ; save count
                                 ; if any other then mismatch
 
         INC     A               ; set to $00 if inverse
-        JR      NZ,L2573        ; forward to S-SCR-NXT if a mismatch
+        JR      NZ,S_SCR_NXT	; forward to S-SCR-NXT if a mismatch
 
         DEC     A               ; restore $FF
 
@@ -12626,7 +12626,7 @@ L255D:  INC     D               ; increment screen address.
         LD      A,(DE)          ; byte to A
         XOR     (HL)            ; will give $00 or $FF (inverse)
         XOR     C               ; xor with inverse mask
-        JR      NZ,L2573        ; forward to S-SCR-NXT if no match.
+        JR      NZ,S_SCR_NXT	; forward to S-SCR-NXT if no match.
 
         DJNZ    L255D           ; back to S-SC-ROWS until all eight matched.
 
@@ -12643,14 +12643,16 @@ L255D:  INC     D               ; increment screen address.
         RST     30H             ; BC-SPACES creates the space sliding
                                 ; the calculator stack upwards.
         LD      (DE),A          ; start is addressed by DE, so insert code
-;;;     JR      L257D           ; forward to S-SCR-STO
+;;; BUGFIX: do not store result twice
 	RET			; Saves 1 byte
+;;;     JR      L257D           ; forward to S-SCR-STO
 ; ---
 
 ; the jump was here if no match and more bitmaps to test.
 
 ;; S-SCR-NXT
-L2573:  POP     HL              ; restore the last bitmap start
+S_SCR_NXT:
+	POP     HL              ; restore the last bitmap start
         LD      DE,$0008        ; and prepare to add 8.
         ADD     HL,DE           ; now addresses next character bitmap.
         POP     DE              ; restore screen address
@@ -13003,7 +13005,7 @@ L2665:  JP      L2712           ; to S-CONT-2            ===>
 ; ->
 ;; S-SCREEN$
 L2668:  CALL    L2522           ; routine S-2-COORD
-        CALL    NZ,L2535        ; routine S-SCRN$-S
+        CALL    NZ,S_SCRN	; routine S-SCRN$-S
 
 X266E:	RST     20H             ; NEXT-CHAR
         JP      L25DB           ; forward to S-STRING to stack result
@@ -20619,7 +20621,7 @@ DELIDX:	CALL	CHKIDX
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
 
-	DEFS	$3C03 - $, $FF
+	DEFS	$3C06 - $, $FF
 
 
 ; LOAD control (8 bytes)
@@ -20775,8 +20777,6 @@ SUB_HOOK:
 STRING_HOOK:
 	CALL	NOPAGE
 DIGIT_HOOK:
-	CALL	NOPAGE
-SCRN_HOOK:
 	CALL	NOPAGE
 GOTO_HOOK:
 	CALL	NOPAGE
