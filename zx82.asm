@@ -2588,7 +2588,7 @@ L07AD:  RST     10H             ; PRINT-A prints character
 
         LD      A,(T_ADDR)       ; fetch command from T_ADDR
         DEC     A               ; was it LOAD ?
-        JP      Z,LDCTRL	; JUMP forward to LD-CONTRL if so to
+        JP      Z,L0808		; JUMP forward to LD-CONTRL if so to
                                 ; load BASIC or variables.
 
         CP      $02             ; was command MERGE ?
@@ -2807,7 +2807,9 @@ L08AD:  POP     DE              ; ** pop the length
         POP     IX              ; * and start.
         SCF                     ; set carry flag
         LD      A,$FF           ; signal data as opposed to a header.
-        JP      L0802           ; jump back to LD-BLOCK
+;;; BUGFIX: reclaim line index before loading
+	JP	LD_BAS
+;;; JP      L0802           ; jump back to LD-BLOCK
 
 ; ---------------------------
 ; THE 'MERGE CONTROL' ROUTINE
@@ -20503,10 +20505,6 @@ BORDER:	RLCA
 	LD	A,B
 	RET
 
-; Abstracted NEW routine (6 bytes)
-NEW:	CALL	NEW_HOOK
-	JP	L11B7		; NEW
-
 ; LET substitute for FOR (6 bytes)
 FOR_LET:CALL	FOR_HOOK
 	JP	L2AFF		; LET
@@ -20607,7 +20605,8 @@ IDXCNT:	INC	DE		; increment counter or advance address
 	ADD	HL,BC		; HL points to next line
 	JR	IDXLNL
 
-
+; Load BASIC program and delete index from previous one
+LD_BAS:	CALL	L0802
 ; Delete index, if exists (11 bytes)
 DELIDX:	CALL	CHKIDX
 	RET	Z
@@ -20621,14 +20620,11 @@ DELIDX:	CALL	CHKIDX
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
 
-	DEFS	$3C06 - $, $FF
+	DEFS	$3C08 - $, $FF
 
-
-; LOAD control (8 bytes)
-LDCTRL:	PUSH	HL
-	CALL	DELIDX
-	POP	HL
-	JP	L0808		; LD-CONTRL
+; Abstracted NEW routine (6 bytes)
+NEW:	CALL	NEW_HOOK
+	JP	L11B7		; NEW
 
 ; MERGE control (6 bytes)
 MECTRL:	CALL	DELIDX
