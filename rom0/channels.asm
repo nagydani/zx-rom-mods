@@ -170,7 +170,7 @@ K_ING3:	BIT	5,(IY+FLAGS2-ERR_NR)	; mode K suppressed?
 	DEFW	L2C8D		; ALPHA
 	RET	C		; return, if so
 	LD	HL,TKETAB
-	LD	BC,$0006
+	LD	BC,TKETABE-TKETAB
 	CPIR
 	JP	NZ,K_INSTT
 K_TKE:	LD	(IY-$2D),$80	; signal potential token end
@@ -410,23 +410,6 @@ EXT_CNT:JR	C,K_INSF
 	SCF
 	RET
 
-; This area must be a data table not to trigger the SAVE trap
-
-; K-MODE translation table
-K_MODE:	DEFB	"@",LABEL_T
-	DEFB	0
-
-; L-MODE translation table
-L_MODE:	DEFB	$E2,"~"
-	DEFB	$C3,"|"
-	DEFB	$CD,"\\"
-	DEFB	$CC,"{"
-	DEFB	$CB,"}"
-	DEFB	$C6,"["
-	DEFB	$C5,"]"
-	DEFB	$AC,$7F		; copyright
-	DEFB	0
-
 EXT_NF:	LD	A,(LAST_K)
 	CP	$0E
 	SCF
@@ -575,13 +558,6 @@ K_SAVE:	LDI
 	LDI
 	RET
 
-; reset colon counters
-R_SPCC:	LD	HL,C_SPCC
-	LD	(HL),1
-	DEC	L
-	LD	(HL),1
-	RET
-
 ; channel K ioctl
 K_IOCTL:CP	2
 	RET	NC
@@ -611,6 +587,40 @@ K_CLS:	SET	0,(IY+$02)	; clean lower part
 	LD	B,$17		; line 23 for lower screen
 	LD	(RETADDR),BC
 S_IO_E:	JP	CLSET
+
+; This area must be a data table not to trigger the SAVE trap
+
+; K-MODE translation table
+K_MODE:	DEFB	"@",LABEL_T
+	DEFB	0
+
+; L-MODE translation table
+L_MODE:	DEFB	$E2,"~"
+	DEFB	$C3,"|"
+	DEFB	$CD,"\\"
+	DEFB	$CC,"{"
+	DEFB	$CB,"}"
+	DEFB	$C6,"["
+	DEFB	$C5,"]"
+	DEFB	$AC,$7F		; copyright
+	DEFB	0
+
+EDITOR_HEADER0:
+	DEFB	$14,$01,$16,$00,$00,$13,$01,$10,$00
+	DEFB	$11,$87
+	DEFM	"BASIC"
+	DEFB	$80 + ":"
+EDITOR_HEADER1:
+	DEFB	$17,$7A,$00,$11,$02,$18,$10,$06,$1A
+	DEFB	$11,$04,$18,$10,$05,$1A,$11,$00,$18
+	DEFB	$10,$00,$9A
+
+; reset colon counters
+R_SPCC:	LD	HL,C_SPCC
+	LD	(HL),1
+	DEC	L
+	LD	(HL),1
+	RET
 
 ; channel S output service routine
 S_OUT:	BIT	4,(HL)		; auto-list?
@@ -653,7 +663,7 @@ S_RST:	EX	DE,HL
 	LD	(IY+$52),$01	; set SCR_CT - scroll count - to default.
 	LD	BC,(S_WIDTH)
 	LD	B,$18		; line 24 for upper screen
-	JR	S_IO_E
+	JP	CLSET
 
 POFETCH:EQU	L0B03 + 6
 POSTORE:EQU	L0ADC + 6
@@ -669,6 +679,23 @@ KS_CTRL:PUSH	HL		; save display address
 	POP	BC		; restore coordinates
 	EX	(SP),HL		; restore display address, stack destination
 	RET
+
+; This area must be a data table not to trigger the LOAD trap
+
+EDITOR_HEADERN:
+	DEFM	"NUMERI"
+	DEFB	$80 + "C"
+EDITOR_HEADERS:
+	DEFM	"STRIN"
+	DEFB	$80 + "G"
+
+GR_TAB:	DEFB	$00, $FF
+	DEFB	$FF, $00
+	DEFB	$F0, $00
+	DEFB	$00, $0F
+
+TKETAB:	DEFM	"@$#<>="
+TKETABE:EQU	$
 
 ; channel K output service routine
 K_OUT:	CALL	STACKSWAP
@@ -1030,7 +1057,9 @@ E_HEADT:LD	DE,EDITOR_HEADERT
 	CALL	DECWORD
 	JR	E_HEAD0
 
-TKETAB:	DEFM	"@$#<>="
+EDITOR_HEADERT:
+	DEFM	"TEXT"
+	DEFB	$80 + " "
 
 TCTRL:	DEFB	TNOP - $	; $00 does nothing
 	DEFB	TQUEST - $	; $01 prints question mark
@@ -1352,29 +1381,5 @@ S_IOCTL:DEFW	S_RST	; reset S channel (clear screen, etc.)
 	DEFW	DRAW3	; DRAW arc
 	DEFW	CIRCLE	; draw a CIRCLE
 S_IOCTL_END:	EQU	$
-
-EDITOR_HEADER0:
-	DEFB	$14,$01,$16,$00,$00,$13,$01,$10,$00
-	DEFB	$11,$87
-	DEFM	"BASIC"
-	DEFB	$80 + ":"
-EDITOR_HEADER1:
-	DEFB	$17,$7A,$00,$11,$02,$18,$10,$06,$1A
-	DEFB	$11,$04,$18,$10,$05,$1A,$11,$00,$18
-	DEFB	$10,$00,$9A
-EDITOR_HEADERT:
-	DEFM	"TEXT"
-	DEFB	$80 + " "
-EDITOR_HEADERN:
-	DEFM	"NUMERI"
-	DEFB	$80 + "C"
-EDITOR_HEADERS:
-	DEFM	"STRIN"
-	DEFB	$80 + "G"
-
-GR_TAB:	DEFB	$00, $FF
-	DEFB	$FF, $00
-	DEFB	$F0, $00
-	DEFB	$00, $0F
 
 	INCLUDE	"timexscr.asm"
