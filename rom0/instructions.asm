@@ -901,34 +901,29 @@ LCL_CM:	RST	$18
 LCL_F:	DEC	HL
 	BIT	7,(HL)
 	JR	NZ,LCL_L
+	RES	1,(IY+FLAGX-ERR_NR)	; signal existing
+	EX	DE,HL
 	RST	$18
 	CP	"="
 	JR	NZ,LCL_CM
-	RST	$20
-	CALL	SKIPEX
-	DEC	HL
-	LD	(CH_ADD),HL
-	JR	LCL_CM
-
-LCL_STR:LD	(STRLEN),BC
-	PUSH	DE
-	RST	$30
-	DEFW	L1F05		; TEST-ROOM
-	POP	DE
-	LD	HL,$0002
-	ADD	HL,SP
-	AND	A
-	SBC	HL,BC
-	POP	BC
-	LD	SP,HL
-	PUSH	BC
 	EX	DE,HL
-	LD	BC,(STRLEN)
-	LD	A,B
-	OR	C
-	RET	Z
-	LDIR
-	RET
+	INC	HL
+	BIT	5,C
+	JR	NZ,LCL_AN
+	INC	HL
+	INC	HL
+	INC	HL		; skip maxlen
+	LD	C,(HL)
+	INC	HL
+	LD	B,(HL)		; BC=length
+	INC	HL
+	SET	0,(IY+FLAGX-ERR_NR) ; signal complete
+LCL_AN:	LD	(STRLEN),BC
+	LD	(DEST),HL
+	RST	$20
+	RST	$30
+	DEFW	L1C56		; VAL-FET-1
+	JR	LCL_CM
 
 ; Initialize local array
 ; In: C letter and type
@@ -1023,6 +1018,26 @@ LCL_DM:	EXX
 	LD	(ERR_SP),SP
 	PUSH	DE		; return address
 	JR	STCK_SW
+
+LCL_STR:LD	(STRLEN),BC
+	PUSH	DE
+	RST	$30
+	DEFW	L1F05		; TEST-ROOM
+	POP	DE
+	LD	HL,$0002
+	ADD	HL,SP
+	AND	A
+	SBC	HL,BC
+	POP	BC
+	LD	SP,HL
+	PUSH	BC
+	EX	DE,HL
+	LD	BC,(STRLEN)
+	LD	A,B
+	OR	C
+	RET	Z
+	LDIR
+	RET
 
 STACKQ:	POP	DE		; discard STACKE
 STCK_SW:JP	SWAP

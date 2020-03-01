@@ -222,6 +222,9 @@ STRNG_CONT:
 	JR	Z,STRNG_Z
 	LDIR
 STRNG_Z:POP	BC		; discard return value
+	LD	A,(T_ADDR)
+	CP	$7D		; LET?
+	RET	NZ		; return, if not
 	JP	SWAP
 
 STRNG_LONG:
