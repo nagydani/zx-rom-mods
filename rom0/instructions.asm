@@ -1330,20 +1330,32 @@ SKIP_NUM:
 	LD	A,(HL)
 	RET
 
-LV_DIM:	CP	$A3		; interpreting DIM?
-	JR	NZ,SW_LV	; return, if not
-	POP	AF		; discard return address
-	XOR	A
+LV_FOR:	POP	HL		; discard return address
+	CP	$91		; interpreting FOR?
+	JR	NZ,LV_DIM	; if not, it's a DIM
+	CALL	SYNTAX_Z
+	JR	Z,LV_FORS
+	RST	$18		; set HL to CH_ADD
+	PUSH	HL
+	RST	$20		; set advance CH_ADD
+	POP	HL
+	SCF
+	JR	SW_LV
+
+LV_FORS:PUSH	HL
+	JR	SW_LV2
+
+LV_DIM:	XOR	A
 	LD	(DEFADD+1),A	; look for globals only
 	RST	$30
 	DEFW	L28B2		; LOOK-VARS
 	LD	(IY+DEFADD+1-ERR_NR),1	; restore without changing flags
-	JR	SW_LV		; return to DIM
+SW_LV2:	JR	SW_LV		; return to DIM
 
 ; Handling DIM and argumentless NEXT
 LV_CONT:LD	A,(T_ADDR)
 	CP	$99		; interpreting NEXT?
-	JR	NZ,LV_DIM	; check DIM, if not
+	JR	NZ,LV_FOR	; check FOR, if not
 	RST	$18		; get the character following NEXT
 	CP	$0D		; CR?
 	JR	Z,NEXT		; if so, it's an argumentless NEXT
