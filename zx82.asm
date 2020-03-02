@@ -180,8 +180,8 @@ L0020:  CALL    L0074           ; routine CH-ADD+1 fetches the next immediate
 L0028:  JP      L335B           ; jump forward to the CALCULATE routine.
 
 ; ---
-; Infix operators on non-standard types (5 bytes)
-INFIX:	CALL	INFIX_HOOK
+;  Invalid prefix operator or mismatched infix type (5 bytes)
+SC_ERR:	CALL	SCAN_HOOK
 	RST	$08
 	DEFB	$0B		; C Nonsense in BASIC
 ;;;	DEFB    $FF, $FF, $FF   ; spare - note that on the ZX81, space being a
@@ -12487,9 +12487,7 @@ L24FB:  RST     18H             ; GET-CHAR
 ;; S-LOOP-1
 L24FF:  LD      C,A             ; store the character while a look up is done.
         LD      HL,L2596        ; Address: scan-func
-;;; BUGFIX: extended functions
-	CALL	INDEXER_2
-;;;	CALL    L16DC           ; routine INDEXER is called to see if it is
+	CALL    L16DC           ; routine INDEXER is called to see if it is
                                 ; part of a limited range '+', '(', 'ATTR' etc.
 
 SCANNER:LD      A,C             ; fetch the character back
@@ -13166,8 +13164,9 @@ L26DF:  LD      BC,$09DB        ; prepare priority 09, operation code $C0 +
                                 ; functions 'CODE' to 'NOT' although the
                                 ; upper range is, as yet, unchecked.
                                 ; valid range would be $00 - $14.
-
-        JP      C,L1C8A         ; jump back to REPORT-C with anything else
+;;; BUGFIX: allowing extensibility
+	JP	C,SC_ERR
+;;;	JP      C,L1C8A         ; jump back to REPORT-C with anything else
                                 ; 'Nonsense in BASIC'
 
         LD      BC,$04F0        ; prepare priority $04, operation $C0 +
@@ -13176,7 +13175,9 @@ L26DF:  LD      BC,$09DB        ; prepare priority 09, operation code $C0 +
         CP      $14             ; is it 'NOT'
         JR      Z,L270D         ; forward to S-PUSH-PO if so
 
-        JP      NC,L1C8A        ; to REPORT-C if higher
+;;; BUGFIX: allowing extensibility
+	JP	NC,SC_ERR
+;;;	JP      NC,L1C8A        ; to REPORT-C if higher
                                 ; 'Nonsense in BASIC'
 
         LD      B,$10           ; priority $10 for all the rest
@@ -13339,7 +13340,7 @@ L275B:  LD      A,E             ; fetch the operation code to accumulator
 
 ;; S-RPORT-C2
 ;;; BUGFIX: extensibility of existing infix operators
-L2761:  JP      NZ,INFIX        ; to REPORT-C if mismatch
+L2761:  JP      NZ,SC_ERR	; to REPORT-C if mismatch
 ;;; L2761:  JP      NZ,L1C8A        ; to REPORT-C if mismatch
                                 ; 'Nonsense in BASIC'
                                 ; else continue to set flags for next
@@ -20764,7 +20765,7 @@ INDEXER_2:
 
 INDEXER_HOOK:
 	CALL	NOPAGE
-INFIX_HOOK:
+SCAN_HOOK:
 	CALL	NOPAGE
 PLOT_HOOK:
 	CALL	$5B00		; SWAP
