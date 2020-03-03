@@ -12825,8 +12825,10 @@ L25E8:  RST     20H             ; NEXT-CHAR
 ;;; BUGFIX: no need to read characer again, minor speedup
 	CALL	L24FB + 1	; routine SCANNING is called recursively.
 ;;;	CALL	L24FB		; routine SCANNING is called recursively.
-        CP      $29             ; is it the closing ')' ?
-        JP      NZ,L1C8A        ; jump back to REPORT-C if not
+        CP      ")"             ; is it the closing ')' ?
+;;; BUGFIX: allow for multi-variate versions of some functions
+	JP	NZ,SC_ERR
+;;;	JP      NZ,L1C8A        ; jump back to REPORT-C if not
                                 ; 'Nonsense in BASIC'
 
 X25F1:	RST     20H             ; NEXT-CHAR
@@ -20621,7 +20623,7 @@ DELIDX:	CALL	CHKIDX
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
 
-	DEFS	$3C08 - $, $FF
+	DEFS	$3C07 - $, $FF
 
 ; Abstracted NEW routine (6 bytes)
 NEW:	CALL	NEW_HOOK
@@ -20753,10 +20755,13 @@ SPACEKW_R1:
 	DEC	DE
 	JR	TESTKW2_R1
 
+
 ; Abstracted PLOT routine (high speed)
 PLOT:	BIT	4,(IY+FLAGS-ERR_NR)
 	JP	Z,L22DC		; PLOT
-	JR	PLOT_HOOK
+	LD	A,2
+	AND	A
+	JP	L15F2		; outout service routine
 
 ; Extended INDEXER
 INDEXER_2:
@@ -20767,8 +20772,6 @@ INDEXER_HOOK:
 	CALL	NOPAGE
 SCAN_HOOK:
 	CALL	NOPAGE
-PLOT_HOOK:
-	CALL	$5B00		; SWAP
 SUB_HOOK:
 	CALL	NOPAGE
 STRING_HOOK:

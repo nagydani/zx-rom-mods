@@ -13,8 +13,9 @@ RST00L:	DEC	BC
 	DEFS	$10 - $
 
 ; Print a character
-RST10:	SCF
-	JP	CHOUT
+RST10:	RST	$30
+	DEFW	$0010
+	RET
 	DEFS	$18 - $
 
 ; Collect a character
@@ -427,7 +428,21 @@ JP_LBL:	LD	HL,(PROG)
 	LD	(PPC),HL
 	RET
 
-INFIX_T:CP	$0C		; multiplication?
+MULTI_CONT:
+	POP	BC		; discard return address
+	POP	BC
+	LD	A,B
+	CP	$10
+	JP	Z,MULTI_FN
+	JP	ERROR_C
+
+SCAN_CONT:
+	CP	C
+	JR	NZ,PREFIX_CONT
+	CP	","
+	JR	Z,MULTI_CONT
+INFIX_CONT:
+	CP	$0C		; multiplication?
 	JR	NZ,DSWAP2
 	CALL	SYNTAX_Z
 	JR	Z,MULS_S
@@ -466,23 +481,38 @@ DDIGIT:	CP	$A
 	ADD	$0A
 	RET
 
-INFIX_CONT:
-	CP	$10
-	JR	C,INFIX_T
-	JR	DSWAP2
-
 CL9_CONT:
 	RST	$30
 	DEFW	L2070 + 4	; STR-ALTER + 4
 	RST	$30
 	DEFW	L21E2 + 4	; CO-TEMP-2 + 4
-	JP	SWAP
+	JR	DSWAP2
 
 OLD_CONT:
 	LD	A,(T_ADDR)
 	CP	$B2		; POKE ?
 	JP	Z,E_POKE
 	JR	ERRCNZ3
+
+PREFIX_CONT:
+	RST	$18
+	CP	FPEEK_T + 1
+	JR	NC,DSWAP2
+	LD	C,A
+	SUB	FREE_T
+	LD	HL,SCANFUNC2
+	JR	C,IDX_DO
+	LD	HL,FUNCTAB
+	ADD	A,A
+	LD	C,A
+	LD	B,0
+	ADD	HL,BC
+	LD	A,(HL)
+	INC	HL
+	LD	H,(HL)
+	LD	L,A
+	POP	BC		; discard return address
+	JP	(HL)
 
 RUN_CONT:
 	POP	HL		; discard return to REPORT C
@@ -524,10 +554,8 @@ GET_PARAM:
 
 INDEX_CONT:
 	LD	A,L
-	SUB	A,$AE
-	JR	Z,IDX_FN
 	LD	HL,OPERTB
-	DEC	A
+	SUB	$AF
 	JR	Z,IDX_DO
 	LD	HL,CLOSESTRM2
 	DEC	A
@@ -539,24 +567,6 @@ SWIDX:	JP	NC,SWAP
 	LD	C,(HL)
 	LD	B,0
 	ADD	HL,BC
-	JP	(HL)
-
-IDX_FN:	LD	A,C
-	CP	FPEEK_T + 1
-	JR	NC,SWERR
-	SUB	FREE_T
-	LD	HL,SCANFUNC2
-	JR	C,IDX_DO
-	LD	HL,FUNCTAB
-	ADD	A,A
-	LD	C,A
-	LD	B,0
-	ADD	HL,BC
-	LD	A,(HL)
-	INC	HL
-	LD	H,(HL)
-	LD	L,A
-	POP	BC		; discard return address
 	JP	(HL)
 
 SEP_MISM:			; THEN-less IF and operator update in LET
@@ -2172,48 +2182,17 @@ SUB_OOR:SCF
 	DEC	A
 	JP	SWAP
 
-PLOT_CONT:
-	LD	A,2
-	AND	A
-	CALL	STACKSWAP
-
-; Call current channel's output service routine
-CHOUT:	EXX
-	PUSH	HL
-	LD	HL,(CURCHL)
-	LD	E,(HL)
-	INC	HL
-	LD	D,(HL)
-	EX	DE,HL
-	EX	AF,AF'
-	LD	A,H
-	CP	$3C
-	JR	Z,CHOUT0	; In this ROM
-	EX	AF,AF'
-	RST	$30
-	DEFW	L162C		; JP (HL)
-	POP	HL
-	EXX
-	RET
-CHOUT0:	EX	AF,AF'
-	INC	HL
-	INC	HL
-	INC	HL
-	CALL	SWJPHL
-	POP	HL
-	EXX
-	RET
-SWJPHL:	PUSH	HL
 STACKSWAP:
 	LD	HL,SWAP
 	EX	(SP),HL
 	JP	(HL)
 
+
 	INCLUDE "variables.asm"
 	INCLUDE	"instructions.asm"
 
 
-	DEFS	INFIX_HOOK - 24 - $
+	DEFS	SCAN_HOOK - 24 - $
 
 ; channel service routines (24 bytes)
 CH_PO:	JP	PR_OUT
@@ -2227,8 +2206,7 @@ CH_NI:	JP	NEW_X_IN
 
 ; jump table from ROM1
 	JP	INDEX_CONT
-	JP	INFIX_CONT
-	JP	PLOT_CONT
+	JP	SCAN_CONT
 	JP	SUB_CONT
 	JP	STRNG_CONT
 	JP	DIGIT_CONT

@@ -23,6 +23,27 @@ FUNCTAB:DEFW	S_FREE		; FREE
 ;;	DEFW	F_STR0		; DATA
 ;;	DEFW	F_STR0		; >>
 
+MULTI_FN:
+	LD	HL,MFNTAB
+	CALL	INDEXER
+	JR	NC,ERRBSW
+	LD	C,(HL)
+	LD	B,0
+	ADD	HL,BC
+	JP	(HL)
+
+ERR_BRACE:
+	POP	HL
+	LD	(ERR_SP),HL
+	LD	SP,HL
+	LD	A,$0D
+	LD	HL,(X_PTR)
+	LD	BC,0
+	CPIR
+	DEC	HL
+	LD	(HL),"}"
+ERRBSW:	JP	SWAP
+
 F_BRACE:LD	(HL),$0D	; temporarily place an end-of-line marker
 	LD	HL,(ERR_SP)
 	PUSH	HL		; save ERR_SP
@@ -48,25 +69,11 @@ F_BRACE:LD	(HL),$0D	; temporarily place an end-of-line marker
 	LD	(ERR_SP),HL
 	JR	S_BRCE
 
-ERR_BRACE:
-	POP	HL
-	LD	(ERR_SP),HL
-	LD	SP,HL
-	LD	A,$0D
-	LD	HL,(X_PTR)
-	LD	BC,0
-	CPIR
-	DEC	HL
-	LD	(HL),"}"
-	JP	SWAP
-
 SCANFUNC2:
 	DEFB	CODE_T
 	DEFB	S_CODE - $
 	DEFB	CHR_T
 	DEFB	S_CHR - $
-	DEFB	STR_T
-	DEFB	S_STR - $
 	DEFB	"@"
 	DEFB	S_LBL - $
 	DEFB	"{"
@@ -102,19 +109,6 @@ S_BRCL:	RST	$20
 S_BRCE:	LD	HL,L25DB	; S-STRING
 	JP	HLSWAP
 
-S_STR:	LD	BC,$106E	; actually STR$
-	PUSH	BC
-	RST	$20
-	CP	"("
-	JR	NZ,F_STRS	; actually STR$
-	RST	$20
-	RST	$30
-	DEFW	L1C82		; CLASS_06, numeric expression followed by whatever
-	CP	")"
-	JP	NZ,S_STR_NEW
-	LD	BC,X25F1	; S-BRACKET end
-	JR	F_STR0
-
 S_CODE:	CALL	SYNTAX_Z
 	JR	Z,F_STR
 	LD	BC,D_CODE
@@ -130,7 +124,6 @@ S_TIMES:CALL	SYNTAX_Z
 	LD	BC,D_TIMES
 	JR	S_FUNC
 
-F_STRS:	LD	BC,L24FF	; S-LOOP-1
 F_STR0:	PUSH	BC
 	JR	RSWAP
 
@@ -565,9 +558,12 @@ CHRL_L:	RST	$28
 ERROR_B_2:
 	JP	ERROR_B
 
+MFNTAB:	DEFB	$6E		; STR$
+	DEFB	S_STR-$
+	DEFB	0
+
 ; STR$() with multiple arguments
-S_STR_NEW:
-	POP	BC		; discard STR$ and priority
+S_STR:	RST	$18
 	CP	","
 	JR	NZ,ERROR_C
 	CALL	SYNTAX_Z
