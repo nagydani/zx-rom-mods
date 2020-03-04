@@ -57,7 +57,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 13-FEB-2020
+; Last updated: 04-MAR-2020
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -18758,13 +18758,16 @@ L35BF:  LD      HL,(STKEND)      ; fetch STKEND value from system variable.
 ;   This function returns a single character string that is a result of
 ;   converting a number in the range 0-255 to a string e.g. CHR$ 65 = "A".
 
+; NOTE: The first three instructions can be replaced by CALL L1E94 to
+; FIND-INT1, making REPORT-Bd unnecessary, savnig 6 bytes in total at the
+; cost of minimal performance penalty.
+
 ;; chrs
 L35C9:  CALL    L2DD5           ; routine FP-TO-A puts the number in A.
-
         JR      C,L35DC         ; forward to REPORT-Bd if overflow
         JR      NZ,L35DC        ; forward to REPORT-Bd if negative
 
-        PUSH    AF              ; save the argument.
+CHRS_X:	PUSH    AF              ; save the argument.
 
         LD      BC,$0001        ; one space required.
         RST     30H             ; BC-SPACES makes DE point to start

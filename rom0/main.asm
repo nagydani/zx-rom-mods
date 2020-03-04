@@ -428,15 +428,22 @@ JP_LBL:	LD	HL,(PROG)
 	LD	(PPC),HL
 	RET
 
+; Single-argument original function extended to multiple arguments
 MULTI_CONT:
 	POP	BC		; discard return address
 	POP	BC
 	LD	A,B
 	CP	$10
-	JP	Z,MULTI_FN
-	JP	ERROR_C
+	JR	NZ,ERRCIDX
+	PUSH	BC
+	LD	HL,MFNTAB
+INDEXJP:CALL	INDEXER
+	JP	C,INDEXER_JP
+ERRCIDX:JP	ERROR_C
 
 SCAN_CONT:
+	CP	$40
+	JR	Z,DSWAP2	; mismatched function type
 	CP	C
 	JR	NZ,PREFIX_CONT
 	CP	","
@@ -458,7 +465,7 @@ ERR_CONT:
 	CALL	REPORT
 ERR_C:	LD	HL,X1349
 	EX	(SP),HL
-	JR	DSWAP2
+DSWAP2:	JP	SWAP
 ERR7MSG:LD	DE,ERR7TXT
 	CALL	MESSAGE
 	JR	ERR_C
@@ -467,7 +474,7 @@ DIGIT_CONT:
 	CALL	DDIGIT
 	JR	NC,DSWAP2
 	LD	A,C
-DSWAP2:	JP	SWAP
+	JR	DSWAP2
 
 DDIGIT:	CP	$A
 	CCF
@@ -1616,12 +1623,15 @@ D_RLNL:	RL	E
 	LD	(HL),E
 	RET
 
+ERROR_6:RST	$30
+	DEFW	L31AD		; 6 Number too big
+
 D_RLNO:	DEC	HL
 	DEC	HL
 	DEC	HL
 	LD	A,B
 	ADD	$90
-JCERR6:	JP	C,ERROR_6	; FP overflow
+JCERR6:	JR	C,ERROR_6	; FP overflow
 	LD	(HL),A
 	INC	HL
 	LD	A,(HL)

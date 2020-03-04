@@ -23,15 +23,6 @@ FUNCTAB:DEFW	S_FREE		; FREE
 ;;	DEFW	F_STR0		; DATA
 ;;	DEFW	F_STR0		; >>
 
-MULTI_FN:
-	LD	HL,MFNTAB
-	CALL	INDEXER
-	JR	NC,ERRBSW
-	LD	C,(HL)
-	LD	B,0
-	ADD	HL,BC
-	JP	(HL)
-
 ERR_BRACE:
 	POP	HL
 	LD	(ERR_SP),HL
@@ -70,10 +61,6 @@ F_BRACE:LD	(HL),$0D	; temporarily place an end-of-line marker
 	JR	S_BRCE
 
 SCANFUNC2:
-	DEFB	CODE_T
-	DEFB	S_CODE - $
-	DEFB	CHR_T
-	DEFB	S_CHR - $
 	DEFB	"@"
 	DEFB	S_LBL - $
 	DEFB	"{"
@@ -108,16 +95,6 @@ S_BRCL:	RST	$20
 	RST	$20		; step past the closing brace
 S_BRCE:	LD	HL,L25DB	; S-STRING
 	JP	HLSWAP
-
-S_CODE:	CALL	SYNTAX_Z
-	JR	Z,F_STR
-	LD	BC,D_CODE
-	JR	S_FUNC
-
-S_CHR:	CALL	SYNTAX_Z
-	JR	Z,F_SNUM
-	LD	BC,D_CHR
-	JR	S_FUNC
 
 S_TIMES:CALL	SYNTAX_Z
 	JR	Z,F_SNUM
@@ -373,7 +350,7 @@ S_LBLS:	LD	B,0
 	CALL	S_LBLL
 S_LBLE:	LD	BC,L26C3	; S_NUMERIC
 	PUSH	BC
-	JR	CSWAPR
+CSWAPR:	JP	SWAP
 
 S_LBLL:	RST	$20
 	RST	$30
@@ -410,156 +387,10 @@ A_STEP:	POP	BC
 	LD	A,$07		; CHR$ 7
 	JR	CSWAPR
 
-D_CODE:	RST	$30
-	DEFW	L2BF1		; STK-FETCH
-	LD	A,B
-	OR	C
-	JR	Z,CSWAPR
-	EX	DE,HL
-	ADD	HL,BC
-	XOR	A
-CODEL1:	DEC	HL
-	CP	(HL)
-	JR	NZ,CODE_D
-	DEC	BC
-	LD	A,B
-	OR	C
-	JR	NZ,CODEL1
-CSWAPR:	JP	SWAP
-CODE_D:	LD	A,B
-	OR	A
-	JR	NZ,ERROR_6	; 6 Number too big
-	DEC	C
-	JR	Z,D_CODE1
-	DEC	C
-	LD	A,C
-	LD	B,(HL)
-	DEC	HL
-D_CODE1:LD	C,(HL)
-	JP	Z,SWAP
-	EX	(SP),HL		; discard STACK-BC, save pointer
-	PUSH	AF		; save counter
-	RST	$30
-	DEFW	L2D2B + 4		; STACK-BC
-	RST	$28
-	DEFB	$3D		; re-stack
-	DEFB	$38		; end
-	EX	DE,HL		; pointer to exponent to DE
-	POP	BC		; counter in B
-	POP	HL		; restore pointer
-CODEL2:	DEC	HL
-	PUSH	BC
-	LD	A,(DE)
-	ADD	8		; * 256
-	JR	C,ERROR_6
-	LD	(DE),A
-	PUSH	DE
-	PUSH	HL
-	LD	A,(HL)
-	RST	$30
-	DEFW	L2D28		; STACK-A with space check
-	RST	$28
-	DEFB	$0F		; addition
-	DEFB	$38		; end
-	POP	HL
-	POP	DE
-	POP	BC
-	DJNZ	CODEL2
-D_CODEE:LD	HL,(STKEND)
-	EX	DE,HL
-CDSWAP:	JP	SWAP
-
-D_CHR:	POP	HL		; discard return address
-	POP	HL		; RE-ENTRY
-	POP	DE		; discard BREG?
-	POP	DE		; discard USR
-	LD	DE,$106F	; CHR$
-	PUSH	DE		; replace by CHR$
-	LD	DE,0
-	PUSH	DE		; BREG = 0
-	PUSH	HL
-	RST	$28
-	DEFB	$38		; end
-	RES	6,(IY+$01)	; string result
-	LD	A,(HL)
-	OR	A
-	JR	NZ,D_CHRL
-	RST	$30
-	DEFW	L1E99		; FIND-INT2
-	JR	NZ,ERROR_B_2
-	LD	A,B
-	OR	A
-	JR	NZ,D_CHR2
-	LD	A,C
-	LD	BC,L35C9 + 7
-	PUSH	BC
-	JP	SWAP
-
-ERROR_6:RST	$30
-	DEFW	L31AD		; 6 Number too big
-
-D_CHR2:	PUSH	BC
-	LD	BC,$0002
-	RST	$30
-	DEFW	L0030		; BC-SPACES
-	POP	BC
-	EX	DE,HL
-	LD	(HL),C
-	INC	HL
-	LD	(HL),B
-	DEC	HL
-	EX	DE,HL
-	LD	BC,$0002
-CHR2_E:	RST	$30
-	DEFW	L35C9 + $0E
-	JP	SWAP
-D_CHRL:	INC	HL
-	BIT	7,(HL)
-	JR	NZ,ERROR_B_2
-	DEC	HL
-	LD	A,(HL)
-	SUB	$78
-	RRCA
-	RRCA
-	RRCA
-	AND	$1F
-	LD	C,A
-	LD	B,0
-	RST	$30
-	DEFW	L0030		; BC-SPACES
-	EX	DE,HL
-	LD	(MEMBOT+28),HL
-	LD	(K_CUR),HL
-CHRL_L:	RST	$28
-	DEFB	$34,$80,$B0,$00,$00,$01	; stk-data 256
-	DEFB	$38			; end
-	CALL	MOD2A
-	LD	HL,(K_CUR)
-	LD	(HL),A
-	INC	HL
-	LD	(K_CUR),HL
-	RST	$28
-	DEFB	$38		; end
-	LD	A,(HL)
-	OR	A
-	JR	NZ,CHRL_L
-	INC	HL
-	INC	HL
-	LD	DE,(K_CUR)
-	LDI
-	LDI
-	EX	DE,HL
-	LD	DE,(MEMBOT+28)
-	SBC	HL,DE
-	LD	C,L
-	LD	B,H
-	JR	CHR2_E
-
-ERROR_B_2:
-	JP	ERROR_B
-
 MFNTAB:	DEFB	$6E		; STR$
 	DEFB	S_STR-$
+	DEFB	$6F		; CHR$
+	DEFB	S_CHR-$
 	DEFB	0
 
 ; STR$() with multiple arguments
@@ -665,13 +496,20 @@ STR_FR:	LD	A,(MEMBOT+27)
 	DEFW	L2D28		; STACK-A
 	JR	NROUND
 
-PR_DIGIT:
-	ADD	"0"
-	CP	"9"+1
-	JR	C,STR_NUM
-	ADD	A,7
-STR_NUM:RST	$10		; print digit
-	RET
+S_CHR:	RST	$18
+	CP	","
+	JR	NZ,ERROR_C
+	RST	$20
+	RST	$30
+	DEFW	L1C82		; CLASS_06, numeric expression followed by whatever
+	CALL	SYNTAX_Z
+	JR	NZ,D_CHR
+	CP	")"
+	JR	NZ,ERROR_C
+	JR	S_STR_END
+
+ERROR_B_2:
+	JP	ERROR_B
 
 D_STR_E:POP	AF		; fractional digits, Z set if zero
 	LD	(STKEND),HL
@@ -697,9 +535,128 @@ STR_P:	CALL	MIRROR
 	POP	DE
 	POP	BC
 S_STR_END:
-	LD	HL,X266E
-	PUSH	HL
+	LD	HL,X266E	; advance and stack string
+R_CHR:	PUSH	HL
 	JP	SWAP
+
+D_CHR:	RST	$20		; advance past closing bracket
+	RST	$30
+	DEFW	L1E94		; FIND-INT1
+	DEC	A
+	JR	NZ,D_CHRN1
+DCHR1:	LD	HL,L2712	; S-CONT-2
+	PUSH	HL
+	LD	HL,L35C9	; CHRS
+	JR	R_CHR
+
+D_CHRN1:DEC	A
+	JR	NZ,D_CHRN2
+
+	RST	$30
+	DEFW	L1E99		; FIND-INT2
+D_CHR2:	PUSH	BC
+	LD	BC,$0002
+	RST	$30
+	DEFW	L0030		; BC-SPACES
+	EX	DE,HL
+	POP	DE
+	LD	(HL),E
+	INC	HL
+	LD	(HL),D
+	DEC	HL
+	EX	DE,HL
+CHR_E:	RST	$30
+	DEFW	L2AB2		; STK-STO
+	LD	HL,L2712
+	JR	R_CHR
+
+D_CHRN2:ADD	A,2
+	JR	NZ,D_CHRF
+
+D_CHR0:	RST	$28
+	DEFB	$38		; end
+	LD	A,(HL)
+	OR	A
+	JR	NZ,D_CHRL
+	RST	$30
+	DEFW	L1E99		; FIND-INT2
+	LD	A,B
+	OR	A
+	JR	NZ,D_CHR2
+	LD	A,C
+D_CHRZ:	LD	HL,L2712
+	PUSH	HL
+	LD	HL,CHRS_X
+	JR	R_CHR
+
+D_CHRL0:RST	$28
+	DEFB	$02		; delete
+	DEFB	$38		; end
+	XOR	A
+	JR	D_CHRZ
+
+D_CHRL:	INC	HL
+	BIT	7,(HL)
+ERROR_B_3:
+	JR	NZ,ERROR_B_2
+	DEC	HL
+	LD	A,(HL)
+	SUB	$79
+	JR	C,D_CHRL0
+	CP	8
+	JR	C,D_CHRL0
+	RRCA
+	RRCA
+	RRCA
+	AND	$1F
+D_CHRF:	LD	C,A
+	LD	B,0
+	PUSH	BC
+	INC	BC
+	RST	$30
+	DEFW	L0030		; BC-SPACES
+	EX	DE,HL
+	LD	(MEMBOT+28),HL
+	LD	(K_CUR),HL
+	LD	(HL),B
+	LD	E,L
+	LD	D,H
+	INC	DE
+	DEC	BC
+	LDIR
+	LD	(HL),$80
+CHRL_L:	RST	$28
+	DEFB	$34,$80,$B0,$00,$00,$01	; stk-data 256
+	DEFB	$38			; end
+	CALL	MOD2A
+	LD	HL,(K_CUR)
+	BIT	7,(HL)
+	JR	NZ,ERROR_B_3
+	LD	(HL),A
+	INC	HL
+	LD	(K_CUR),HL
+	RST	$28
+	DEFB	$38		; end
+	LD	A,(HL)
+	OR	A
+	JR	NZ,CHRL_L
+	INC	HL
+	INC	HL
+	LD	DE,(K_CUR)
+	LD	A,(DE)
+	OR	A
+	JR	NZ,ERROR_B_3
+	LDI
+	LD	A,(DE)
+	OR	A
+	JR	NZ,ERROR_B_3
+	LDI
+	RST	$28
+	DEFB	$02		; delete
+	DEFB	$38
+	LD	DE,(MEMBOT+28)
+	POP	BC
+	JP	CHR_E
 
 D_TIMES:POP	HL		; discard return address
 	POP	HL		; RE-ENTRY
@@ -874,3 +831,11 @@ SINCLAIR2_KEYS:
 	DEFM	"21345"
 CURSOR_KEYS:
 	DEFM	"85670"
+
+PR_DIGIT:
+	ADD	"0"
+	CP	"9"+1
+	JR	C,STR_NUM
+	ADD	A,7
+STR_NUM:RST	$10		; print digit
+	RET
