@@ -20517,17 +20517,16 @@ FOR_LET:CALL	FOR_HOOK
 
 ; Find non-whitespace character of token
 ; Input: DE token table - 1, A token code
-; Output: H character code, DE next token
+; Output: A character code
 FC_TOKEN_R1:
 	CALL	L0C41		; PO-SEARCH
 	LD	A,(DE)
-	INC	DE
 	CP	" "
-	JR	NZ,FC_TOKF
+	RET	NZ
+	INC	DE
 	LD	A,(DE)
-FC_TOKF:LD	H,A
-	XOR	A
-	JP	L0C41		; PO-SEARCH
+	AND	$7F
+	RET
 
 ; Find token in this ROM (128 bytes)
 ; Input: HL text to match, B length of text, DE token table, C number of tokens in the table

@@ -262,10 +262,14 @@ KEY_MODE0:
 	JR	C,EXT_NT	; jump, if it is not
 	LD	HL,K_STATE
 	SET	7,(HL)
-;	BIT	3,(IY+$37)	; FLAGX, token type before cursor
-	INC	A
-	JR	NZ,EXT_CYC
-	LD	A,RND_T
+	SUB	FREE_T
+	BIT	3,(IY+$37)	; FLAGX, token type before cursor
+	JR	Z,CYC_I		; cycle instructions
+	JR	NC,CYCOR0
+	ADD	A,FREE_T-RND_T
+	LD	DE,X0094
+CYC_O:	RST	$30
+	DEFW	FC_TOKEN_R1
 EXT_CYC:LD	(K_DATA),A
 	LD	A,$0C
 	SCF
@@ -301,6 +305,17 @@ KEY_FLAG0:
 	CP	A
 	RET
 
+CYCOR0:	LD	DE,TOKENS0
+CYCIR0:	LD	B,A
+	INC	B
+	CALL	FC_TOKEN_R0
+	JR	EXT_CYC
+CYC_I:	LD	DE,X0119-1
+	JR	NC,CYC_O
+	ADD	A,FREE_T-RND_T
+	LD	DE,TOKENS1
+	JR	CYCIR0
+
 KEY_CUR:CALL	EDITOR_MODE	; editor mode?
 	SCF
 	RET	NZ		; all controls are passed on, if not
@@ -321,10 +336,6 @@ K_ENDK:	LD	HL,(K_CUR)
 	EX 	DE,HL
 	JR	K_UCUR
 
-K_DOWN:	LD	A,$0A
-	SCF
-	RET
-
 EXT_NT:	LD	A,(HL)
 	CP	"$"
 	JR	Z,EXT_N
@@ -344,6 +355,10 @@ NOREL:	RST	$30
 	DEFW	L2C8D		; ALPHA
 	JR	C,EXT_N
 	CP	A
+	RET
+
+K_DOWN:	LD	A,$0A
+	SCF
 	RET
 
 K_HOME:	LD	HL,(E_LINE)

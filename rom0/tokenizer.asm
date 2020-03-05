@@ -129,3 +129,20 @@ SPACEKW:LD	A,(DE)
 	JR	Z,TESTKW
 	DEC	DE
 	JR	TESTKW2
+
+; First non-whitespace of a token in this ROM
+; In: DE=token table-1, B=token code+1
+; Out: A=character code
+FC_TOKEN_R0:
+	LD	A,(DE)
+	INC	DE
+	ADD	A,A
+	JR	NC,FC_TOKEN_R0
+	DJNZ	FC_TOKEN_R0
+FC_WSP:	LD	A,(DE)
+	CP	" "
+	RET	NZ
+	INC	DE
+	LD	A,(DE)
+	AND	$7F
+	RET
