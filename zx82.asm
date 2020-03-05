@@ -39,6 +39,7 @@
 ; - stream #0 is not restored to channel K in MAIN_EXEC
 ; - reports signaled by channel control $0D in the end to help processing
 ; - channel P resets permanent attribtues as well [PRINT INVERSE 1;: LLIST]
+; Variable lookup sped up, includes long-named strings
 
 ; Mission: It is both an "alternative reality" project what ROM1 should have
 ; been in ZX Spectrum 128K, but is also usable for the stock 16k/48k machine.
@@ -57,7 +58,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 05-MAR-2020
+; Last updated: 06-MAR-2020
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -2868,7 +2869,7 @@ L08DF:  DEC     DE              ; point to start of
 
         PUSH    HL              ; else save workspace pointer.
         EX      DE,HL           ; transfer prog pointer to HL
-        CALL    L19B8           ; routine NEXT-ONE finds next line in DE.
+        CALL    NEXT_ONE        ; routine NEXT-ONE finds next line in DE.
         POP     HL              ; restore workspace pointer
         JR      L08D7           ; back to ME-OLD-LP until destination position
                                 ; in program area found.
@@ -2905,7 +2906,7 @@ L08F9:  LD      A,(HL)          ; fetch first byte.
 
 ;; ME-OLD-V1
 L0901:  PUSH    BC              ; save character in C.
-        CALL    L19B8           ; routine NEXT-ONE gets following variable
+        CALL    NEXT_ONE        ; routine NEXT-ONE gets following variable
                                 ; address in DE.
         POP     BC              ; restore character in C
         EX      DE,HL           ; transfer next address to HL.
@@ -2980,7 +2981,7 @@ L092C:  JR      NZ,L093E        ; forward to ME-ENT-1 for insertion only.
         EX      AF,AF'          ; save flag??
         LD      (X_PTR),HL      ; preserve workspace pointer in dynamic X_PTR
         EX      DE,HL           ; transfer program dest pointer to HL.
-        CALL    L19B8           ; routine NEXT-ONE finds following location
+        CALL    NEXT_ONE        ; routine NEXT-ONE finds following location
                                 ; in program or variables area.
         CALL    L19E8           ; routine RECLAIM-2 reclaims the space between.
         EX      DE,HL           ; transfer program dest pointer back to DE.
@@ -2992,7 +2993,7 @@ L092C:  JR      NZ,L093E        ; forward to ME-ENT-1 for insertion only.
 ;; ME-ENT-1
 L093E:  EX      AF,AF'          ; save or re-save flags.
         PUSH    DE              ; save dest pointer in prog/vars area.
-        CALL    L19B8           ; routine NEXT-ONE finds next in workspace.
+        CALL    NEXT_ONE        ; routine NEXT-ONE finds next in workspace.
                                 ; gets next in DE, difference in BC.
                                 ; prev addr in HL
         LD      (X_PTR),HL      ; store pointer in X_PTR
@@ -6366,7 +6367,7 @@ L155D:  LD      (E_PPC),BC      ; set E_PPC to extracted line number.
                                 ; a line with the same number exists.
         JR      NZ,L157D        ; forward if no existing line to MAIN-ADD1.
 
-        CALL    L19B8           ; routine NEXT-ONE finds the existing line.
+        CALL    NEXT_ONE        ; routine NEXT-ONE finds the existing line.
         CALL    L19E8           ; routine RECLAIM-2 reclaims it.
 
 ;; MAIN-ADD1
@@ -7355,7 +7356,7 @@ L1795:  LD      (LIST_SP),SP	; save stack pointer in LIST_SP
 
 ;; AUTO-L-1
 AUTO_L1:PUSH    BC              ; save the result.
-        CALL    L19B8           ; routine NEXT-ONE gets address in HL of
+        CALL    NEXT_ONE        ; routine NEXT-ONE gets address in HL of
                                 ; line after auto-line (in DE).
         POP     BC              ; restore result.
         ADD     HL,BC           ; compute back.
@@ -7918,7 +7919,7 @@ L1974:  POP     BC              ; restore the line number to BC
                                 ; if NZ, address of previous is in DE
 
         PUSH    BC              ; save the current line number
-        CALL    L19B8           ; routine NEXT-ONE finds address of next
+        CALL    NEXT_ONE        ; routine NEXT-ONE finds address of next
                                 ; line number in DE, previous in HL.
         EX      DE,HL           ; switch so next in HL
         JR      L1974           ; back to LINE-AD-1 for another comparison
@@ -8041,10 +8042,14 @@ L19B1:  CP      $0D             ; end of line ?
 ; variable.
 
 ;; NEXT-ONE
-L19B8:  PUSH    HL              ; save the pointer address.
+L19B8:	NOP
+	NOP
+	NOP
+NEXT_ONE:
+	PUSH    HL              ; save the pointer address.
         LD      A,(HL)          ; get first byte.
         CP      $40             ; compare with upper limit for line numbers.
-        JR      C,L19D5         ; forward to NEXT-O-3 if within BASIC area.
+        JR      C,L19D5		; forward to NEXT-O-3 if within BASIC area.
 
 ; the continuation here is for the next variable unless the supplied
 ; line number was erroneously over 16383. see RESTORE command.
@@ -8053,32 +8058,42 @@ L19B8:  PUSH    HL              ; save the pointer address.
         JR      Z,L19D6         ; forward to NEXT-O-4 to compute length.
 
         ADD     A,A             ; test bit 6 for single-character variables.
-        JP      M,L19C7         ; forward to NEXT-O-1 if so
+;;; BUGFIX: faster single-characters
+	LD	BC,$0006
+        JP      M,NEXT_O_1	; forward to NEXT-O-1 if so
+NEXT_O_2:
+	INC	HL
+	LD	A,(HL)
+	RLA
+	JR	NC,NEXT_O_2
+	CP	"$"*2
+	JR	NZ,L19DB	; NEXT-O-5
+	DEFS	$19D5 - $
 
-        CCF                     ; clear the carry for long-named variables.
+;;;	JP      M,L19C7         ; forward to NEXT-O-1 if so
+;;;	CCF                     ; clear the carry for long-named variables.
                                 ; it remains set for for-next loop variables.
-
 ;; NEXT-O-1
-L19C7:  LD      BC,$0005        ; set BC to 5 for floating point number
-        JR      NC,L19CE        ; forward to NEXT-O-2 if not a for/next
+;;;	L19C7:  LD      BC,$0005        ; set BC to 5 for floating point number
+;;;	JR      NC,L19CE        ; forward to NEXT-O-2 if not a for/next
                                 ; variable.
-
-        LD      C,$12           ; set BC to eighteen locations.
+;;;	LD      C,$12           ; set BC to eighteen locations.
                                 ; value, limit, step, line and statement.
 
 ; now deal with long-named variables
 
 ;; NEXT-O-2
-L19CE:  RLA                     ; test if character inverted. carry will also
+;;;L19CE:	RLA                     ; test if character inverted. carry will also
                                 ; be set for single character variables
-        INC     HL              ; address next location.
-        LD      A,(HL)          ; and load character.
-        JR      NC,L19CE        ; back to NEXT-O-2 if not inverted bit.
+;;;	INC     HL              ; address next location
+;;;	LD      A,(HL)          ; and load character.
+;;;	JR      NC,L19CE        ; back to NEXT-O-2 if not inverted bit.
                                 ; forward immediately with single character
                                 ; variable names.
 
-        JR      L19DB           ; forward to NEXT-O-5 to add length of
+;;;	JR      L19DB           ; forward to NEXT-O-5 to add length of
                                 ; floating point number(s etc.).
+
 
 ; ---
 
@@ -13945,7 +13960,7 @@ L2929:  POP     HL              ; pop saved pointer to char 1
 
 ;; V-NEXT
 L292A:  PUSH    BC              ; save flags
-        CALL    L19B8           ; routine NEXT-ONE gets next variable in DE
+        CALL    NEXT_ONE        ; routine NEXT-ONE gets next variable in DE
         EX      DE,HL           ; transfer to HL.
         POP     BC              ; restore the flags
         JR      L2900           ; loop back to V-EACH
@@ -13988,13 +14003,17 @@ L293F:  POP     DE              ; discard pointer to 2nd prog char       v2
         RST     18H             ; GET-CHAR
 
 ;; V-PASS
-L2943:  CALL    L2C88           ; routine ALPHANUM
-        JR      NC,L294B        ; forward to V-END if not
-
+;;; BUGFIX: long string names
+L2943:	CP	"$"
+	JR	NZ,L294B
+	RST	$20
+	JP	STRING_RESULT
+	DEFS	$294B - $
+;;;	CALL    L2C88           ; routine ALPHANUM
+;;;	JR      NC,L294B        ; forward to V-END if not
 ; but it never will be as we advanced past long-named variables earlier.
-
-        RST     20H             ; NEXT-CHAR
-        JR      L2943           ; back to V-PASS
+;;;	RST     20H             ; NEXT-CHAR
+;;;	JR      L2943           ; back to V-PASS
 
 ; ---
 
@@ -14383,8 +14402,7 @@ L2A48:  RST     20H             ; NEXT-CHAR
 ;; SV-SLICE?
 L2A49:  CP      $28             ; is character '(' ?
         JR      Z,L2A45         ; loop back if so to SV-SLICE
-
-        RES     6,(IY+$01)      ; update FLAGS  - Signal string result
+IND_STR:RES     6,(IY+$01)      ; update FLAGS  - Signal string result
         RET                     ; and return.
 
 ; ---
@@ -15017,7 +15035,7 @@ L2C15:  JR      C,L2C1F         ; skip to D-LETTER if variable did not exist.
                                 ; else reclaim the old one.
 
         PUSH    BC              ; save type in C.
-        CALL    L19B8           ; routine NEXT-ONE find following variable
+        CALL    NEXT_ONE        ; routine NEXT-ONE find following variable
                                 ; or position of $80 end-marker.
         CALL    L19E8           ; routine RECLAIM-2 reclaims the
                                 ; space between.
@@ -20631,11 +20649,24 @@ DELIDX:	CALL	CHKIDX
 	DEC	(HL)
 	RET
 
+; Skip single-character variable (10 bytes)
+NEXT_O_1:
+	JP	NC,L19DB	; NEXT-O-5
+	LD	C,$13
+	JP	L19DB		; NEXT-O-5
+
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
 
-	DEFS	$3C07 - $, $FF
+	DEFS	$3C01 - $, $FF
+
+; Long-named string variable found (5 bytes)
+STRING_RESULT:
+	POP	HL		; retrieve address
+	INC	HL		; step over "$"+$80
+	CP	A		; clear CF, set ZF
+	JP	IND_STR		; indicate string and return
 
 ; Abstracted NEW routine (6 bytes)
 NEW:	CALL	NEW_HOOK
