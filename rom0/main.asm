@@ -431,6 +431,8 @@ JP_LBL:	LD	HL,(PROG)
 ; Single-argument original function extended to multiple arguments
 MULTI_CONT:
 	POP	BC		; discard return address
+	BIT	6,(IY+FLAGS-ERR_NR)	; type of first argument
+	JR	Z,ERRCIDX	; error, if string
 	POP	BC
 	LD	A,B
 	CP	$10

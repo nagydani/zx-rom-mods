@@ -394,10 +394,7 @@ MFNTAB:	DEFB	$6E		; STR$
 	DEFB	0
 
 ; STR$() with multiple arguments
-S_STR:	RST	$18
-	CP	","
-	JR	NZ,ERROR_C
-	CALL	SYNTAX_Z
+S_STR:	CALL	SYNTAX_Z
 	JR	Z,S_STR_S
 	LD	BC,$0001
 	RST	$30
@@ -496,10 +493,7 @@ STR_FR:	LD	A,(MEMBOT+27)
 	DEFW	L2D28		; STACK-A
 	JR	NROUND
 
-S_CHR:	RST	$18
-	CP	","
-	JR	NZ,ERROR_C
-	RST	$20
+S_CHR:	RST	$20
 	RST	$30
 	DEFW	L1C82		; CLASS_06, numeric expression followed by whatever
 	CALL	SYNTAX_Z
