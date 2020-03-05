@@ -6,7 +6,7 @@
 ;
 ; IM1 fixed, does not corrupt IY
 ; DEC_TO_FP division and multiplication switched [1/2=0.5]
-; INT_TO_FP unified pipeline for binary and decimal literals
+; INT_TO_FP unified pipeline for binary and decimal literals [PRINT 1 000 000]
 ; CIRCLE sped up considerably
 ; PO_RIGHT fixed [CHR$ 9]
 ; PO_BACK fixed [CHR$ 8]
@@ -57,7 +57,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 04-MAR-2020
+; Last updated: 05-MAR-2020
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -13916,8 +13916,13 @@ L2912:  INC     HL              ; address next character in vars area
 ;; V-SPACES
 L2913:  LD      A,(DE)          ; pick up letter from prog area
         INC     DE              ; and advance address
-        CP      $20             ; is it a space
-        JR      Z,L2913         ; back to V-SPACES until non-space
+
+;;; BUGFIX: space and control characters need to be skipped
+	CP	" " + 1
+	JR	C,L2913
+;;;	CP      $20             ; is it a space
+;;;	JR      Z,L2913         ; back to V-SPACES until non-space
+
 
         OR      $20             ; convert to range 1 - 26.
         CP      (HL)            ; compare with addressed variables character
@@ -15462,15 +15467,20 @@ L2D40:  CALL    STK_DGT         ; routine STK-DIGIT puts 0-9 on stack
 
         RST     28H             ;; FP-CALC    ; v, d.
         DEFB    $01             ;;exchange    ; d, v.
-;;;        DEFB    $A4             ;;stk-ten     ; d, v, 10.
+;;; BUGFIX: can use any base, not just ten
         DEFB    $E4             ;; + STACK BASE     ; d, v, 10.
+;;;     DEFB    $A4             ;;stk-ten     ; d, v, 10.
         DEFB    $04             ;;multiply    ; d, v*10.
         DEFB    $0F             ;;addition    ; d + v*10 = newvalue
         DEFB    $38             ;;end-calc    ; v.
 
-        CALL    L0074           ; routine CH-ADD+1 get next character
+;;; BUGFIX: whitespaces and controls allowed in numbers
+	RST	$20
+;;;	CALL    L0074           ; routine CH-ADD+1 get next character
         JR      L2D40           ; back to NXT-DGT-2 to process as a digit
 
+;;; Spare bytes
+	DEFS	$2D4F - $
 
 ;*********************************
 ;** Part 9. ARITHMETIC ROUTINES **
