@@ -280,7 +280,7 @@ ENDDRAW:XOR	A
 	RST	$30
 	DEFW	L22AA+7		; PIXEL-ADD + 6
 	CALL	SETPIX
-	RET	C		; DRAW endpoint
+	JR	C,PXATTR	; DRAW endpoint
 	EX	AF,AF'		; restore S_MODE
 	INC	SP
 	INC	SP		; remove SWAP
@@ -288,6 +288,27 @@ ENDDRAW:XOR	A
 	JR	NC,PLOT_HICOLOR
 	LD	BC,L0BDB	; find and set attribute
 	JR	E_PLOT
+
+; Set attribute
+; In: HL=display file address, A'=(S_MODE)
+; Out: CF clear
+PXATTR:	EX	AF,AF'
+	AND	$F8
+	JR	Z,PXATTRL
+PXATTRH:SET	5,H
+	PUSH	DE
+	RST	$30
+	DEFW	X0BE4
+	POP	DE
+	RES	5,H
+	RET
+PXATTRL:PUSH	DE
+	PUSH	HL
+	RST	$30
+	DEFW	L0BDB
+	POP	HL
+	POP	DE
+	RET
 
 DELPLT:	RST	$28
 	DEFB	$02		; delete y coordinate
@@ -921,27 +942,6 @@ CLIPPX:	RRA
 	DEC	A
 	INC	L
 	CP	(HL)
-	RET
-
-; Set attribute
-; In: HL=display file address, A'=(S_MODE)
-; Out: CF clear
-PXATTR:	EX	AF,AF'
-	AND	$F8
-	JR	Z,PXATTRL
-PXATTRH:SET	5,H
-	PUSH	DE
-	RST	$30
-	DEFW	X0BE4
-	POP	DE
-	RES	5,H
-	RET
-PXATTRL:PUSH	DE
-	PUSH	HL
-	RST	$30
-	DEFW	L0BDB
-	POP	HL
-	POP	DE
 	RET
 
 	include "calculator.asm"
