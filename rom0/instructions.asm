@@ -892,7 +892,7 @@ LCL_EXX:EXX
 	PUSH	DE		; return address
 LCL_CM:	RST	$18
 	CP	","
-	JP	NZ,SWAP
+	JR	NZ,SW_LOC
 	RST	$20
 	JR	LOCAL_L
 
@@ -1343,6 +1343,27 @@ SKIP_NUM:
 	LD	A,(HL)
 	RET
 
+; Long-named string variables
+LV_CONT:JR	C,LV_NEXT
+	RST	$30
+	DEFW	L28B2		; LOOK-VARS
+	PUSH	HL
+	EX	AF,AF'
+	RST	$18
+	CP	"$"
+	JR	NZ,LV_NSTR
+	; long string not found
+	RST	$20		; skip over "$"
+	RES	6,(IY+FLAGS-ERR_NR)	; indicate string
+	CALL	SYNTAX_Z
+	SCF
+	JR	NZ,SW_LV2	; in runtime, long string not found CF=1,ZF=0
+	AND	A		; in syntax check, long string found CF=0,ZF=0
+	DEFB	$3E		; LD A,skip next byte
+LV_NSTR:EX	AF,AF'
+SW_LV2:	POP	HL
+	JP	SWAP
+
 LV_FOR:	POP	HL		; discard return address
 	CP	$91		; interpreting FOR?
 	JR	NZ,LV_DIM	; if not, it's a DIM
@@ -1356,17 +1377,17 @@ LV_FOR:	POP	HL		; discard return address
 	JR	SW_LV
 
 LV_FORS:PUSH	HL
-	JR	SW_LV2
+	JR	SW_LV
 
 LV_DIM:	XOR	A
 	LD	(DEFADD+1),A	; look for globals only
 	RST	$30
 	DEFW	L28B2		; LOOK-VARS
 	LD	(IY+DEFADD+1-ERR_NR),1	; restore without changing flags
-SW_LV2:	JR	SW_LV		; return to DIM
+	JR	SW_LV		; return to DIM
 
 ; Handling DIM and argumentless NEXT
-LV_CONT:LD	A,(T_ADDR)
+LV_NEXT:LD	A,(T_ADDR)
 	CP	$99		; interpreting NEXT?
 	JR	NZ,LV_FOR	; check FOR, if not
 	RST	$18		; get the character following NEXT

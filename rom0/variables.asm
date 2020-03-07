@@ -189,14 +189,50 @@ LC_NUM:	EX	DE,HL
 LC_STRR:POP	DE		; discard pointer
 	JR	LC_SW
 
-; string variable assignment L-DELETE
+; new string variable assignment
+NSTRNG:	LD	HL,-7
+	ADD	HL,BC
+	JR	NC,LC_SW	; back to ROM1 for short names
+; long named string variable assignment
+LSTRNG:	EX	AF,AF'		; save first letter
+	POP	AF		; discard return address
+	INC	HL
+	INC	HL
+	PUSH	HL		; save net variable name length
+	RST	$30
+	DEFW	L2BF1		; STK_FETCH
+	LD	(K_CUR),DE	; point cursor to string
+	POP	HL
+	PUSH	BC		; save string length
+	PUSH	HL
+	INC	HL
+	LD	C,L
+	LD	B,H
+	RST	$30
+	DEFW	MAKE_STRING
+	EX	DE,HL
+	INC	DE
+	EX	AF,AF'		; restore first letter
+	XOR	$E0		; indicate long variable name
+	LD	(DE),A		; with the first character
+	INC	DE
+	XOR	A
+	POP	HL		; restore net variable name length
+	RST	$30
+	DEFW	L_STORE
+	POP	BC
+	LD	DE,(K_CUR)
+	JR	LC_SW
+
 STRNG_CONT:
+	JR	NZ,NSTRNG
+; string variable assignment L-DELETE
 	AND	A
 	SBC	HL,SP
 	ADD	HL,SP
 	JR	C,LC_SW		; global variable
 	BIT	0,(IY+$37)	; FLAGX, complete string
-	JR	Z,LC_SW
+	JR	Z,SW_STR
 	PUSH	HL
 	RST	$30
 	DEFW	L2BF1		; STK-FETCH
@@ -225,7 +261,7 @@ STRNG_Z:POP	BC		; discard return value
 	LD	A,(T_ADDR)
 	CP	$7D		; LET?
 	RET	NZ		; return, if not
-	JP	SWAP
+SW_STR:	JP	SWAP
 
 STRNG_LONG:
 	PUSH	BC		; string length

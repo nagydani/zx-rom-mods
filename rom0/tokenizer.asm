@@ -146,3 +146,21 @@ FC_WSP:	LD	A,(DE)
 	LD	A,(DE)
 	AND	$7F
 	RET
+
+; First non-whitespace of a token in ROM1
+; In: DE=token table-1, A=token code
+; Out: A=character code
+FC_TOKEN_R1:
+        RST     $30
+        DEFW    L0C41           ; PO-SEARCH
+        EX      DE,HL
+        RST     $30
+        DEFW    X007B           ; LD A,(HL)
+        CP      " "
+        RET	NZ
+        INC     HL
+        RST     $30
+        DEFW    X007B           ; LD A,(HL)
+        AND     $7F
+	RET
+

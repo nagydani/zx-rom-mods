@@ -9044,7 +9044,9 @@ L1C11:  POP     BC              ; drop address SCAN-LOOP.
 ; destination variable for an assignment.
 
 ;; CLASS-01
-L1C1F:  CALL    L28B2           ; routine LOOK-VARS returns carry set if not
+;;; BUGFIX: long string variables
+L1C1F:  CALL    LOOK_VARS1      ; long string variable
+;;;L1C1F:  CALL    L28B2	; routine LOOK-VARS returns carry set if not
                                 ; found in runtime.
 
 ; ----------------------
@@ -9128,7 +9130,7 @@ L1C59:  PUSH    AF              ; save A briefly
 
 ;; CLASS-04
 ;;; BUGFIX: allow for empty next in ROM0
-L1C6C:	CALL	LOOP_VARS	; routine LOOK-VARS with preliminary check
+L1C6C:	CALL	LOOK_VARS2	; routine LOOK-VARS with preliminary check
 ;;;L1C6C:  CALL    L28B2           ; routine LOOK-VARS
         PUSH    AF              ; preserve flags.
         LD      A,C             ; fetch type - should be 011xxxxx
@@ -11271,11 +11273,9 @@ L2294:  CALL    L1E94           ; routine FIND-INT1
 
         OUT     ($FE),A         ; outputting to port effects an immediate
                                 ; change.
-;;; BUGFIX: change BORDER in Timex HI-RES, too
-	CALL	BORDER
-;;;        RLCA                    ; shift the colour to
-;;;        RLCA                    ; the paper bits setting the
-;;;        RLCA                    ; ink colour black.
+        RLCA                    ; shift the colour to
+        RLCA                    ; the paper bits setting the
+        RLCA                    ; ink colour black.
         BIT     5,A             ; is the number light coloured ?
                                 ; i.e. in the range green to white.
         JR      NZ,L22A6        ; skip to BORDER-1 if so
@@ -13952,7 +13952,9 @@ L2913:  LD      A,(DE)          ; pick up letter from prog area
 ; but if they match check that this is also last letter in prog area
 
         LD      A,(DE)          ; fetch next character
-        CALL    L2C88           ; routine ALPHANUM sets carry if not alphanum
+;;; BUGFIX: the last character can also be "$"
+	CALL	ALPHANUMS
+;;;	CALL    L2C88           ; routine ALPHANUM sets carry if alphanum
         JR      NC,L293E        ; forward to V-FOUND-1 with a full match.
 
 ;; V-GET-PTR
@@ -13981,6 +13983,7 @@ L2934:  POP     DE              ; discard the pointer to 2nd. character  v2
         CP      $28             ; is it '(' ?
         JR      Z,L2943         ; forward to V-PASS
                                 ; Note. could go straight to V-END ?
+				; ZX82: No.
 
         SET     5,B             ; signal not an array
         JR      L294B           ; forward to V-END
@@ -14570,6 +14573,8 @@ L2AB6:  PUSH    BC              ; save two registers
         CALL    L33A9           ; routine TEST-5-SP checks room and puts 5
                                 ; in BC.
         POP     BC              ; fetch the saved registers.
+; entry point without free memory check
+STK_STORE2:
         LD      HL,(STKEND)      ; make HL point to first empty location STKEND
         LD      (HL),A          ; place the 5 registers.
         INC     HL              ;
@@ -14714,68 +14719,96 @@ L2B0B:  INC     BC              ; increase byte count for each relevant
 ;; L-NO-SP
 L2B0C:  INC     HL              ; increase pointer.
         LD      A,(HL)          ; fetch character.
-        CP      $20             ; is it a space ?
-        JR      Z,L2B0C         ; back to L-NO-SP is so.
-
-        JR      NC,L2B1F        ; forward to L-TEST-CH if higher.
-
-        CP      $10             ; is it $00 - $0F ?
-        JR      C,L2B29         ; forward to L-SPACES if so.
-
-        CP      $16             ; is it $16 - $1F ?
-        JR      NC,L2B29        ; forward to L-SPACES if so.
+;;; BUGFIX: This is slow and buggy
+	CP	$21
+	JR	C,L2B0C
+;;;	CP      $20             ; is it a space ?
+;;;	JR      Z,L2B0C         ; back to L-NO-SP is so.
+;;;	JR      NC,L2B1F        ; forward to L-TEST-CH if higher.
+;;;	CP      $10             ; is it $00 - $0F ?
+;;;	JR      C,L2B29         ; forward to L-SPACES if so.
+;;;	CP      $16             ; is it $16 - $1F ?
+;;;	JR      NC,L2B29        ; forward to L-SPACES if so.
 
 ; it was $10 - $15  so step over a colour code.
 
-        INC     HL              ; increase pointer.
-        JR      L2B0C           ; loop back to L-NO-SP.
+;;;	INC     HL              ; increase pointer.
+;;;	JR      L2B0C           ; loop back to L-NO-SP.
 
 ; ---
 
 ; the branch was to here if higher than space.
 
 ;; L-TEST-CH
-L2B1F:  CALL    L2C88           ; routine ALPHANUM sets carry if alphanumeric
-        JR      C,L2B0B         ; loop back to L-EACH-CH for more if so.
-
-        CP      $24             ; is it '$' ?
-        JP      Z,L2BC0         ; jump forward if so, to L-NEW$
-                                ; with a new string.
-
+;;;L2B1F:
+	CALL    L2C88           ; routine ALPHANUM sets carry if alphanumeric
+	JR      C,L2B0B         ; loop back to L-EACH-CH for more if so.
+	CP      "$"             ; is it '$' ?
+;;; BUGFIX: allow for long strings
+;	JR	NZ,L_SPACES
+;	DEC	BC
+;	DEC	BC
+;	DEC	BC		; string variables need only 3 extra spaces
+	JP	Z,L_NEW
 ;; L-SPACES
-L2B29:  LD      A,C             ; save length lo in A.
-        LD      HL,(E_LINE)      ; fetch E_LINE to HL.
-        DEC     HL              ; point to location before, the variables
+;;;L2B29:  LD      A,C             ; save length lo in A.
+L_SPACES:
+;;; BUGFIX: save space by making this a routine
+	CALL	MAKE_STRING
+;;;	LD      HL,(E_LINE)	; fetch E_LINE to HL.
+;;;	DEC     HL           ; point to location before, the variables
                                 ; end-marker.
-        CALL    L1655           ; routine MAKE-ROOM creates BC spaces
+;;;	PUSH	BC
+;;;	CALL    L1655           ; routine MAKE-ROOM creates BC spaces
                                 ; for name and numeric value.
+;;;	POP	BC
+
         INC     HL              ; advance to first new location.
         INC     HL              ; then to second.
         EX      DE,HL           ; set DE to second location.
         PUSH    DE              ; save this pointer.
-        LD      HL,(DEST)      ; reload HL with DEST.
+;;; BUGFIX: do it in 16 bits
+	LD	HL,-6
+	XOR	A		; clear A and CF
+	ADC	HL,BC
+L_STORE:CP	L
+	ADC	A,H
+	LD	B,L
+	LD	C,A		; setup by Goerge Phillips
+	LD      HL,(DEST)	; reload HL with DEST.
         DEC     DE              ; point to first.
-        SUB     $06             ; subtract six from length_lo.
-        LD      B,A             ; save count in B.
-        JR      Z,L2B4F         ; forward to L-SINGLE if it was just
+;;;        SUB     $06             ; subtract six from length_lo.
+;;;        LD      B,A             ; save count in B.
+        JR      Z,L_SINGLE	; forward to L-SINGLE if it was just
                                 ; one character.
 
+;;;
 ; HL points to start of variable name after 'LET' in BASIC line.
-
+	PUSH	HL
 ;; L-CHAR
-L2B3E:  INC     HL              ; increase pointer.
+;;; L2B3E:
+L_CHAR:	INC     HL              ; increase pointer.
         LD      A,(HL)          ; pick up character.
         CP      $21             ; is it space or higher ?
-        JR      C,L2B3E         ; back to L-CHAR with space and less.
+        JR      C,L_CHAR	; back to L-CHAR with space and less.
 
         OR      $20             ; make variable lower-case.
         INC     DE              ; increase destination pointer.
         LD      (DE),A          ; and load to edit line.
-        DJNZ    L2B3E           ; loop back to L-CHAR until B is zero.
+;;; BUGFIX: 16-bit loop
+	DJNZ	L_CHAR
+	DEC	C
+	JR	NZ,L_CHAR
+;;;	DJNZ    L2B3E           ; loop back to L-CHAR until B is zero.
 
         OR      $80             ; invert the last character.
         LD      (DE),A          ; and overwrite that in edit line.
 
+;;; BUGFIX: restoring (DEST) to HL is faster and shorter
+	POP	HL
+	CP	"$" + $80
+	RET	Z		; only for long-named strings, not in this ROM
+;;;
 ; now consider first character which has bit 6 set
 
         LD      A,$C0           ; set A 11000000 is xor mask for a long name.
@@ -14785,7 +14818,8 @@ L2B3E:  INC     HL              ; increase pointer.
 ;                                            %011      will be xor/or result
 
 ;; L-SINGLE
-L2B4F:  LD      HL,(DEST)      ; fetch DEST - HL addresses first character.
+;;;L2B4F:
+L_SINGLE:
         XOR     (HL)            ; apply variable type indicator mask (above).
         OR      $20             ; make lowercase - set bit 5.
         POP     HL              ; restore pointer to 2nd character.
@@ -14794,7 +14828,9 @@ L2B4F:  LD      HL,(DEST)      ; fetch DEST - HL addresses first character.
                                 ; new E_LINE-1  the $80 vars end-marker.
 
 ;; L-NUMERIC
-L2B59:  PUSH    HL              ; save the pointer.
+;;;L2B59:
+L_NUMERIC:
+	PUSH    HL              ; save the pointer.
 
 ; the value of variable is deleted but remains after calculator stack.
 
@@ -14810,8 +14846,16 @@ L2B59:  PUSH    HL              ; save the pointer.
         SBC     HL,BC           ; HL points to start of value.
         JR      L2BA6           ; forward to L-ENTER  ==>
 
-; ---
-
+; Reserve BC room just below E_LINE, preserve BC
+MAKE_STRING:
+        LD      HL,(E_LINE)      ; fetch E_LINE to HL.
+        DEC     HL              ; point to location before, the variables
+                                ; end-marker.
+	PUSH	BC
+        CALL    L1655           ; routine MAKE-ROOM creates BC spaces
+                                ; for name and numeric value.
+	POP	BC
+	RET
 
 ; the jump was to here if the variable already existed.
 
@@ -14825,7 +14869,7 @@ L2B66:  BIT     6,(IY+$01)      ; test FLAGS - numeric or string result ?
 
         LD      DE,$0006        ; six bytes forward points to loc past value.
         ADD     HL,DE           ; add to start of number.
-        JR      L2B59           ; back to L-NUMERIC to overwrite value.
+        JR      L_NUMERIC	; back to L-NUMERIC to overwrite value.
 
 ; ---
 
@@ -14833,7 +14877,7 @@ L2B66:  BIT     6,(IY+$01)      ; test FLAGS - numeric or string result ?
 
 ;; L-DELETE$
 ;;; BUGFIX: local string assignment
-L2B72:	CALL	STRING_HOOK
+L2B72:	CALL	STRING_HOOK	; ZF set at this point
 ;;; L2B72:  LD      HL,(DEST)      ; fetch DEST to HL.
                                 ; (still set from first instruction)
         LD      BC,(STRLEN)      ; fetch STRLEN to BC.
@@ -14935,7 +14979,7 @@ L2BAF:  DEC     HL              ; point to high byte of length.
 ; ---
 
 ; the jump was here with a new string variable.
-
+L_NEW:
 ;; L-NEW$
 L2BC0:  LD      A,$DF           ; indicator mask %11011111 for
                                 ;                %010xxxxx will be result
@@ -14944,7 +14988,9 @@ L2BC0:  LD      A,$DF           ; indicator mask %11011111 for
 
 ;; L-STRING
 L2BC6:  PUSH    AF              ; save first character and mask.
-        CALL    L2BF1           ; routine STK-FETCH fetches parameters of
+;;; BUGFIX: support long string names
+	CALL	LSTK_FETCH
+;;;	CALL    L2BF1           ; routine STK-FETCH fetches parameters of
                                 ; the string.
         EX      DE,HL           ; transfer start to HL.
         ADD     HL,BC           ; add to length.
@@ -14955,14 +15001,18 @@ L2BC6:  PUSH    AF              ; save first character and mask.
         INC     BC              ; extra byte for letter.
         INC     BC              ; two bytes
         INC     BC              ; for the length of string.
-        LD      HL,(E_LINE)      ; address E_LINE.
-        DEC     HL              ; now end of VARS area.
-        CALL    L1655           ; routine MAKE-ROOM makes room for string.
+;;; BUGFIX: save space
+	CALL	MAKE_STRING
+	DEC	BC
+	DEC	BC
+;;;	LD      HL,(E_LINE)      ; address E_LINE.
+;;;	DEC     HL              ; now end of VARS area.
+;;;	CALL    L1655           ; routine MAKE-ROOM makes room for string.
                                 ; updating pointers including DEST.
         LD      HL,(DEST)      ; pick up pointer to end of string from DEST.
-        POP     BC              ; restore length from stack.
-        PUSH    BC              ; and save again on stack.
-        INC     BC              ; add a byte.
+;;;	POP     BC              ; restore length from stack.
+;;;	PUSH    BC              ; and save again on stack.
+;;;	INC     BC              ; add a byte.
         LDDR                    ; copy bytes from end to start.
         EX      DE,HL           ; HL addresses length low
         INC     HL              ; increase to address high byte
@@ -14978,6 +15028,8 @@ L2BEA:  DEC     HL              ; address variable name
         LD      HL,(E_LINE)      ; load HL with E_LINE.
         DEC     HL              ; now end of VARS area.
         RET                     ; return
+
+	DEFS	$2BF1 - $
 
 ; ------------------------------------
 ; Get last value from calculator stack
@@ -15012,7 +15064,7 @@ L2BF1:  LD      HL,(STKEND)      ; STKEND
 
 ;; DIM
 ;;; BUGFIX: only global variables
-L2C02:  CALL    LOOP_VARS
+L2C02:  CALL    LOOK_VARS2
 ;;;L2C02:  CALL    L28B2           ; routine LOOK-VARS
 
 ;; D-RPORT-C
@@ -20252,16 +20304,21 @@ C2FLAGX4:
 	RES	4,(IY+FLAGX-ERR_NR)
 SSTMTL1:JP	L1B29		; SSTMT-L-1
 
-; LOOK-VARS for loop variables (6 bytes)
-LOOP_VARS:
-	CALL	LV_HOOK
-	JP	L28B2		; LOOK-VARS
+SETFX4:	SET	4,(IY+FLAGX-ERR_NR)
+	JP	L1BB3		; LINE-END
 
 ; These must be FF for IM2 vectoring
 	DEFS	$3A01 - $, $FF
 
-SETFX4:	SET	4,(IY+FLAGX-ERR_NR)
-	JP	L1BB3		; LINE-END
+; LOOK-VARS for special cases (6 bytes)
+LOOK_VARS2:
+	SCF
+	DEFB	$3E		; LD A,skip byte
+LOOK_VARS1:
+	AND	A
+	BIT	4,(IY+$01)	; FLAGS
+	JP	Z,L28B2		; LOOK-VARS
+	JP	LV_HOOK
 
 SFLAGX4:SET	4,(IY+FLAGX-ERR_NR)
 	JR	SSTMTL1
@@ -20527,34 +20584,9 @@ REPORT1:CALL	NEXT_HOOK
 	RST	$08
 	DEFB	$00		; 1 NEXT without FOR
 
-; Change BORDER color in Timex HiRes mode as well (13 bytes)
-BORDER:	RLCA
-	RLCA
-	RLCA
-	LD	B,A
-	IN	A,($FF)
-	OR	$38
-	XOR	B
-	OUT	($FF),A
-	LD	A,B
-	RET
-
 ; LET substitute for FOR (6 bytes)
 FOR_LET:CALL	FOR_HOOK
 	JP	L2AFF		; LET
-
-; Find non-whitespace character of token
-; Input: DE token table - 1, A token code
-; Output: A character code
-FC_TOKEN_R1:
-	CALL	L0C41		; PO-SEARCH
-	LD	A,(DE)
-	CP	" "
-	RET	NZ
-	INC	DE
-	LD	A,(DE)
-	AND	$7F
-	RET
 
 ; Find token in this ROM (128 bytes)
 ; Input: HL text to match, B length of text, DE token table, C number of tokens in the table
@@ -20654,6 +20686,25 @@ NEXT_O_1:
 	JP	NC,L19DB	; NEXT-O-5
 	LD	C,$13
 	JP	L19DB		; NEXT-O-5
+
+; Check last character of a long variable name (16 bytes)
+V_CONT:	INC	DE
+	LD	A,(DE)
+ALPHANUMS:
+	CALL	L2C88		; ALPHANUM
+	RET	C		; alphanumeric
+	CP	" " + 1
+	JR	C,V_CONT
+	CP	"$"
+	SCF
+	RET	Z		; set CF, if "$"
+	AND	A		; otherwise clear CF
+	RET
+
+; Long string support in L-STRING (6 bytes)
+LSTK_FETCH:
+	CALL	STRING_HOOK	; ZF always cleared
+	JP	L2BF1		; STK-FETCH
 
 ; ---------------------
 ; THE 'SPARE' LOCATIONS
@@ -20797,7 +20848,6 @@ SPACEKW_R1:
 	JR	Z,TESTKW_R1
 	DEC	DE
 	JR	TESTKW2_R1
-
 
 ; Abstracted PLOT routine (high speed)
 PLOT:	BIT	4,(IY+FLAGS-ERR_NR)

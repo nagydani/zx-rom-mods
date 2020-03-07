@@ -571,7 +571,7 @@ INDEX_CONT:
 	JR	Z,IDX_DO
 	LD	HL,OPENSTRM2
 IDX_DO:	CALL	INDEXER
-SWIDX:	JP	NC,SWAP
+SWIDX:	JR	NC,SWERR
 	POP	BC		; discard return address
 	LD	C,(HL)
 	LD	B,0
@@ -1060,6 +1060,8 @@ OPERTB:	DEFB	"|"
 	DEFB	S_RR - $
 	DEFB	RL_T
 	DEFB	S_RL - $
+	DEFB	"$"
+	DEFB	S_LSTR - $
 	DEFB	0
 
 S_BOR:	LD	A,$02		; priority like OR
@@ -1156,6 +1158,20 @@ S_CPLN:	RST	$28		; calculate
 F_CPL:	RST	$20		; advance
 F_CPL2:	LD	HL,L2723	; S-OPERTR
 	JR	SWPUSH
+
+S_LSTR:	CALL	SYNTAX_Z
+	JP	NZ,ERROR_2	; Variable not found in runtime
+	LD	HL,FLAGS
+	BIT	6,(HL)
+	JR	Z,SWAPOP	; must be numeric
+	RES	6,(HL)		; indicate string
+	LD	A,D
+	OR	A
+	JR	Z,SWAPOP	; numeric expression
+	LD	HL,(STKBOT)
+	SBC	HL,DE
+	JR	C,SWAPOP	; numeric literal
+	JR	F_CPL		; skip "$"
 
 BWISE:	CALL	SYNTAX_Z
 	JR	NZ,BWISE2
@@ -2118,7 +2134,7 @@ MAIN_ADD_CONT:
 
 	CALL	RSTLBLS
 	POP	BC
-	JP	SWAP
+SW_MA:	JP	SWAP
 
 RSTLBLS:RES	7,(IY+FLAGS2-ERR_NR)
 	LD	HL,(PROG)
@@ -2174,7 +2190,7 @@ SUB_CONT:
 	LD	HL,SUB_ER
 	AND	A
 	SBC	HL,DE
-	JP	Z,SWAP		; Return, if called from DIM
+	JP	Z,SW_MA		; Return, if called from DIM
 	POP	DE		; discard one return address
 	POP	DE		; discard other return address
 	POP	DE		; error reg in D
@@ -2189,10 +2205,10 @@ SUB_CONT:
 	LD	A,D		; error value in A
 	POP	DE		; restore DE
 	JR	Z,SUB_OOR
-	JP	NC,SWAP		; return, if we are in range
+	JR	NC,SW_SUB	; return, if we are in range
 SUB_OOR:SCF
 	DEC	A
-	JP	SWAP
+SW_SUB:	JP	SWAP
 
 STACKSWAP:
 	LD	HL,SWAP
