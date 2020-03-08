@@ -1177,6 +1177,7 @@ ST_VARN:LD	A,C
 	POP	DE		; discard return address
 	RET
 
+ONERROR:
 ; unimplemented instruction, reports error, if executed
 PLUG:	JP	ERROR_C
 
@@ -1362,7 +1363,7 @@ LV_CONT:JR	C,LV_NEXT
 	DEFB	$3E		; LD A,skip next byte
 LV_NSTR:EX	AF,AF'
 SW_LV2:	POP	HL
-	JP	SWAP
+	JR	SW_LV
 
 LV_FOR:	POP	HL		; discard return address
 	CP	$91		; interpreting FOR?
@@ -2351,8 +2352,6 @@ RETURN_CONT:
 	CALL	CALLCTX
 	CP	MM
 	JR	Z,RETURN_GS
-	CP	ERROR_M
-	JR	Z,RETURN_ER
 	CP	PROC_M
 	JR	NZ,ENDP_SW		; TODO: consider other contexts
 ; returning from a PROC
@@ -2385,12 +2384,6 @@ RETURN_CONT:
 ;;	PUSH	BC			; stack error address
 ;;	JP	T_PROC
 
-; RETURN from ON ERROR
-RETURN_ER:
-	POP	BC
-	LD	DE,ONERR_HOOK
-	JR	RET_E
-
 ; RETURN from GO SUB
 RETURN_GS:
 	POP	BC
@@ -2418,173 +2411,6 @@ RET_L:	CALL	NC,LOC_L
 
 ERROR7:	RST	$30
 	DEFW	REP7		; 7 Missing PROC or GO SUB
-
-ONERROR_S:
-	RST	$30
-	DEFW	L2C8D		; ALPHA
-	JP	NC,END05
-	LD	B,3
-ONERR_L:RST	$20
-	CP	","
-	JP	NZ,END05
-	RST	$20
-	RST	$30
-	DEFW	L2C8D		; ALPHA
-	JR	NC,ONERR_C
-	DJNZ	ONERR_L
-ONERR_C:JP	ERROR_C
-
-ONERROR:CALL	SYNTAX_Z
-	JR	Z,ONERROR_S
-	POP	BC		; BC = return address
-	LD	HL,(SUBPPC - 1)
-	INC	H
-	EX	(SP),HL
-	INC	SP		; stack SUBPPC (1 byte)
-	LD	HL,(PPC)
-	PUSH	HL		; stack PPC (2 bytes)
-	LD	HL,$3E00 + ONERROR_M
-	PUSH	HL		; stack marker
-	LD	HL,ONERR_HOOK	; stack new error address
-	PUSH	HL
-	LD	(ERR_SP),SP
-	JP	ELSE_0	; LINE-END
-
-ONERR_CONT:
-	LD	C,ONERROR_M
-;;	LD	HL,(ERR_SP)
-;;	INC	HL
-;;	INC	HL
-	LD	HL,0
-	ADD	HL,SP
-ERR_LC:	CALL	LOC_L
-	JR	C,ONERR_F
-	CP	ERROR_M
-	JR	Z,ERR_OK
-	OR	A
-	JR	NZ,ERR_LC
-ERR_OK:	LD	HL,L1303	; MAIN-4
-	PUSH	HL
-ONERR_SW:
-	JP	SWAP
-
-ONERR_F:LD	C,L
-	LD	B,H
-	LD	A,(ERR_NR)
-	INC	A
-	JR	Z,ERR_OK
-	CP	$09		; 9 STOP statement
-	JR	Z,ERR_INC
-	CP	$15		; L BREAK into program
-	JR	NZ,ERR_SET
-ERR_BRK:RST	$30
-	DEFW	L1F54		; BREAK-KEY
-	JR	NC,ERR_BRK
-ERR_INC:INC	(IY+$0D)	; SUBPPC
-ERR_SET:LD	HL,NSPPC
-	BIT	7,(HL)
-	JR	Z,ERR_NJ
-	LD	HL,SUBPPC
-ERR_NJ:	LD	A,(HL)
-	DEC	HL
-	PUSH	AF
-	INC	SP
-	LD	D,(HL)
-	DEC	HL
-	LD	E,(HL)
-	PUSH	DE
-	LD	A,(ERR_NR)
-	INC	A
-	PUSH	AF
-	INC	SP
-	LD	DE,$3E00 + ERROR_M
-	PUSH	DE
-	LD	DE,ONERR_HOOK
-	PUSH	DE
-	LD	(ERR_SP),SP
-	LD	L,C
-	LD	H,B
-	LD	E,(HL)
-	INC	HL
-	LD	D,(HL)			; DE = (PPC)
-	INC	HL
-	LD	A,(HL)
-	DEC	A			; A = (SUBPPC)
-	LD	(SUBPPC),A
-	LD	(PPC),DE
-	LD	A,C
-	OR	B
-	JR	Z,ERR_ZERO
-	LD	HL,(PROG)
-	ADD	HL,BC
-	LD	(CH_ADD),HL
-	RST	$18			; read next character
-	RST	$30
-	DEFW	L2C8D			; ALPHA
-	JR	NC,ERR_NAR
-	POP	DE			; error address
-	LD	C,A			; error variable name
-	LD	B,$3E			; and marker
-	LD	HL,$0000
-	LD	A,(ERR_NR)
-	INC	A
-	PUSH	HL
-	PUSH	AF			; error number
-	EX	AF,AF'			; save error number
-	INC	SP
-	PUSH	HL
-	PUSH	BC			; marker
-	RST	$20			; read next character
-	CP	","
-	JR	NZ,ERR_FRM
-	RST	$20
-	LD	C,A			; line variable name
-	LD	HL,$000A		; line offset in the frame
-	ADD	HL,SP
-	PUSH	HL
-	INC	SP			; push 0 byte on stack
-	LD	A,(HL)
-	INC	HL
-	LD	H,(HL)
-	LD	L,A			; HL = error line number
-	PUSH	HL
-	LD	HL,$0000
-	PUSH	HL			; push 0 word on stack
-	PUSH	BC			; marker
-	RST	$20			; read next character
-	CP	","
-	JR	NZ,ERR_FRM
-	RST	$20
-	LD	C,A			; statement variable name
-	LD	HL,$0013		; statement offset in the frame
-	ADD	HL,SP
-	LD	A,(HL)
-	EX	AF,AF'
-	CP	$09			; 9 STOP statement?
-	JR	Z,ERR_DEC
-	CP	$15			; L BREAK into program?
-	JR	Z,ERR_DEC
-	EX	AF,AF'
-ERR_STS:LD	HL,$0000
-	PUSH	HL			; push 0 word on stack
-	PUSH	AF			; error statement number
-	INC	SP
-	PUSH	HL			; push 0 word on stack
-	PUSH	BC			; marker
-	RST	$20			; read next character
-ERR_FRM:PUSH	DE			; error address
-	LD	(ERR_SP),SP
-ERR_NAR:LD	(IY+$00),$FF		; ERR_NR: no error
-	LD	HL,L1B76		; STMT-RET
-	PUSH	HL
-	JP	SWAP
-
-ERR_DEC:EX	AF,AF'
-	DEC	A
-	JR	ERR_STS
-
-ERR_ZERO:
-	rst	0			; TODO: find statement
 
 DISPLAY:CALL	STACKSWAP
 	RST	$30

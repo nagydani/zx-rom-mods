@@ -14823,7 +14823,7 @@ L_SINGLE:
         XOR     (HL)            ; apply variable type indicator mask (above).
         OR      $20             ; make lowercase - set bit 5.
         POP     HL              ; restore pointer to 2nd character.
-        CALL    L2BEA           ; routine L-FIRST puts A in first character.
+        CALL    L_FIRST		; routine L-FIRST puts A in first character.
                                 ; and returns with HL holding
                                 ; new E_LINE-1  the $80 vars end-marker.
 
@@ -14883,7 +14883,7 @@ L2B72:	CALL	STRING_HOOK	; ZF set at this point
         LD      BC,(STRLEN)      ; fetch STRLEN to BC.
         BIT     0,(IY+$37)      ; test FLAGX - handling a complete simple
                                 ; string ?
-        JR      NZ,L2BAF        ; forward to L-ADD$ if so.
+        JR      NZ,L_ADD        ; forward to L-ADD$ if so.
 
 ; must be a string array or a slice in workspace.
 ; Note. LET a$(3 TO 6) = h$   will assign "hat " if h$ = "hat"
@@ -14959,16 +14959,17 @@ L2BA6:  EX      DE,HL           ; exchange pointers HL=STKEND DE=end of vars.
 ; register HL addresses start of string in variables area.
 
 ;; L-ADD$
-L2BAF:  DEC     HL              ; point to high byte of length.
+;;;L2BAF:
+L_ADD:	DEC     HL              ; point to high byte of length.
         DEC     HL              ; to low byte.
         DEC     HL              ; to letter.
         LD      A,(HL)          ; fetch masked letter to A.
         PUSH    HL              ; save the pointer on stack.
         PUSH    BC              ; save new length.
-        CALL    L2BC6           ; routine L-STRING adds new string at end
+        CALL    L_STRING	; routine L-STRING adds new string at end
                                 ; of variables area.
                                 ; if no room we still have old one.
-        POP     BC              ; restore length.
+L_ADDR:	POP     BC              ; restore length.
         POP     HL              ; restore start.
         INC     BC              ; increase
         INC     BC              ; length by three
@@ -14979,17 +14980,20 @@ L2BAF:  DEC     HL              ; point to high byte of length.
 ; ---
 
 ; the jump was here with a new string variable.
-L_NEW:
 ;; L-NEW$
-L2BC0:  LD      A,$DF           ; indicator mask %11011111 for
+;;;LL2BC0:
+L_NEW:	LD      A,$DF           ; indicator mask %11011111 for
                                 ;                %010xxxxx will be result
         LD      HL,(DEST)      ; address DEST first character.
         AND     (HL)            ; combine mask with character.
 
 ;; L-STRING
-L2BC6:  PUSH    AF              ; save first character and mask.
+;;;L2BC6:
+L_STRING:
+	PUSH    AF              ; save first character and mask.
 ;;; BUGFIX: support long string names
 	CALL	LSTK_FETCH
+L_STRR:	POP	AF
 ;;;	CALL    L2BF1           ; routine STK-FETCH fetches parameters of
                                 ; the string.
         EX      DE,HL           ; transfer start to HL.
@@ -15020,15 +15024,18 @@ L2BC6:  PUSH    AF              ; save first character and mask.
         LD      (HL),B          ; insert high byte
         DEC     HL              ; address low byte location
         LD      (HL),C          ; insert that byte
-        POP     AF              ; restore character and mask
+;;; BUGFIX: moved up to after LSTK_FETCH
+;;;	POP     AF              ; restore character and mask
 
 ;; L-FIRST
-L2BEA:  DEC     HL              ; address variable name
+;;;L2BEA:
+L_FIRST:DEC     HL              ; address variable name
         LD      (HL),A          ; and insert character.
         LD      HL,(E_LINE)      ; load HL with E_LINE.
         DEC     HL              ; now end of VARS area.
         RET                     ; return
 
+;; It is super-important to keep the next entry point
 	DEFS	$2BF1 - $
 
 ; ------------------------------------
@@ -20710,7 +20717,7 @@ LSTK_FETCH:
 ; THE 'SPARE' LOCATIONS
 ; ---------------------
 
-	DEFS	$3C01 - $, $FF
+	DEFS	$3C04 - $, $FF
 
 ; Long-named string variable found (5 bytes)
 STRING_RESULT:
@@ -20884,8 +20891,6 @@ LV_HOOK:
 RETURN_HOOK:
 	CALL	NOPAGE
 MAINADD_HOOK:
-	CALL	NOPAGE
-ONERR_HOOK:
 	CALL	NOPAGE
 ERROR_HOOK:
 	CALL	NOPAGE

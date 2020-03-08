@@ -190,21 +190,54 @@ LC_STRR:POP	DE		; discard pointer
 	JR	LC_SW
 
 ; new string variable assignment
-NSTRNG:	LD	HL,-7
+NSTRNG:	OR	A
+	JR	Z,RSTRNG	; re-assignment of long-named string
+	LD	HL,-7
 	ADD	HL,BC
 	JR	NC,LC_SW	; back to ROM1 for short names
-; long named string variable assignment
-LSTRNG:	EX	AF,AF'		; save first letter
+	JR	LSTRNG		; first assignment of long-named string
+; long-named string variable reassignment
+RSTRNG:	POP	AF		; discard return address
 	POP	AF		; discard return address
-	INC	HL
+	POP	AF		; discard zero AF
+	POP	BC		; discard return address
+	POP	BC		; length of old version
+	POP	HL		; pointer to old version
+	LD	DE,-2		; net variable name length - 2
+	DEC	HL		; skip zero byte
+	INC	BC		; account for it
+RSTR_L:	INC	BC		; increment length
+	INC	DE		; increment net variable name length
+	DEC	HL		; step back with pointer
+	BIT	6,(HL)
+	JR	NZ,RSTR_L	; find beginning
+	LD	A,(HL)		; first character in long name format
+	LD	(DEST),HL	; point DEST to variable name
+	PUSH	HL		; put back pointer to old version
+	PUSH	BC		; put back length of old version
+	LD	HL,L_ADDR
+	PUSH	HL		; put back return address
+	XOR	$E0		; change to short name format
+	PUSH	AF		; put back first character
+	LD	HL,L_STRR
+	PUSH	HL		; put back return address
+	PUSH	HL		; placeholder
+	EX	DE,HL		; net length - 2 to HL
+; long-named string variable assignment
+LSTRNG:	INC	HL
 	INC	HL
 	PUSH	HL		; save net variable name length
 	RST	$30
 	DEFW	L2BF1		; STK_FETCH
 	LD	(K_CUR),DE	; point cursor to string
-	POP	HL
+	POP	HL		; restore net variable name length
+	POP	AF		; discard return address
+	POP	DE		; fetch return address
+	POP	AF		; fetch first letter
+	INC	DE		; skip POP AF
+	PUSH	DE		; store return address
 	PUSH	BC		; save string length
-	PUSH	HL
+	PUSH	HL		; save net variable name length
 	INC	HL
 	LD	C,L
 	LD	B,H
@@ -212,7 +245,6 @@ LSTRNG:	EX	AF,AF'		; save first letter
 	DEFW	MAKE_STRING
 	EX	DE,HL
 	INC	DE
-	EX	AF,AF'		; restore first letter
 	XOR	$E0		; indicate long variable name
 	LD	(DE),A		; with the first character
 	INC	DE
@@ -222,7 +254,8 @@ LSTRNG:	EX	AF,AF'		; save first letter
 	DEFW	L_STORE
 	POP	BC
 	LD	DE,(K_CUR)
-	JR	LC_SW
+	XOR	A
+	JR	SW_STR
 
 STRNG_CONT:
 	JR	NZ,NSTRNG
@@ -230,7 +263,7 @@ STRNG_CONT:
 	AND	A
 	SBC	HL,SP
 	ADD	HL,SP
-	JR	C,LC_SW		; global variable
+	JR	C,SW_STR	; global variable
 	BIT	0,(IY+$37)	; FLAGX, complete string
 	JR	Z,SW_STR
 	PUSH	HL

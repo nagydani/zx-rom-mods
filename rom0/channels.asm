@@ -563,15 +563,6 @@ TOKEN2O:RST	$30
 	DEFW	L0C10
 	RET
 
-K_SWAP:	LD	HL,ATTR_T
-	LD	DE,K_ATTR
-	JR	C,K_SAVE
-	EX	DE,HL
-K_SAVE:	LDI
-	LDI
-	LDI
-	RET
-
 ; channel K ioctl
 K_IOCTL:CP	2
 	RET	NC
@@ -629,11 +620,13 @@ EDITOR_HEADER1:
 	DEFB	$11,$04,$18,$10,$05,$1A,$11,$00,$18
 	DEFB	$10,$00,$9A
 
-; reset colon counters
-R_SPCC:	LD	HL,C_SPCC
-	LD	(HL),1
-	DEC	L
-	LD	(HL),1
+K_SWAP:	LD	HL,ATTR_T
+	LD	DE,K_ATTR
+	JR	C,K_SAVE
+	EX	DE,HL
+K_SAVE:	LDI
+	LDI
+	LDI
 	RET
 
 ; channel S output service routine
@@ -682,18 +675,6 @@ S_RST:	EX	DE,HL
 POFETCH:EQU	L0B03 + 6
 POSTORE:EQU	L0ADC + 6
 
-KS_CTRL:PUSH	HL		; save display address
-	PUSH	BC		; save coordinates
-	LD	C,A
-	LD	B,0
-	LD	HL,TCTRL
-	ADD	HL,BC
-	LD	C,(HL)
-	ADD	HL,BC
-	POP	BC		; restore coordinates
-	EX	(SP),HL		; restore display address, stack destination
-	RET
-
 ; This area must be a data table not to trigger the LOAD trap
 
 EDITOR_HEADERN:
@@ -710,6 +691,18 @@ GR_TAB:	DEFB	$00, $FF
 
 TKETAB:	DEFM	"@$#<>="
 TKETABE:EQU	$
+
+KS_CTRL:PUSH	HL		; save display address
+	PUSH	BC		; save coordinates
+	LD	C,A
+	LD	B,0
+	LD	HL,TCTRL
+	ADD	HL,BC
+	LD	C,(HL)
+	ADD	HL,BC
+	POP	BC		; restore coordinates
+	EX	(SP),HL		; restore display address, stack destination
+	RET
 
 ; channel K output service routine
 K_OUT:	CALL	STACKSWAP
@@ -831,6 +824,13 @@ TSTOREX:SUB	$08
 	JR	Z,TSTORE
 	DEC	HL
 	JR	TSTORE
+
+; reset colon counters
+R_SPCC:	LD	HL,C_SPCC
+	LD	(HL),1
+	DEC	L
+	LD	(HL),1
+	RET
 
 ; channel K/S indirect output
 KS_IND:	BIT	1,(HL)
