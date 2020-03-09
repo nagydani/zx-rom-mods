@@ -421,11 +421,12 @@ JP_LBL:	LD	HL,(PROG)
 	INC	HL
 	INC	HL
 	LD	(NXTLIN),HL
-	LD	HL,(PROG)
-	DEC	DE
-	DEC	DE
-	SBC	HL,DE
-	LD	(PPC),HL
+	EX	DE,HL
+	DEC	HL
+	LD	E,(HL)
+	DEC	HL
+	LD	D,(HL)
+	LD	(PPC),DE
 	RET
 
 ; Single-argument original function extended to multiple arguments
