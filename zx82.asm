@@ -9132,13 +9132,16 @@ L1C59:  PUSH    AF              ; save A briefly
 ;;; BUGFIX: allow for empty next in ROM0
 L1C6C:	CALL	LOOK_VARS2	; routine LOOK-VARS with preliminary check
 ;;;L1C6C:  CALL    L28B2           ; routine LOOK-VARS
-        PUSH    AF              ; preserve flags.
+;;; BUGFIX: speedup in a hot part
+	EX	AF,AF'
+;;;        PUSH    AF              ; preserve flags.
         LD      A,C             ; fetch type - should be 011xxxxx
         OR      $9F             ; combine with 10011111.
         INC     A               ; test if now $FF by incrementing.
         JR      NZ,L1C8A        ; forward to REPORT-C if result not zero.
-
-        POP     AF              ; else restore flags.
+;;; BUGFIX: speedup in a hot part
+	EX	AF,AF'
+;;;        POP     AF              ; else restore flags.
         JR      L1C22           ; back to VAR-A-1
 
 
@@ -20700,6 +20703,8 @@ V_CONT:	INC	DE
 ALPHANUMS:
 	CALL	L2C88		; ALPHANUM
 	RET	C		; alphanumeric
+	CP	$0D
+	RET	Z
 	CP	" " + 1
 	JR	C,V_CONT
 	CP	"$"
