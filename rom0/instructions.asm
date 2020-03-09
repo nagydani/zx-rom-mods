@@ -2383,7 +2383,7 @@ RET_E:	DEC	HL
 	EX	DE,HL
 	LD	DE,L1F23 + 2	; RETURN + 2
 	PUSH	DE
-	JR	ENDP_SW		; RETURN again
+	JP	SWAP		; RETURN again
 
 ; Find calling context (GO SUB or PROC)
 CALLCTX:CALL	SKIP_LL
