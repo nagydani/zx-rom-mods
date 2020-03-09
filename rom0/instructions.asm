@@ -1365,20 +1365,10 @@ LV_NSTR:EX	AF,AF'
 SW_LV2:	POP	HL
 	JR	SW_LV
 
-LV_FOR:	POP	HL		; discard return address
-	CP	$91		; interpreting FOR?
+LV_FOR:	CP	$91		; interpreting FOR?
 	JR	NZ,LV_DIM	; if not, it's a DIM
-	CALL	SYNTAX_Z
-	JR	Z,LV_FORS
-	RST	$18		; set HL to CH_ADD
-	PUSH	HL
-	RST	$20		; set advance CH_ADD
-	POP	HL
-	SCF
-	JR	SW_LV
-
-LV_FORS:PUSH	HL
-	JR	SW_LV
+LV_SW:	LD	BC,L28B2	; LOOK-VARS
+	JR	NEXT_SW
 
 LV_DIM:	XOR	A
 	LD	(DEFADD+1),A	; look for globals only
@@ -1395,12 +1385,10 @@ LV_NEXT:LD	A,(T_ADDR)
 	CP	$0D		; CR?
 	JR	Z,NEXT		; if so, it's an argumentless NEXT
 	CP	":"		; colon?
-	JR	NZ,SW_LV	; return, if not
-NEXT:	POP	BC
-	POP	BC
-	POP	BC		; discard return addresses
-	CALL	SYNTAX_Z
-	JR	Z,NEXT_SW
+	JR	NZ,LV_SW	; return, if not
+NEXT:	CALL	CHECK_END
+	POP	BC		; discard CLASS-04 return address
+	POP	BC		; discard SCAN-LOOP
 	CALL	SKIP_LC
 	ADD	A,A
 	JR	NC,ERROR_1
