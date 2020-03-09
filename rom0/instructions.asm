@@ -1386,9 +1386,9 @@ LV_NEXT:LD	A,(T_ADDR)
 	JR	Z,NEXT		; if so, it's an argumentless NEXT
 	CP	":"		; colon?
 	JR	NZ,LV_SW	; return, if not
-NEXT:	CALL	CHECK_END
-	POP	BC		; discard CLASS-04 return address
+NEXT:	POP	BC		; discard CLASS-04 return address
 	POP	BC		; discard SCAN-LOOP
+	CALL	CHECK_END
 	CALL	SKIP_LC
 	ADD	A,A
 	JR	NC,ERROR_1
