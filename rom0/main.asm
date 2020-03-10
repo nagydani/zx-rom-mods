@@ -68,25 +68,22 @@ CALL_ROM1:
 	PUSH	HL
 	LD	HL,(TARGET)
 	EX	(SP),HL		; return address, SWAP, target address on stack
-	JP	SWAP
+ROM1SW:	JP	SWAP
 
 	DEFS	$66 - $
 NMI:	PUSH	AF
 	PUSH	HL
 	LD	HL,(NMIADD)
+	PUSH	HL
 	LD	A,H
+	CP	$3F
+	RET	NC
 	OR	L
-	JR	Z,NONMI
-JP_HL:	JP	(HL)
+	JR	NZ,ROM1SW
 NONMI:	POP	HL
+	POP	HL
 	POP	AF
 	RETN
-
-NEW128:	DI
-	XOR	A
-	LD	(BANK_M),A
-	LD	HL,(RAMTOP)
-	JP	STARTN
 
 ; This positions the compatibility switch to a guaranteed RET in ROM1
 	DEFS	X0094 - $0015 - $
@@ -103,6 +100,12 @@ SPECTRUM_PAGE:
 	LD	BC,$7FFD
 	OUT	(C),A
 SPECTRUM_END:	EQU	$
+
+NEW128:	DI
+	XOR	A
+	LD	(BANK_M),A
+	LD	HL,(RAMTOP)
+	JP	STARTN
 
 INIT_5B00:	EQU	$
 
@@ -121,6 +124,8 @@ IRQSWAP:LD	BC,$7FFD
 	POP	AF
 	RET
 
+ONERR:	LD	L,ONERRJ - $100*(ONERRJ/$100)
+	JR	CH_JP
 XIN:	LD	L,CH_XI - $100*(CH_XI/$100)
 	JR	CH_JP
 XOUT:	LD	L,CH_XO - $100*(CH_XO/$100)
@@ -140,9 +145,8 @@ CH_JP:	LD	H,CH_KO/$100
 	PUSH	HL
 	JR	SWAP
 
-RAMNMI:	CALL	SWAP
-	JP	NMIVEC
-
+; Variables
+ERRPTR:	DEFW	0		; PROG offset of active ON ERROR
 ; Renumber
 RCLINE:	DEFS	2		; current line being renumbered
 RCSTART:DEFW	10		; starting line number for renumbering
@@ -168,6 +172,7 @@ CHARS4:	DEFW	CHARSET - $0100
 K_SPCC:	DEFB	1
 C_SPCC:	DEFB	1
 BANK_F:	DEFB	$06
+	DEFS	$5b58 - $	; minimal Investrónica compatibility
 TARGET:	DEFW	0
 RETADDR:DEFW	0		; TODO: abused by PoC code
 BANK_M:	DEFB	0
@@ -206,7 +211,7 @@ F_SCAN:	LD	HL,10
 	LD	H,A
 	EX	AF,AF'
 	LD	L,A
-	JP	(HL)
+JP_HL:	JP	(HL)
 
 	INCLUDE "channels.asm"
 	INCLUDE	"xchannel.asm"
@@ -297,7 +302,7 @@ STARTN:	LD	A,$10
 	LD	(ERR_SP),HL
 	LD	HL,$3C00
 	LD	(CHARS),HL
-	LD	HL,RAMNMI
+	LD	HL,NMIVEC
 	LD	(NMIADD),HL
 	LD	IY,ERR_NR
 R_KEY:	XOR	A
@@ -939,8 +944,10 @@ REPEAT_T:EQU	$BA
 FPOKE_T:EQU	$BC
 STOP_T:	EQU	$E2
 DATA_T:	EQU	$E4
+CONTINUE_T:EQU	$E8
 REM_T:	EQU	$EA
 FOR_T:	EQU	$EB
+GOTO_T:	EQU	$EC
 GOSUB_T:EQU	$ED
 NEXT_T:	EQU	$F3
 POKE_T:	EQU	$F4
@@ -2221,8 +2228,10 @@ STACKSWAP:
 	INCLUDE	"instructions.asm"
 
 
-	DEFS	SCAN_HOOK - 24 - $
+	DEFS	SCAN_HOOK - 27 - $
 
+; on error handling
+ONERRJ:	JP	ONERR_DO
 ; channel service routines (24 bytes)
 CH_PO:	JP	PR_OUT
 CH_PI:	JP	PR_IN

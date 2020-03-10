@@ -6239,7 +6239,9 @@ L1386:  LD      (IY+$0A),$FF    ; update NSPPC - signal 'no jump'.
         RES     3,(IY+$01)      ; update FLAGS - signal use 'K' mode for
                                 ; the first character in the editor and
 
-        JP      L12AC           ; jump back to MAIN-2.
+;;; BUGFIX: make MAIN-6 a CALLable subroutine with CF set
+        JP	NC,L12AC	; jump back to MAIN-2.
+;;;	JP      L12AC           ; jump back to MAIN-2.
 
 
 ; ----------------------
@@ -6255,7 +6257,9 @@ L1386:  LD      (IY+$0A),$FF    ; update NSPPC - signal 'no jump'.
 ; e.g.  "B Integer out of range, 1000:127"
 
 ;; rpt-mesgs
-L1391:  DEFB    $80
+;;; BUGFIX: make MAIN-6 a CALLable subroutine with CF set
+L1391:  RET
+;;;L1391:  DEFB    $80
         DEFB    'O',('K')+$80                             ; 0
         DEFM    "NEXT without FO"
         DEFB    ('R')+$80                                 ; 1

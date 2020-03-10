@@ -9,8 +9,8 @@
 ; 7B REPEAT, 3 bytes: (PPC), (SUBPPC)
 ; 7C WHILE, 5 bytes: (PPC), (SUBPPC), error
 ; 7D PROC, 7 bytes: (DATADD)-(PROG), (PPC), (SUBPPC), error
-; 7E ON ERROR, 3 bytes (PPC), (SUBPPC)
-; 7F ERROR, 4 bytes (ERRNO)+1, (PPC), (SUBPPC)
+; 7E ON ERROR (reserved)
+; 7F ERROR (reserved)
 
 ; 81..9A string function (reserved)
 ; A1..BA numeric function (reserved)
@@ -20,12 +20,10 @@
 REPEAT_M:	EQU	$7B
 WHILE_M:	EQU	$7C
 PROC_M:		EQU	$7D
-ONERROR_M:	EQU	$7E
-ERROR_M:	EQU	$7F
 
 ; Skip all local variables, incl. loops
 SKIP_LL:CALL	SKIP_LC
-SKIPLL:	CP	ERROR_M + 1
+SKIPLL:	CP	$E0
 	RET	C
 	LD	DE,$0013
 	ADD	HL,DE
@@ -52,7 +50,7 @@ LOC_L:	LD	A,MM
 	RET	Z		; end-of-stack, local variable not found
 	CP	REPEAT_M
 	JR	C,LOC_VAR
-	CP	ERROR_M + 1
+	CP	PROC_M + 1
 	JR	NC,LOC_VAR
 
 	EX	DE,HL
@@ -81,7 +79,7 @@ LOC_NA:	CP	C
 	RET			; local variable found
 
 ; structure lengths + 1
-LOC_TAB:DEFB	$04, $06, $08, $04, $05
+LOC_TAB:DEFB	$04, $06, $08
 
 LOC_NX:	LD	A,E
 	CP	$E0

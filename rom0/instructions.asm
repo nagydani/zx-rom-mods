@@ -1081,19 +1081,6 @@ ST_NFOR:RRA
 	JR	Z,ST_REP
 	DEC	A
 	JR	Z,ST_WHL
-	DEC	A
-	JR	Z,ST_PRC
-	DEC	A
-	JR	Z,ST_ONE
-
-ST_ERR:	LD	A,STOP_T
-	RST	$10
-	LD	A,(HL)
-	CALL	PR_DIGIT
-	LD	A," "
-	RST	$10
-	INC	HL
-	JR	ST_ON2
 
 ST_PRC:	LD	A,PROC_T
 	INC	HL
@@ -1102,11 +1089,6 @@ ST_PRCR:CALL	ST_CTX
 	INC	HL
 	INC	HL		; skip duplicated error address
 	RET
-
-ST_ONE:	LD	A,ONERROR_T
-	RST	$10
-ST_ON2:	INC	HL
-	JR	ST_SMTV
 
 ST_WHL:	LD	A,WHILE_T
 	JR	ST_PRCR
@@ -1177,7 +1159,6 @@ ST_VARN:LD	A,C
 	POP	DE		; discard return address
 	RET
 
-ONERROR:
 ; unimplemented instruction, reports error, if executed
 PLUG:	JP	ERROR_C
 
@@ -2657,21 +2638,119 @@ K_STEP:	LD	HL,KS_PERM
 	AND	B
 	XOR	(HL)
 	LD	(HL),A
-	JP	SWAP
+STP_SW:	JP	SWAP
 
-SPECTR:	LD	A,(BANK_M)
-	AND	$07
-	JP	NZ,ERROR_J	; not from coroutines
-	LD	C,0
-	CALL	DISP		; set video mode
-	CALL	PAL_0		; turn off ULAplus
-	LD	HL,L15AF	; initial channel info
-	LD	DE,(CHANS)
-	LD	BC,$0014	; do not copy the terminator!
+G_ONERR:CP	GOTO_T
+	JR	Z,T_ONERR
+; ON ERROR GO SUB
+	LD	BC,7*3 + 20	; 3 numeric locals and a GO SUB
 	RST	$30
-	DEFW	LDIRR		; reset channel drivers
-	RES	4,(IY+FLAGS-ERR_NR)	; signal 48k mode
-	JP	SPECTRUM
+	DEFW	L1F05		; check available memory
+	POP	DE		; return address
+
+	LD	A,(SUBPPC)
+	PUSH	AF
+	INC	SP
+	LD	HL,(PPC)
+	PUSH	HL		; stack RETURN pointer
+	LD	BC,0
+
+	PUSH	BC
+	INC	SP
+	PUSH	HL
+	PUSH	BC		; stack line number
+	LD	HL,$3E00 + "l"	; local numeric variable
+	PUSH	HL
+
+	PUSH	BC
+	PUSH	AF
+	INC	SP
+	PUSH	BC		; stack statement number
+	LD	L,"s"		; local numeric variable
+	PUSH	HL
+
+	PUSH	BC
+	EX	AF,AF'
+	PUSH	AF
+	INC	SP
+	PUSH	BC		; stack error code
+	LD	L,"e"		; local numeric variable
+	PUSH	HL
+	PUSH	DE		; return address
+	LD	(ERR_SP),SP
+
+; ON ERROR GO TO
+T_ONERR:RST	$20		; advance past GO TO/GO SUB
+	RST	$30
+	DEFW	L24FB + 1	; SCANNING + 1 (numeric result ensured by syntax checker)
+	LD	HL,L1B7D	; STMT-R-1, TODO: TRACE support
+	PUSH	HL
+	LD	HL,L1E67	; GO-TO
+	PUSH	HL
+STP_SW2:JR	STP_SW
+
+ONERROR:CALL	SYNTAX_Z
+	JR	Z,ONERR_S
+	CP	STOP_T
+	POP	BC		; save return address
+	POP	HL		; discard error address
+	LD	HL,L1303	; MAIN-4
+	JR	Z,S_ERRSP	; on stop, simply replace error address
+	LD	HL,(CH_ADD)
+	LD	DE,(PROG)
+	SBC	HL,DE		; CF clear at this point
+	LD	(ERRPTR),HL	; store PROG offset of current position
+ONERR_C:LD	HL,ONERR	; ON error address
+S_ERRSP:PUSH	HL		; set error address
+	PUSH	BC
+ONERR_S:CP	STOP_T
+	JR	Z,ONERR2
+	CP	CONTINUE_T
+	JR	Z,ONERR2
+	SUB	GOTO_T
+	JR	Z,ONERR_G
+	DEC	A
+	JR	NZ,ERRC1
+ONERR_G:RST	$20		; skip over GO TO or GO SUB
+	RST	$30
+	DEFW	L1C82		; CLASS-06, expect numeric
+	DEFB	$3E		; LD A,skip one byte
+ONERR2:	RST	$20		; skip over STOP or CONTINUE
+	CALL	CHECK_END
+	JR	STP_SW2
+
+
+ONERR_DO:
+N_ONERR:LD	HL,L1303	; MAIN-4
+	PUSH	HL
+	LD	HL,ERR_NR
+	LD	A,(HL)
+	INC	A		; OK ?
+	JR	Z,STP_SW2
+	CP	9		; STOP ?
+	JR	Z,STP_SW2
+	EX	AF,AF'		; save error code
+	LD	(HL),$FF	; reset ERR_NR
+	LD	HL,(PROG)
+	LD	DE,(ERRPTR)
+	ADD	HL,DE
+	LD	(CH_ADD),HL
+	RST	$18
+	CP	CONTINUE_T
+	JP	NZ,G_ONERR
+; ON ERROR CONTINUE
+	POP	HL		; discard MAIN-4
+	LD	HL,SUBPPC
+	EX	AF,AF'
+	CP	$15		; L BREAK into program?
+	JR	Z,L_BREAK
+	INC	(HL)
+L_BREAK:LD	DE,NSPPC
+	LD	BC,3
+	LDDR
+	LD	BC,L1B7D	; STMT-R-1, TODO: TRACE support
+	EX	AF,AF'
+	JR	ONERR_C
 
 PAL_0:	XOR	A
 PAL_X:	LD	BC,$BF3B
@@ -2702,10 +2781,6 @@ WRITE_N:RST	$18
 	JR	NZ,READ05
 	RST	$20
 	JR	WRITE_L
-WRITE_STR:
-	RST	$30
-	DEFW	L2BF1		; STK-FETCH
-	JR	WRITE_O
 
 READ_EXT:
 	POP	AF
@@ -2736,6 +2811,11 @@ READ_S:	RST	$18
 	CP	","
 	JR	Z,READ_L
 READ05:	JP	END05
+
+WRITE_STR:
+	RST	$30
+	DEFW	L2BF1		; STK-FETCH
+	JR	WRITE_O
 
 ERROR_8:RST	$30
 	DEFW	L15E4		; 8 End of file
@@ -2814,5 +2894,19 @@ READ_ST:LD	A,B
 	OR	C
 	JR	NZ,READ_N
 	RET
+
+SPECTR:	LD	A,(BANK_M)
+	AND	$07
+	JP	NZ,ERROR_J	; not from coroutines
+	LD	C,0
+	CALL	DISP		; set video mode
+	CALL	PAL_0		; turn off ULAplus
+	LD	HL,L15AF	; initial channel info
+	LD	DE,(CHANS)
+	LD	BC,$0014	; do not copy the terminator!
+	RST	$30
+	DEFW	LDIRR		; reset channel drivers
+	RES	4,(IY+FLAGS-ERR_NR)	; signal 48k mode
+	JP	SPECTRUM
 
 	INCLUDE	"play.asm"
