@@ -1,0 +1,97 @@
+; TRACE jump
+TRACE_J:SET	7,(HL)
+	LD	HL,STEP_HOOK
+	PUSH	HL
+	LD	(ERR_SP),SP
+	LD	HL,X1B83
+	JR	TR_SW
+
+; TRACE syntax check, like PRINT
+TRACE_S:RST	$30
+	DEFW	L1FDF		; PRINT-2
+	LD	HL,L1BEE + 5	; CHECK-END + 5
+TR_SW:	PUSH	HL
+TR_SW1:	JP	SWAP
+
+TR_THENLESS:
+	CALL	TEST_ZERO
+	JR	NZ,TR_IF2
+	LD	HL,STEP_HOOK
+	PUSH	HL
+	PUSH	HL		; placeholder
+	JP	THENLESS0
+
+TRACE:	CALL	SYNTAX_Z
+	JR	Z,TRACE_S
+	POP	HL		; discard return address
+	LD	HL,(PPC)
+	LD	(STEPPPC),HL
+	LD	A,(SUBPPC)
+	LD	(STEPSUB),A
+	RST	$18		; CH_ADD to HL
+	LD	DE,$100		; skip this one statement
+	LD	C,E		; quotes off
+	RST	$30
+	DEFW	L199A		; EACH-S-3
+TRACE_N:LD	(CH_ADD),HL	; point to statement terminator
+TRACE_D:LD	HL,NSPPC
+	BIT	7,(HL)		; jump?
+	JR	Z,TRACE_J	; jump, if so
+TR_IF2:	RST	$18
+	CP	$0D
+	JR	Z,TRACE_L
+	SET	7,(IY+$0D)	; Signal TRACE for STMT-LOOP
+TRACE_R:LD	HL,L1B76	; STMT-RET
+TR_SW2:	JR	TR_SW		; return
+
+TR_ELIF:INC	HL
+	CALL	SKIPEX
+	CP	THEN_T
+	JR	Z,TR_REM
+	DEC	HL
+	JP	ELSE_4
+
+TRACE_EX_TAB:
+	DEFB	IF_T
+	DEFB	TR_IF - $
+	DEFB	ELSE_T
+	DEFB	TR_ELSE - $
+	DEFB	REM_T
+	DEFB	TR_REM - $
+	DEFB	0
+
+TR_IF:	RST	$20
+	RES	4,(IY+$37)	; signal true outcome
+	RST	$30
+	DEFW	L24FB + 1	; SCANNING + 1
+	CP	THEN_T
+	JR	NZ,TR_THENLESS
+	CALL	TEST_ZERO
+	JR	NZ,TR_IF1
+	SET	4,(IY+$37)	; signal false outcome
+
+TR_ELSE:LD	HL,FLAGX
+	BIT	4,(HL)
+	JR	NZ,TR_REM
+	RES	4,(HL)
+	RST	$20
+	CP	$0D
+	SCF
+	LD	BC,STEP_HOOK
+	JP	Z,ELSE_3
+	CP	IF_T
+	JR	Z,TR_ELIF
+
+TR_REM:	LD	HL,(NXTLIN)
+	DEC	HL
+TRACE_L:INC	HL
+	LD	A,(HL)
+	CP	$3E		; end-of program?
+	JR	NC,TRACE_R	; jump, if so
+TRACE_U:LD	A,$81
+	LD	DE,STEP_HOOK
+	PUSH	DE
+	LD	(ERR_SP),SP
+	LD	DE,X1BA9	; LINE-USE with preliminary check
+	PUSH	DE
+	JP	SWAP
