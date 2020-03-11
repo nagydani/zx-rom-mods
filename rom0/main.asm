@@ -178,6 +178,7 @@ BANK_M:	DEFB	0
 ERRPTR:	DEFW	0		; PROG offset of active ON ERROR
 ; RS233
 BAUD:	DEFW	$0012		; 9600 BAUD
+SERFL:	DEFW	0		; Second byte received flag and value
 ; Origin
 ORIGX:	DEFB	$00,$00,$00,$00,$00	; 0.0
 ORIGY:	DEFB	$00,$00,$AF,$00,$00	; 175.0
