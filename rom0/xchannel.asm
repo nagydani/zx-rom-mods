@@ -340,13 +340,7 @@ X_IN:	XOR	A
 	EX	AF,AF'
 	JR	C,XI_SW		; Not channel state control
 	PUSH	AF
-	LD	A,$7F		; This is copied from L1F54 for speed
-	IN	A,($FE)
-	RRA
-	JR	C,X_IN_C
-	RST	$30
-	DEFW	X1F5A
-	JP	NC,ERROR_L	; Allow for BREAKing out of read-read deadlock
+	CALL	BREAK
 X_IN_C:	POP	AF
 	OR	A
 	JR	Z,XI_SW		; RESET passed on as empty string

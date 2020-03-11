@@ -145,8 +145,6 @@ CH_JP:	LD	H,CH_KO/$100
 	PUSH	HL
 	JR	SWAP
 
-; Variables
-ERRPTR:	DEFW	0		; PROG offset of active ON ERROR
 ; Renumber
 RCLINE:	DEFS	2		; current line being renumbered
 RCSTART:DEFW	10		; starting line number for renumbering
@@ -176,6 +174,10 @@ BANK_F:	DEFB	$06
 TARGET:	DEFW	0
 RETADDR:DEFW	0		; TODO: abused by PoC code
 BANK_M:	DEFB	0
+; Variables
+ERRPTR:	DEFW	0		; PROG offset of active ON ERROR
+; RS233
+BAUD:	DEFW	$0012		; 9600 BAUD
 ; Origin
 ORIGX:	DEFB	$00,$00,$00,$00,$00	; 0.0
 ORIGY:	DEFB	$00,$00,$AF,$00,$00	; 175.0

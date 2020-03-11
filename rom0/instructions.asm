@@ -1748,6 +1748,15 @@ TRACE_E:LD	(ERR_SP),SP	; restore ERR_SP
 TRACE_E1:
 	JP	ELSE_1
 
+; Similar to L1F54 in ROM1
+BREAK:	LD	A,$7F
+	IN	A,($FE)
+	RRA
+	RET	C
+	LD	A,($FE)
+	IN	A,($FE)
+	RRA
+	RET	C
 
 ERROR_L:RST	$30
 	DEFW	L1B7B		; L Break into program
