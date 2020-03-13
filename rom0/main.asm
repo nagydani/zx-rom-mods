@@ -707,6 +707,8 @@ MSGSKIP:INC	DE
 	SET	0,(IY+$01)	; suppress leading space
 	RET
 
+	INCLUDE	"reports.asm"
+
 CHINFO0:
 K_CH:	DEFW	KOUT
 	DEFW	KIN
@@ -732,229 +734,6 @@ INIT_STRM:
         DEFW    K_CH - CHINFO0 + 1	; stream $01 offset to channel 'K'
         DEFW    S_CH - CHINFO0 + 1	; stream $02 offset to channel 'S'
         DEFW    P_CH - CHINFO0 + 1	; stream $03 offset to channel 'P'
-
-COPYRIGHT:
-	DEFB	$7F
-	DEFM	" 2019 ePoint Systems Ltd"
-TOKENS1:DEFB	$8D
-; instructions between $A5 and $CD
-	DEFM	"TURB"
-	DEFB	$80+"O"
-	DEFM	"_E"
-	DEFB	$80+"N"
-	DEFM	"RENU"
-	DEFB	$80+"M"
-	DEFM	"DEF PRO"
-	DEFB	$80+"C"
-	DEFM	"_Es"
-	DEFB	$80+"8"
-	DEFM	"STAC"
-	DEFB	$80+"K"
-	DEFB	$80+"@"
-	DEFM	"PO"
-	DEFB	$80+"P"
-	DEFM	"PLA"
-	DEFB	$80+"Y"
-	DEFM	"_Es"
-	DEFB	$80+"J"
-	DEFM	"_E"
-	DEFB	$80+"I"
-	DEFM	"_E"
-	DEFB	$80+"J"
-	DEFM	"_E"
-	DEFB	$80+"K"
-	DEFM	"DISPLA"
-	DEFB	$80+"Y"
-	DEFM	"END WHIL"
-	DEFB	$80+"E"
-	DEFM	"ON "
-ERR_MSG:DEFM	"ERRO"
-	DEFB	$80+"R"
-	DEFM	"SPECTRU"
-	DEFB	$80+"M"
-	DEFM	"WRITE "
-	DEFB	$80+"#"
-	DEFM	"TRAC"
-	DEFB	$80+"E"
-	DEFM	"LOCA"
-	DEFB	$80+"L"
-	DEFM	"DELET"
-	DEFB	$80+"E"
-	DEFM	"REPEA"
-	DEFB	$80+"T"
-	DEFM	"_E"
-	DEFB	$80+"H"
-	DEFM	"FPOK"
-	DEFB	$80+"E"
-	DEFM	"_E"
-	DEFB	$80+"G"
-	DEFM	"_E"
-	DEFB	$80+"O"
-	DEFM	"_Es"
-	DEFB	$80+"I"
-	DEFM	"US"
-	DEFB	$80+"R"
-	DEFM	"_E"
-	DEFB	$80+"Y"
-	DEFM	"UNTI"
-	DEFB	$80+"L"
-	DEFM	"ASSER"
-	DEFB	$80+"T"
-	DEFM	"_E"
-	DEFB	$80+"B"
-	DEFM	"END I"
-	DEFB	$80+"F"
-	DEFM	"YIEL"
-	DEFB	$80+"D"
-	DEFM	"PALETT"
-	DEFB	$80+"E"
-	DEFM	"EXI"
-	DEFB	$80+"T"
-	DEFM	"WHIL"
-	DEFB	$80+"E"
-	DEFM	"END PRO"
-	DEFB	$80+"C"
-	DEFM	"ELS"
-	DEFB	$80+"E"
-	DEFM	"PRO"
-	DEFB	$80+"C"
-	DEFM	"STE"
-TOKENS0:DEFB	$80+"P"
-; functions, etc. beyond $CE
-	DEFM	"FRE"		; E s1, $CE
-	DEFB	$80+"E"
-	DEFM	"MEM"		; E s9, $CF
-	DEFB	$80+"$"
-	DEFM	"TIM"		; E s0, $D0
-	DEFB	$80+"E"
-	DEFM	"STICK"		; E s6, $D1
-	DEFB	$80+" "
-	DEFM	"DPEEK"		; E s7,	$D2
-	DEFB	$80+" "
-	DEFM	"OPEN "		; E s4, $D3
-	DEFB	$80+"#"
-	DEFM	"EOF "		; E s5, $D4
-	DEFB	$80+"#"
-	DEFM	"TIME$"		; E sT, $D5
-	DEFB	$80+" "
-	DEFM	"REF"		; E sR, $D6
-	DEFB	$80+" "
-	DEFM	"ITE"		; E sZ, $D7
-	DEFB	$80+"M"
-	DEFM	"HEX"		; E sH, $D8
-	DEFB	$80+" "
-	DEFM	"INK"		; E sX, $D9
-	DEFB	$80+" "
-	DEFM	"PAPER"		; E sC, $DA
-	DEFB	$80+" "
-	DEFM	"FLASH"		; E sV, $DB
-	DEFB	$80+" "
-	DEFM	"BRIGHT"	; E sB, $DC
-	DEFB	$80+" "
-	DEFM	"INVERSE"	; E sM, $DD
-	DEFB	$80+" "
-	DEFM	"OVER"		; E sN, $DE
-	DEFB	$80+" "
-	DEFM	"OCT"		; E sO, $DF
-	DEFB	$80+" "
-	DEFM	"SQ"		; E C, $E0
-	DEFB	$80+" "
-	DEFM	"FPEEK"		; E V, $E1
-	DEFB	$80+" "
-	DEFM	">"		; sA, $E2
-	DEFB	$80+"<"
-	DEFM	"<"		; E A, $E3
-	DEFB	$80+"<"
-	DEFM	" DATA"		; E D, $E4
-	DEFB	$80+" "
-	DEFM	">"		; E S, $E5
-REPORTS:DEFB	$80+">"
-	DEFM	"Missing EN"
-	DEFB	$80+"D"		; S
-	DEFM	"Label not foun"
-	DEFB	$80+"d"		; T
-	DEFM	"UNTIL without REPEA"
-	DEFB	$80+"T"		; U
-	DEFM	"ASSERT faile"
-	DEFB	$80+"d"		; V
-	DEFM	"END WHILE without WHIL"
-	DEFB	$80+"E"		; W
-	DEFM	"END PROC without DE"
-	DEFB	$80+"F"		; X
-MAX_ERR:EQU	$22
-ERR7TXT:DEFM	"7 Missing PROC or GO SU"
-	DEFB	$80+"B"
-
-; Trailing spaces after function/operator tokens
-;;SPCTAB:	DEFB	%01010111	; RND, POINT , PI, ATTR , INKEY$, SCREEN$ , FN , AT ,
-;;	DEFB	%11111111	; TAB , LEN , CODE , COS , VAL$ , SIN , VAL , TAN ,
-;;	DEFB	%11111111	; ASN , EXP , ATN , SQR , ACS , INT , LN , SGN ,
-;;	DEFB	%11111111	; ABS , STR$ , IN , NOT , PEEK , CHR$ , USR , BIN ,
-;;	DEFB	%10011101	; OR , <>, <=, THEN , AND , LINE , >=, TO ,
-;;	DEFB	%11000100	; STEP , STICK , MEM$, OPEN #, FREE, DPEEK , TIME, EOF #,
-;;	DEFB	%11011111	; TIME$ , INK , ITEM, FLASH , REF , PAPER , HEX , BRIGHT ,
-;;	DEFB	%10101011	; INVERSE , ?, OCT , <<, OVER , ><, SQ , DATA ,
-;;	DEFB	%00000000	; >>.
-
-PEEK_T:	EQU	$BE
-LINE_T:	EQU	$CA
-THEN_T:	EQU	$CB
-TO_T:	EQU	$CC
-STEP_T:	EQU	$CD
-FREE_T:	EQU	$CE
-MEM_T:	EQU	$CF
-TIME_T:	EQU	$D0
-STICK_T:EQU	$D1
-DPEEK_T:EQU	$D2
-OPEN_T:	EQU	$D3
-EOF_T:	EQU	$D4
-REF_T:	EQU	$D6
-HEX_T:	EQU	$D8
-INK_T:	EQU	$D9
-PAPER_T:EQU	$DA
-FLASH_T:EQU	$DB
-BRIGHT_T:EQU	$DC
-INVERSE_T:EQU	$DD
-OVER_T:	EQU	$DE
-OCT_T:	EQU	$DF
-SQ_T:	EQU	$E0
-FPEEK_T:EQU	$E1
-XOR_T:	EQU	$E2
-RL_T:	EQU	$E3
-RR_T:	EQU	$E5
-
-EFN_T:	EQU	$E6
-
-RND_T:	EQU	$A5
-AT_T:	EQU	$AC
-CODE_T:	EQU	$AF
-STR_T:	EQU	$C1
-CHR_T:	EQU	$C2
-
-TURBO_T:EQU	$A5
-PALETTE_T:EQU	$C3
-ENDIF_T:EQU	$C5
-WHILE_T:EQU	$C9
-ENDPROC_T:EQU	$CA
-ELSE_T:	EQU	$CB
-PROC_T:	EQU	$CC
-DEFPROC_T:EQU	$A8
-LABEL_T:EQU	$AB
-LOCAL_T:EQU	$B8
-ENDWHILE_T:EQU	$B3
-ONERROR_T:EQU	$B4
-REPEAT_T:EQU	$BA
-FPOKE_T:EQU	$BC
-STOP_T:	EQU	$E2
-DATA_T:	EQU	$E4
-CONTINUE_T:EQU	$E8
-REM_T:	EQU	$EA
-FOR_T:	EQU	$EB
-GOTO_T:	EQU	$EC
-GOSUB_T:EQU	$ED
-NEXT_T:	EQU	$F3
-POKE_T:	EQU	$F4
-IF_T:	EQU	$FA
 
 SYNTAX_Z:
 	BIT	7,(IY+1)
@@ -2229,7 +2008,7 @@ STACKSWAP:
 
 	INCLUDE "variables.asm"
 	INCLUDE	"instructions.asm"
-
+	INCLUDE "serial.asm"
 
 	DEFS	SCAN_HOOK - 27 - $
 
@@ -2266,4 +2045,5 @@ CH_NI:	JP	NEW_X_IN
 	JP	TEMPS_CONT
 	JP	F_SCAN
 	DEFS	$3D00 - $
-CHARSET:INCBIN	"64.bin"
+CHARSET:INCBIN	"64-cond.bin"
+	INCLUDE	"tokens.asm"
