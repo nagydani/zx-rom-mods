@@ -2047,3 +2047,4 @@ CH_NI:	JP	NEW_X_IN
 	DEFS	$3D00 - $
 CHARSET:INCBIN	"64-cond.bin"
 	INCLUDE	"tokens.asm"
+	DEFS	$4000 - $
