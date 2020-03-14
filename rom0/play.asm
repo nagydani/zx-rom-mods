@@ -139,10 +139,14 @@ PLAY_MIDIZ:
 	CALL	PLAY_NUM
 	PUSH	AF
 	LD	A,H
-	OR	L
+	OR	H
 	JP	NZ,PLAY_ERROR
 	LD	A,L
+	PUSH	BC
+	PUSH	DE
 	CALL	MIDI_O
+	POP	DE
+	POP	BC
 PLAY_CONTJ:
 	POP	AF
 	JP	PLAY_CONT
@@ -150,11 +154,36 @@ PLAY_CONTJ:
 PLAY_MIDIY:
 	CALL	PLAY_NUM
 	PUSH	AF
+	DEC	L
 	LD	A,15
 	CALL	PLAY_RANGE
 	SET	7,L
 	LD	(IX+PSG_CH),L
 	JR	PLAY_CONTJ
+
+PLAY_TIE:
+	CALL	PLAY_NUM
+	EX	AF,AF'
+	LD	A,9
+	CALL	PLAY_RANGE
+	PUSH	BC
+	LD	BC,DURATIONS
+	ADD	HL,BC
+	POP	BC
+	LD	H,(HL)
+	LD	A,(IX+DURATION)
+	PUSH	HL		; save last note's duration
+	ADD	A,H
+	JP	C,PLAY_ERROR
+	LD	(IX+DURATION),A
+	LD	A,1
+	PUSH	AF		; save note counter
+	EX	AF,AF'
+	CP	"_"
+	JP	NZ,PLAY_TI
+	POP	HL		; discard note counter
+	POP	HL		; discard saved duration
+	JR	PLAY_TIE
 
 PLAY_TAB:
 	DEFM	"N"
@@ -200,9 +229,8 @@ PLAY_TTAB:
 
 PLAY_Z:	JR	PLAY_MIDIZ
 PLAY_Y:	JR	PLAY_MIDIY
-
 PLAY_TIED:
-	JP	PLAY_TIE
+	JR	PLAY_TIE
 
 PLAY_MIXER:
 	CALL	PLAY_NUM
@@ -372,6 +400,7 @@ PLAY_NOTE:
 	INC	A
 PLAY_FNOTE:
 	PUSH	BC
+	PUSH	DE
 	EX	AF,AF'
 	LD	A,(IX+PSG_CH)
 	CP	3
@@ -388,7 +417,6 @@ PLAY_LOW:
 	LD	B,0
 	LD	HL,NOTES
 	ADD	HL,BC
-	PUSH	DE
 	LD	E,(HL)
 	INC	HL
 	LD	D,(HL)
@@ -648,8 +676,9 @@ PLAY_MIDI:
 	ADD	A,C
 	ADD	A,A
 	ADD	A,A	; octave * 12
-	POP	AF
+	POP	BC	; restore note
 	ADD	A,B	; octave * 12 + note
+	DEC	A
 	LD	(IX+ENVELOPE),A
 	CALL	MIDI_O
 	LD	A,(IX+VOLUME)
@@ -657,28 +686,4 @@ PLAY_MIDI:
 	ADD	A,A
 	ADD	A,A
 MIDI_J:	JP	MIDI_O
-
-PLAY_TIE:
-	CALL	PLAY_NUM
-	EX	AF,AF'
-	LD	A,9
-	CALL	PLAY_RANGE
-	PUSH	BC
-	LD	BC,DURATIONS
-	ADD	HL,BC
-	POP	BC
-	LD	H,(HL)
-	LD	A,(IX+DURATION)
-	PUSH	HL		; save last note's duration
-	ADD	A,H
-	JP	C,PLAY_ERROR
-	LD	(IX+DURATION),A
-	LD	A,1
-	PUSH	AF		; save note counter
-	EX	AF,AF'
-	CP	"_"
-	JP	NZ,PLAY_TI
-	POP	HL		; discard note counter
-	POP	HL		; discard saved duration
-	JR	PLAY_TIE
 

@@ -188,11 +188,12 @@ LC_STRR:POP	DE		; discard pointer
 	JR	LC_SW
 
 ; new string variable assignment
-NSTRNG:	OR	A
+NSTRNG:	AND	$E0
 	JR	Z,RSTRNG	; re-assignment of long-named string
+	CP	$40
+	JR	Z,LC_SW		; back to ROM1 for short names
 	LD	HL,-7
 	ADD	HL,BC
-	JR	NC,LC_SW	; back to ROM1 for short names
 	JR	LSTRNG		; first assignment of long-named string
 ; long-named string variable reassignment
 RSTRNG:	POP	AF		; discard return address

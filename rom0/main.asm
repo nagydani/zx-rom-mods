@@ -709,32 +709,6 @@ MSGSKIP:INC	DE
 
 	INCLUDE	"reports.asm"
 
-CHINFO0:
-K_CH:	DEFW	KOUT
-	DEFW	KIN
-	DEFB	"K"
-S_CH:	DEFW	KOUT
-	DEFW	L15C4
-	DEFB	"S"
-R_CH:	DEFW	L0F81
-	DEFW	L15C4
-	DEFB	"R"
-P_CH:	DEFW	POUT
-	DEFW	PIN
-	DEFB	"P"
-	DEFB	$80
-CHINFO0_E:	EQU	$
-
-INIT_STRM:
-	DEFW	K_CH - CHINFO0 + 1	; stream $FD offset to channel 'K'
-        DEFW    S_CH - CHINFO0 + 1	; stream $FE offset to channel 'S'
-        DEFW    R_CH - CHINFO0 + 1	; stream $FF offset to channel 'R'
-
-        DEFW    K_CH - CHINFO0 + 1	; stream $00 offset to channel 'K'
-        DEFW    K_CH - CHINFO0 + 1	; stream $01 offset to channel 'K'
-        DEFW    S_CH - CHINFO0 + 1	; stream $02 offset to channel 'S'
-        DEFW    P_CH - CHINFO0 + 1	; stream $03 offset to channel 'P'
-
 SYNTAX_Z:
 	BIT	7,(IY+1)
 	RET
@@ -2047,4 +2021,30 @@ CH_NI:	JP	NEW_X_IN
 	DEFS	$3D00 - $
 CHARSET:INCBIN	"64-cond.bin"
 	INCLUDE	"tokens.asm"
+CHINFO0:
+K_CH:	DEFW	KOUT
+	DEFW	KIN
+	DEFB	"K"
+S_CH:	DEFW	KOUT
+	DEFW	L15C4
+	DEFB	"S"
+R_CH:	DEFW	L0F81
+	DEFW	L15C4
+	DEFB	"R"
+P_CH:	DEFW	POUT
+	DEFW	PIN
+	DEFB	"P"
+	DEFB	$80
+CHINFO0_E:	EQU	$
+
+INIT_STRM:
+	DEFW	K_CH - CHINFO0 + 1	; stream $FD offset to channel 'K'
+        DEFW    S_CH - CHINFO0 + 1	; stream $FE offset to channel 'S'
+        DEFW    R_CH - CHINFO0 + 1	; stream $FF offset to channel 'R'
+
+        DEFW    K_CH - CHINFO0 + 1	; stream $00 offset to channel 'K'
+        DEFW    K_CH - CHINFO0 + 1	; stream $01 offset to channel 'K'
+        DEFW    S_CH - CHINFO0 + 1	; stream $02 offset to channel 'S'
+        DEFW    P_CH - CHINFO0 + 1	; stream $03 offset to channel 'P'
+
 	DEFS	$4000 - $
