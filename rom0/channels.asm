@@ -550,19 +550,6 @@ TSPACE:	LD	A," "
 	EXX
 	RET
 
-; output operator token
-TOKEN_O:CP	FREE_T - RND_T	; FREE / DEF FN
-	JR	C,TOKEN2O	; old token
-	CP	EFN_T - RND_T
-	JR	NC,TOKEN2O	; also old token
-	SUB	FREE_T - RND_T - 1
-	LD	B,A
-	LD	DE,TOKENS0
-	JP	TOKEN
-TOKEN2O:RST	$30
-	DEFW	L0C10
-	RET
-
 ; channel K ioctl
 K_IOCTL:CP	2
 	RET	NC
@@ -1085,6 +1072,19 @@ E_HEADT:LD	DE,EDITOR_HEADERT
 	SBC	HL,DE
 	CALL	DECWORD
 	JR	E_HEAD0
+
+; output operator token
+TOKEN_O:CP	FREE_T - RND_T	; FREE / DEF FN
+	JR	C,TOKEN2O	; old token
+	CP	EFN_T - RND_T
+	JR	NC,TOKEN2O	; also old token
+	SUB	FREE_T - RND_T - 1
+	LD	B,A
+	LD	DE,TOKENS0
+	JP	TOKEN
+TOKEN2O:RST	$30
+	DEFW	L0C10
+	RET
 
 EDITOR_HEADERT:
 	DEFM	"TEXT"
