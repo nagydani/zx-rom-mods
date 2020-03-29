@@ -232,10 +232,13 @@ POSCR4B:CALL	CL_SCR
 DRAWAT:	LD	A,$FF
 	JR	DOPLOT
 
+SETORIG:LD	HL,ORIGX
+	LD	(MEM),HL
+	RET
+
 PLOT1:	XOR	A
 DOPLOT:	LD	(COORDS+1),A
-	LD	HL,ORIGX
-	LD	(MEM),HL
+	CALL	SETORIG
 	RST	$28		; calculate
 	DEFB	$E3		; get SCALEY
 	DEFB	$04		; multiply
@@ -304,7 +307,7 @@ PXATTRH:SET	5,H
 PXATTRL:PUSH	DE
 	PUSH	HL
 	RST	$30
-	DEFW	L0BDB
+	DEFW	L0BDB		; PO-ATTR
 	POP	HL
 	POP	DE
 	RET
@@ -416,12 +419,13 @@ DRAW3S:	LD	HL,5
 	JP	C,DRAW3DO
 	LD	(STKEND),HL	; delete a
 
+STCOORD:
 DRAW2:	LD	HL,COORDX
 	LD	DE,MEMBOT
 	LD	BC,2*5
 	LDIR			; save starting point
-	LD	HL,ORIGX
-	LD	(MEM),HL
+	RET	C
+	CALL	SETORIG
 	RST	$28		; calculate
 	DEFB	$E3		; get SCALEY
 	DEFB	$04		; multiply
@@ -445,7 +449,10 @@ DRAW2:	LD	HL,COORDX
 	DEC	DE
 	DEC	HL
 	LDDR
-;	JR	NZ,CLIPUP	
+	INC	HL
+	INC	HL
+	BIT	7,(HL)
+	JR	NZ,CLIPUP
 	LD	A,(NORTH)
 	ADD	A,A
 	ADD	A,A
@@ -476,15 +483,35 @@ DRAW2:	LD	HL,COORDX
 	DEFW	L2D28		; STACK-A
 	RST	$28
 	DEFB	$C5		; store COORDY
-	DEFB	$01		; exchange
+	DEFB	$E5		; get COORDY
+	DEFB	$E4		; get COORDX
 	DEFB	$38		; end
 	LD	(IY+COORDS+1-ERR_NR),$FF
 	CALL	DOPLOT1
+	EX	AF,AF'
+	CALL	MASKPIX
+	RST	$28
+	DEFB	$E1		; get old COORDY
+	DEFB	$03		; subtract
+	DEFB	$C3		; store M3
+	DEFB	$02		; delete
+	DEFB	$E0		; get old COORDX
+	DEFB	$03		; subtract
+	DEFB	$03		; subtract
+	DEFB	$01		; exchange
+	DEFB	$E3		; get M3
+	DEFB	$03		; subtract
+	DEFB	$01		; exchange
+	DEFB	$38		; end
+	CALL	SETORIG
+	SCF
+	CALL	STCOORD
 	RST	$28
 	DEFB	$31		; duplicate
 NCDWN:	DEFB	$02		; delete
 	DEFB	$38		; end
 	POP	AF
+CLIPUP:
 DRINS:	CALL	STEPBACK
 	INC	HL
 	LD	A,(S_MODE)
@@ -818,7 +845,8 @@ DDVERT:	RRCA
 	RET	NZ
 	POP	HL		; discard return address
 DABORT:	POP	HL		; discard
-	POP	HL		; two entries
+	POP	HL		; three
+	POP	HL		; entries
 	LD	(COORDS),A	; signal clipping
 	RET
 PUP:	LD	A,(NORTH)
@@ -960,6 +988,7 @@ CIRCLE:	RST	$28
 	DEFB	$0F		; addition
 	DEFB	$38		; end
 	CALL	DRAWAT
+	EX	AF,AF'
 	CALL	MASKPIX
 ;;	CALL	PLOT1
 	RST	$28
