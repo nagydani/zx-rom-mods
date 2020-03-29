@@ -249,7 +249,7 @@ DOPLOT:	LD	(COORDS+1),A
 	DEFB	$0F		; add
 	DEFB	$C4		; store COORDX
 	DEFB	$38		; end
-	LD	HL,MEMBOT
+DOPLOT1:LD	HL,MEMBOT
 	LD	(MEM),HL
 ENDDRAW:XOR	A
 	LD	(COORDS),A	; delete mask to identify clipped point
@@ -282,8 +282,7 @@ ENDDRAW:XOR	A
 	CALL	SETPIX
 	JR	C,PXATTR	; DRAW endpoint
 	EX	AF,AF'		; restore S_MODE
-	INC	SP
-	INC	SP		; remove SWAP
+	POP	BC		; remove SWAP
 	CP	$08
 	JR	NC,PLOT_HICOLOR
 	LD	BC,L0BDB	; find and set attribute
@@ -430,7 +429,63 @@ DRAW2:	LD	HL,COORDX
 	DEFB	$E2		; get SCALEX
 	DEFB	$04		; multiply
 	DEFB	$38		; end
-	CALL	STEPBACK
+; draw from outside the screen
+	LD	A,(COORDS)
+	OR	A
+	JR	NZ,DRINS
+	LD	BC,2*5
+	RST	$30
+	DEFW	L1F05		; TEST-ROOM
+	LD	HL,(STKEND)
+	LD	E,L
+	LD	D,H
+	ADD	HL,BC
+	LD	(STKEND),HL
+	EX	DE,HL
+	DEC	DE
+	DEC	HL
+	LDDR
+;	JR	NZ,CLIPUP	
+	LD	A,(NORTH)
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	PUSH	AF
+	RST	$30
+	DEFW	L2D28		; STACK-A
+	RST	$28
+	DEFB	$E5		; get COORDY
+	DEFB	$03		; subtract
+	DEFB	$31		; duplicate
+	DEFB	$36		; less-0
+	DEFB	$00		; jump-true
+	DEFB	NCDWN - $
+	DEFB	$C5		; store COORDY
+	DEFB	$02		; delete
+	DEFB	$01		; exchange
+	DEFB	$05		; division
+	DEFB	$E5		; get COORDY
+	DEFB	$04		; multiply
+	DEFB	$E4		; get COORDX
+	DEFB	$0F		; addition
+	DEFB	$C4		; store COORDX
+	DEFB	$38		; end
+	POP	AF
+	PUSH	AF
+	RST	$30
+	DEFW	L2D28		; STACK-A
+	RST	$28
+	DEFB	$C5		; store COORDY
+	DEFB	$01		; exchange
+	DEFB	$38		; end
+	LD	(IY+COORDS+1-ERR_NR),$FF
+	CALL	DOPLOT1
+	RST	$28
+	DEFB	$31		; duplicate
+NCDWN:	DEFB	$02		; delete
+	DEFB	$38		; end
+	POP	AF
+DRINS:	CALL	STEPBACK
 	INC	HL
 	LD	A,(S_MODE)
 	AND	$F8
@@ -692,9 +747,7 @@ STRGHT:	PUSH	BC
 	JR	NZ,BRESEN
 	EXX
 
-DRENDP:	LD	A,$FF
-	LD	(COORDS+1),A	; signal DRAW endpoint
-	LD	HL,COORDY
+DRENDP:	LD	HL,COORDY
 	LD	DE,(STKEND)
 	LD	C,5
 	LDIR
@@ -706,6 +759,7 @@ DRENDP:	LD	A,$FF
 	LD	HL,(COORDS2)
 	LD	L,A
 	PUSH	HL
+	LD	(IY+COORDS+1-ERR_NR),$FF	; signal DRAW endpoint
 	CALL	ENDDRAW
 	POP	HL
 	LD	A,(COORDS2+1)
