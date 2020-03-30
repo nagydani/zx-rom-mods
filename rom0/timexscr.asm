@@ -402,6 +402,18 @@ PIXADD:	LD	A,E
 	AND	$07
 	RET
 
+NCDWN:	DEFB	$02		; delete
+NCDWN1:	DEFB	$02		; delete
+	DEFB	$02		; delete
+	DEFB	$38		; end
+	EXX
+	LD	HL,MEMBOT+5
+	LD	DE,COORDY
+	LD	BC,5
+	LDIR
+	EXX
+	JP	NCDWN2
+
 DRAW3:	RST	$28
 	DEFB	$3D		; restack
 	DEFB	$38		; end
@@ -415,6 +427,7 @@ DRAW3R:	CALL	STEPBACK
 	LD	A,(HL)
 DRAW3S:	LD	HL,5
 	ADD	HL,DE
+	SUB	2
 	ADD	A,(HL)
 	JP	C,DRAW3DO
 	LD	(STKEND),HL	; delete a
@@ -437,22 +450,18 @@ DRAW2:	LD	HL,COORDX
 	LD	A,(COORDS)
 	OR	A
 	JR	NZ,DRINS
-	LD	BC,2*5
-	RST	$30
-	DEFW	L1F05		; TEST-ROOM
-	LD	HL,(STKEND)
-	LD	E,L
-	LD	D,H
-	ADD	HL,BC
-	LD	(STKEND),HL
-	EX	DE,HL
-	DEC	DE
 	DEC	HL
-	LDDR
-	INC	HL
-	INC	HL
+	DEC	HL
+	DEC	HL
+	DEC	HL
 	BIT	7,(HL)
 	JR	NZ,CLIPUP
+	DEC	HL
+	RST	$30
+	DEFW	L33B4		; STACK-NUM
+	RST	$30
+	DEFW	L33B4		; STACK-NUM
+
 	LD	A,(NORTH)
 	ADD	A,A
 	ADD	A,A
@@ -470,6 +479,12 @@ DRAW2:	LD	HL,COORDX
 	DEFB	$C5		; store COORDY
 	DEFB	$02		; delete
 	DEFB	$01		; exchange
+	DEFB	$31		; duplicate
+	DEFB	$E5		; get COORDY
+	DEFB	$03		; subtract
+	DEFB	$36		; less-0
+	DEFB	$00		; jump-true
+	DEFB	NCDWN1 - $
 	DEFB	$05		; division
 	DEFB	$E5		; get COORDY
 	DEFB	$04		; multiply
@@ -507,12 +522,11 @@ DRAW2:	LD	HL,COORDX
 	SCF
 	CALL	STCOORD
 	RST	$28
-	DEFB	$31		; duplicate
-NCDWN:	DEFB	$02		; delete
 	DEFB	$38		; end
-	POP	AF
+NCDWN2:	POP	AF
 CLIPUP:
-DRINS:	CALL	STEPBACK
+DRINS:	LD	(LIST_SP),SP
+	CALL	STEPBACK
 	INC	HL
 	LD	A,(S_MODE)
 	AND	$F8
@@ -843,10 +857,7 @@ DDVERT:	RRCA
 	XOR	L
 	AND	$E0
 	RET	NZ
-	POP	HL		; discard return address
-DABORT:	POP	HL		; discard
-	POP	HL		; three
-	POP	HL		; entries
+DABORT:	LD	SP,(LIST_SP)
 	LD	(COORDS),A	; signal clipping
 	RET
 PUP:	LD	A,(NORTH)
@@ -919,28 +930,28 @@ PXLLR:	EX	AF,AF'
 	EX	AF,AF'
 	JR	PXLDO
 
-DRAW1:	RST	$28		; calculate
-	DEFB	$E1		; get M1
-	DEFB	$E2		; get M2
-	DEFB	$38		; end
-	RST	$30
-	DEFW	DRAW_LINE
-	RET
+;DRAW1:	RST	$28		; calculate
+;	DEFB	$E1		; get M1
+;	DEFB	$E2		; get M2
+;	DEFB	$38		; end
+;	RST	$30
+;	DEFW	DRAW_LINE
+;	RET
 
 DRAW3DO:DEC	(HL)		; a/2
 	RST	$28
 	DEFB	$C4		; store a/2 to M4
 	DEFB	$38
+	DEC	(HL)		; a/4
 	LD	A,(HL)
-	CP	$81
+	CP	$7F
 	JR	C,TANSKIP	; tan x = x
 	RST	$28
 	DEFB	$21		; tan
 	DEFB	$38		; end
-TANSKIP:DEC	(HL)		; tan(a/2)/2
-	RST	$28		; calculate
-	DEFB	$C5		; store tan(a/2)/2 to M5
-	DEFB	$02		; delete tan(a/2)/2
+TANSKIP:RST	$28		; calculate
+	DEFB	$C5		; store tan(a/4) to M5
+	DEFB	$02		; delete tan(a/4)
 	DEFB	$38		; end
 	CALL	STEPBACK
 	RST	$30
@@ -953,17 +964,17 @@ DRAW3S1:EX	DE,HL
 	LD	A,(HL)
 	OR	A
 	JR	Z,DRAW3S2
-	DEC	(HL)
+	DEC	(HL)		; /2
 DRAW3S2:RST	$28
 	DEFB	$C1		; store dy/2 to M1
-	DEFB	$E5		; get tan(a/2)/2
+	DEFB	$E5		; get tan(a/4)
 	DEFB	$04		; multiply
-	DEFB	$C3		; store dy*tan(a/2)/4 to M3
+	DEFB	$C3		; store dy*tan(a/4)/2 to M3
 	DEFB	$01		; exchange
 	DEFB	$C0		; store dx/2 to M0
 	DEFB	$E5		; get tan(a/2)/2
 	DEFB	$04		; multiply
-	DEFB	$C2		; store dx*tan(a/2)/4 to M2
+	DEFB	$C2		; store dx*tan(a/4)/2 to M2
 	DEFB	$01		; exchange
 	DEFB	$E0		; get dx/2
 	DEFB	$03		; subtract
@@ -973,10 +984,10 @@ DRAW3S2:RST	$28
 	DEFB	$0F		; addition
 	DEFB	$E4		; get a/2
 	DEFB	$E0		; get dx/2
-	DEFB	$E3		; get dy*tan(a/2)/4
+	DEFB	$E3		; get dy*tan(a/4)/2
 	DEFB	$0F		; addition
 	DEFB	$E1		; get dy/2
-	DEFB	$E2		; get dx*tan(a/2)/4
+	DEFB	$E2		; get dx*tan(a/4)/2
 	DEFB	$03		; subtract
 	DEFB	$E4		; get a/2
 	DEFB	$38		; end
