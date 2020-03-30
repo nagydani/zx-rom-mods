@@ -402,18 +402,6 @@ PIXADD:	LD	A,E
 	AND	$07
 	RET
 
-NCDWN:	DEFB	$02		; delete
-NCDWN1:	DEFB	$02		; delete
-	DEFB	$02		; delete
-	DEFB	$38		; end
-	EXX
-	LD	HL,MEMBOT+5
-	LD	DE,COORDY
-	LD	BC,5
-	LDIR
-	EXX
-	JP	NCDWN2
-
 DRAW3:	RST	$28
 	DEFB	$3D		; restack
 	DEFB	$38		; end
@@ -449,20 +437,60 @@ DRAW2:	LD	HL,COORDX
 ; draw from outside the screen
 	LD	A,(COORDS)
 	OR	A
-	JR	NZ,DRINS
+	JP	NZ,DRINS
 	DEC	HL
 	DEC	HL
 	DEC	HL
 	DEC	HL
 	BIT	7,(HL)
-	JR	NZ,CLIPUP
+	EX	AF,AF'		; save Z
 	DEC	HL
 	RST	$30
 	DEFW	L33B4		; STACK-NUM
 	RST	$30
 	DEFW	L33B4		; STACK-NUM
+	EX	AF,AF'		; restore Z
+	JR	Z,CLDOWN
 
-	LD	A,(NORTH)
+	LD	A,(SOUTH)
+	INC	A
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	DEC	A
+	PUSH	AF
+	RST	$30
+	DEFW	L2D28		; STACK-A
+	RST	$28
+	DEFB	$E5		; get COORDY
+	DEFB	$03		; subtract
+	DEFB	$31		; duplicate
+	DEFB	$37		; greater-0
+	DEFB	$00		; jump-true
+	DEFB	NCDWN - $
+	DEFB	$C5		; store COORDY
+	DEFB	$02		; delete
+	DEFB	$01		; exchange
+	DEFB	$31		; duplicate
+	DEFB	$E5		; get COORDY
+	DEFB	$03		; subtract
+	DEFB	$36		; less-0
+	DEFB	$00		; jump-true
+	DEFB	CLIPUP - $
+	DEFB	$31		; duplicate
+NCDWN:	DEFB	$02		; delete
+NCDWN1:	DEFB	$02		; delete
+	DEFB	$02		; delete
+	DEFB	$38		; end
+	EXX
+	LD	HL,MEMBOT+5
+	LD	DE,COORDY
+	LD	BC,5
+	LDIR
+	EXX
+	JR	NCDWN2
+
+CLDOWN:	LD	A,(NORTH)
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
@@ -485,7 +513,7 @@ DRAW2:	LD	HL,COORDX
 	DEFB	$36		; less-0
 	DEFB	$00		; jump-true
 	DEFB	NCDWN1 - $
-	DEFB	$05		; division
+CLIPUP:	DEFB	$05		; division
 	DEFB	$E5		; get COORDY
 	DEFB	$04		; multiply
 	DEFB	$E4		; get COORDX
@@ -524,7 +552,7 @@ DRAW2:	LD	HL,COORDX
 	RST	$28
 	DEFB	$38		; end
 NCDWN2:	POP	AF
-CLIPUP:
+
 DRINS:	LD	(LIST_SP),SP
 	CALL	STEPBACK
 	INC	HL
