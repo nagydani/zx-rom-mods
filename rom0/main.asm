@@ -756,8 +756,11 @@ STEPBACK:
 	RET
 
 ; print the decimal value of a byte in register A
-DECBYTE:LD	L,A
-	LD	H,0
+DECBYTE:LD	C,A
+	LD	B,0
+	RST	$30
+	DEFW	L1A1B
+	RET
 ; print the decimal value of a word in register HL
 DECWORD:LD	C,L
 	LD	B,H

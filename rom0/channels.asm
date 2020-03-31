@@ -1039,7 +1039,7 @@ E_HEAD0:LD	A,$06			; tabulation
 	DEFW	L0010			; and print it
 	BIT	5,(IY+FLAGS2-ERR_NR)	; check K mode suppression
 	LD	A,"!"
-	CALL	Z,$0010		; and indicate it
+	CALL	Z,PRINT_A		; and indicate it
 	LD	DE,EDITOR_HEADER1
 	CALL	MESSAGE
 	POP	AF			; restore FLAGS to A and FLAGS2 to F
