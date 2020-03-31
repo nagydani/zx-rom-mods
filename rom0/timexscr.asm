@@ -230,11 +230,8 @@ POSCR4B:CALL	CL_SCR
 	RET
 
 DRAWAT:	LD	A,$FF
+	AND	A
 	JR	DOPLOT
-
-SETORIG:LD	HL,ORIGX
-	LD	(MEM),HL
-	RET
 
 PLOT1:	XOR	A
 DOPLOT:	LD	(COORDS+1),A
@@ -541,6 +538,7 @@ CLIPUP:	DEFB	$05		; division
 	DEFB	$03		; subtract		; new dx, new dy
 	DEFB	$01		; exchange		; new dy, new dx
 	DEFB	$38		; end
+	AND	A
 	CALL	SETORIG
 	SCF
 	CALL	STCOORD
@@ -653,6 +651,7 @@ CLIPLF:	DEFB	$05		; division
 	DEFB	$03		; subtract		; new dy
 	DEFB	$E3		; get M3		; new dy, new dx
 	DEFB	$38		; end
+	AND	A
 	CALL	SETORIG
 	SCF
 	CALL	STCOORD

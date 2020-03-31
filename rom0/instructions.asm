@@ -4,7 +4,7 @@
 	DEFB	P_PLUG - $	; EN
 	DEFB	P_RENUM - $	; RENUM
 	DEFB	P_DEFPROC - $	; DEF PROC
-	DEFB	P_PLUG - $	; Es8
+	DEFB	P_CLIP - $	; CLIP
 	DEFB	P_STACK - $	; STACK
 	DEFB	P_LABEL - $	; LABEL/@
 	DEFB	P_POP - $	; POP
@@ -25,8 +25,8 @@
 	DEFB	P_PLUG - $	; EH
 	DEFB	P_FPOKE - $	; FPOKE
 	DEFB	P_PLUG - $	; EG
-	DEFB	P_PLUG - $	; EO
-	DEFB	P_PLUG - $	; EsI
+	DEFB	P_ORIG - $	; ORIG
+	DEFB	P_SCALE - $	; SCALE
 	DEFB	P_USR - $	; USR
 	DEFB	P_PLUG - $	; EY
 	DEFB	P_UNTIL - $	; UNTIL
@@ -49,6 +49,9 @@ P_ENDIF:DEFB	$00
 P_RENUM:DEFB	$00		; TODO: all sorts of arguments for RENUM
 	DEFW	RENUM
 
+P_CLIP:	DEFB	$08,TO_T,$08,$00
+	DEFW	CLIP
+
 P_EXIT:	DEFB	$00
 	DEFW	PLUG	
 
@@ -68,9 +71,14 @@ P_REPEAT:
 P_FPOKE:DEFB	$05
 	DEFW	FPOKE
 
-P_UNTIL:
-	DEFB	$06, $00
+P_UNTIL:DEFB	$06, $00
 	DEFW	UNTIL
+
+P_ORIG:	DEFB	$08, $00
+	DEFW	ORIG
+
+P_SCALE:DEFB	$08, $00
+	DEFW	SCALE
 
 P_USR:	DEFB	$06, $00
 	DEFW	USR
@@ -1176,6 +1184,7 @@ ST_VARN:LD	A,C
 	POP	DE		; discard return address
 	RET
 
+CLIP:
 ; unimplemented instruction, reports error, if executed
 PLUG:	JP	ERROR_C
 
@@ -1303,7 +1312,8 @@ EACH_COMEBACK2:
 	POP	DE
 EACH_2:	INC	HL
 	LD	A,(HL)
-EACH_3:	CALL	SKIP_NUM
+EACH_3:	RST	$30
+	DEFW	L18B6
 	LD	(CH_ADD),HL
 	CP	"\""
 	JR	NZ,EACH_4
@@ -1329,18 +1339,6 @@ EACH_6:	CP	$0D
 EACH_7:	INC	(IY+$0A)
 	POP	BC
 	JP	LOOK_P1
-
-SKIP_NUM:
-	CP	$0E
-	RET	NZ
-	INC	HL
-	INC	HL
-	INC	HL
-	INC	HL
-	INC	HL
-	INC	HL
-	LD	A,(HL)
-	RET
 
 ; Long-named string variables
 LV_CONT:JR	C,LV_NEXT
@@ -2845,5 +2843,20 @@ SPECTR:	LD	A,(BANK_M)
 	DEFW	LDIRR		; reset channel drivers
 	RES	4,(IY+FLAGS-ERR_NR)	; signal 48k mode
 	JP	SPECTRUM
+
+SCALE:	LD	HL,SCALEX
+	SCF
+	JR	SCALE_C
+ORIG:	SCF
+SETORIG:LD	HL,ORIGX
+SCALE_C:LD	(MEM),HL
+	RET	NC
+	RST	$28
+	DEFB	$C1		; store M1
+	DEFB	$02		; delete
+	DEFB	$C0		; store M0
+	DEFB	$02		; delete
+	DEFB	$38		; end
+	RST	$10
 
 	INCLUDE	"play.asm"

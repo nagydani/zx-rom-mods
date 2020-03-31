@@ -149,12 +149,13 @@
 | ... |
 | A7 | RENUM
 | A8 | DEF PROC
-| ... |
+| A9 | CLIP
 | AA | STACK
 | AB | LABEL / @
 | AC | POP
 | AD | PLAY
 | ... |
+| B2 | DISPLAY
 | B3 | END WHILE
 | B4 | ON ERROR
 | B5 | SPECTRUM
@@ -166,6 +167,8 @@
 | ... |
 | BC | FPOKE
 | ... |
+| BE | ORIG
+| BF | SCALE
 | C0 | USR
 | ... |
 | C2 | UNTIL
