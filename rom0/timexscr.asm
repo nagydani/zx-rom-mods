@@ -135,7 +135,7 @@ POSCR:	LD	DE,CLSET
 	DEFW	L1601		; CHAN-OPEN
 	LD	SP,(LIST_SP)
 	RES	4,(IY+$02)	; end of AUTOLIST
-	JP	SWAP
+	RST	$10
 
 POSCR2:	DEC	(IY+$52)
 	JR	NZ,POSCR3
@@ -321,7 +321,7 @@ PLOT_HICOLOR:
 	SET	5,H
 	LD	BC,X0BE4	; set attribute
 E_PLOT:	PUSH	BC
-	JP	SWAP		; return via PO-ATTR
+	RST	$10		; return via PO-ATTR
 
 PLOT_HIRES:
 	RST	$30
@@ -482,12 +482,7 @@ NCDWN:	DEFB	$02		; delete
 NCDWN1:	DEFB	$02		; delete
 	DEFB	$02		; delete
 	DEFB	$38		; end
-	EXX
-	LD	HL,MEMBOT+5
-	LD	DE,COORDY
-	LD	BC,5
-	LDIR
-	EXX
+	CALL	RESCRD
 	JR	NCDWN2
 
 CLDOWN:	LD	A,(NORTH)
@@ -552,6 +547,114 @@ CLIPUP:	DEFB	$05		; division
 	RST	$28
 	DEFB	$38		; end
 NCDWN2:	POP	AF
+
+	LD	A,(COORDS)
+	OR	A
+	JP	NZ,DRINS	; no horizontal clipping needed
+
+	INC	HL
+	BIT	7,(HL)
+	EX	AF,AF'		; save Z
+	LD	BC,-6
+	ADD	HL,BC
+	RST	$30
+	DEFW	L33B4		; STACK-NUM
+	RST	$30
+	DEFW	L33B4		; STACK-NUM
+	EX	AF,AF'		; restore Z
+	JR	Z,CLRGHT
+
+	LD	A,(EAST)
+	INC	A
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	DEC	A
+	PUSH	AF
+	RST	$30
+	DEFW	L2D28		; STACK-A
+	RST	$28
+	DEFB	$E4		; get COORDX
+	DEFB	$03		; subtract
+	DEFB	$31		; duplicate
+	DEFB	$37		; greater-0
+	DEFB	$00		; jump-true
+	DEFB	NCRGT - $
+	DEFB	$C4		; store COORDX
+	DEFB	$02		; delete
+	DEFB	$31		; duplicate
+	DEFB	$E4		; get COORDX
+	DEFB	$03		; subtract
+	DEFB	$36		; less-0
+	DEFB	$00		; jump-true
+	DEFB	CLIPLF - $
+	DEFB	$31		; duplicate
+NCRGT:	DEFB	$02		; delete
+NCRGT1:	DEFB	$02		; delete
+	DEFB	$02		; delete
+	DEFB	$38		; end
+	CALL	RESCRD
+	JR	NCRGT2
+	
+CLRGHT:	LD	A,(WEST)
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	PUSH	AF
+	RST	$30
+	DEFW	L2D28		; STACK-A
+	RST	$28
+	DEFB	$E4		; get COORDX
+	DEFB	$03		; subtract
+	DEFB	$31		; duplicate
+	DEFB	$36		; less-0
+	DEFB	$00		; jump-true
+	DEFB	NCRGT - $
+	DEFB	$C4		; store COORDX
+	DEFB	$02		; delete
+	DEFB	$31		; duplicate
+	DEFB	$E4		; get COORDX
+	DEFB	$03		; subtract
+	DEFB	$36		; less-0
+	DEFB	$00		; jump-true
+	DEFB	NCRGT1 - $
+CLIPLF:	DEFB	$05		; division
+	DEFB	$E4		; get COORDX
+	DEFB	$04		; multiply
+	DEFB	$E5		; get COORDY
+	DEFB	$0F		; addition
+	DEFB	$C5		; store COORDY
+	DEFB	$38		; end
+	POP	AF
+	PUSH	AF
+	RST	$30
+	DEFW	L2D28		; STACK-A
+	RST	$28
+	DEFB	$C4		; store COORDX
+	DEFB	$E5		; get COORDY
+	DEFB	$E4		; get COORDX
+	DEFB	$38		; end
+	LD	(IY+COORDS+1-ERR_NR),$FF
+	CALL	DOPLOT1
+	EX	AF,AF'
+	CALL	MASKPIX
+	RST	$28
+	DEFB	$E0		; get old COORDX
+	DEFB	$03		; subtract
+	DEFB	$C2		; store M2
+	DEFB	$02		; delete
+	DEFB	$E1		; get old COORDY
+	DEFB	$03		; subtract
+	DEFB	$03		; subtract
+	DEFB	$E2		; get M2
+	DEFB	$03		; subtract
+	DEFB	$38		; end
+	CALL	SETORIG
+	SCF
+	CALL	STCOORD
+	RST	$28
+	DEFB	$38		; end
+NCRGT2:	POP	AF
 
 DRINS:	LD	(LIST_SP),SP
 	CALL	STEPBACK
@@ -1064,6 +1167,14 @@ CLIPPX:	RRA
 	DEC	A
 	INC	L
 	CP	(HL)
+	RET
+
+RESCRD:	EXX
+	LD	HL,MEMBOT
+	LD	DE,COORDX
+	LD	BC,2*5
+	LDIR
+	EXX
 	RET
 
 	include "calculator.asm"

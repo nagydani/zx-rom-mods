@@ -74,7 +74,7 @@ CLOSELO:POP	HL
 CLOSE_NX:
 	POP	AF
 HLSW:	POP	HL
-	JP	SWAP
+	RST	$10
 
 
 MAKE_B:	LD      BC,$000B
@@ -257,7 +257,7 @@ X_OUT:	EX	AF,AF'
 	ADD	HL,DE
 	LD	A,(HL)
 	CALL	SWAPIN_SAVE
-	JP	SWAP
+	RST	$10
 
 SWAPIN_SAVE:
 	EXX
@@ -298,7 +298,7 @@ NEW_X_OUT_1:
 	LD	IX,(CURCHL)
 	LD	(IX+6),A
 	SET	0,(IX+5)
-NX_SW:	JP	SWAP
+NX_SW:	RST	$10
 
 NEW_X_IN:
 	LD	HL,(CURCHL)
@@ -310,11 +310,12 @@ NEW_X_IN:
 	INC	HL
 	LD	A,(HL)
 	SCF
-	JP	SWAP
+	RST	$10
+
 NEW_X_IN_1:
 	XOR	A
 	CALL	SWAPOUT_SAVE
-	JP	SWAP
+	RST	$10
 
 SWAPOUT_SAVE:
 	EX	AF,AF'
@@ -345,7 +346,7 @@ X_IN_C:	POP	AF
 	OR	A
 	JR	Z,XI_SW		; RESET passed on as empty string
 	CP	$20		; control codes passed on, $20 as empty string, else EOF
-XI_SW:	JP	SWAP
+XI_SW:	RST	$10
 
 SWAP_SYSVARS:
 	LD	DE,TSTACK

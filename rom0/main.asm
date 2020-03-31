@@ -12,10 +12,10 @@ RST00L:	DEC	BC
 	JP	RESET
 	DEFS	$10 - $
 
-; Print a character
-RST10:	RST	$30
-	DEFW	$0010
-	RET
+; Return to ROM1
+RST10:	INC	SP
+	INC	SP
+	JP	SWAP
 	DEFS	$18 - $
 
 ; Collect a character
@@ -68,7 +68,7 @@ CALL_ROM1:
 	PUSH	HL
 	LD	HL,(TARGET)
 	EX	(SP),HL		; return address, SWAP, target address on stack
-ROM1SW:	JP	SWAP
+ROM1SW:	JP	SWAP		; this one is performance-critical
 
 	DEFS	$66 - $
 NMI:	PUSH	AF
@@ -222,9 +222,7 @@ JP_HL:	JP	(HL)
 
 PR_OUT:
 PR_IN:
-	JP	SWAP
-
-R_LINK:	DEFB	$00, $03, $00, $07, $01, $00, $04, $FF
+	RST	$10	
 
 RESET:	LD	A,8		; check and clear all banks
 	LD	HL,$FFFF
@@ -364,7 +362,7 @@ R_KEY:	XOR	A
 	SET	5,(IY+$02)
 MAIN1:	LD	DE,L12A9
 	PUSH	DE
-	JP	SWAP
+	RST	$10
 
 CH_ADD_1:
 	LD	HL,(CH_ADD)
@@ -399,7 +397,7 @@ SKIPS2:	SCF
 MULS_S:	LD	BC,$104C	; tight multiplication
 	LD	HL,L2790	; S-NEXT
 MULS_R:	EX	(SP),HL		; replace return address by it
-	JR	DSWAP2
+	RST	$10
 
 GOTO_CONT:
 	POP	DE		; discard ERROR B
@@ -476,7 +474,8 @@ ERR_CONT:
 	CALL	REPORT
 ERR_C:	LD	HL,X1349
 	EX	(SP),HL
-DSWAP2:	JP	SWAP
+DSWAP2:	RST	$10
+
 ERR7MSG:LD	DE,ERR7TXT
 	CALL	MESSAGE
 	JR	ERR_C
@@ -485,7 +484,7 @@ DIGIT_CONT:
 	CALL	DDIGIT
 	JR	NC,DSWAP2
 	LD	A,C
-	JR	DSWAP2
+	RST	$10
 
 DDIGIT:	CP	$A
 	CCF
@@ -504,7 +503,7 @@ CL9_CONT:
 	DEFW	L2070 + 4	; STR-ALTER + 4
 	RST	$30
 	DEFW	L21E2 + 4	; CO-TEMP-2 + 4
-	JR	DSWAP2
+	RST	$10
 
 OLD_CONT:
 	LD	A,(T_ADDR)
@@ -624,7 +623,7 @@ C_THEN:	LD	A,THEN_T	; THEN
 	RES	4,(IY+$37)	; signal that we're NOT after THEN
 	LD	HL,L1B29	; STMT-L-1
 ERROLD:	EX	(SP),HL
-SWERR:	JP	SWAP		; we're done here
+SWERR:	RST	$10		; we're done here
 
 INDEXER_1:
 	INC	HL
@@ -642,7 +641,7 @@ ERROR:	LD	HL,(CH_ADD)
 	LD	HL,L0055
 	EX	(SP),HL
 	LD	L,(HL)
-	JR	SWERR
+	RST	$10
 
 STDERR_MSG:
 	XOR	A
@@ -674,9 +673,11 @@ REPORTZ:SUB	$1C
 	LD	B,A
 	INC	B
 	ADD	"S"
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	LD	A," "
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	LD	DE,REPORTS
 TOKEN:	LD	A,(DE)
 	ADD	A,A
@@ -691,11 +692,8 @@ TOKEN:	LD	A,(DE)
 	JR	NZ,MSGSKIP
 MESSAGE:LD	A,(DE)
 MSGNSP:	AND	$7F
-	PUSH	DE
-	EXX
-	RST	$10
-	EXX
-	POP	DE
+	RST	$30
+	DEFW	L0C3B		; PO-SAVE
 	LD	A,(DE)
 MSGSKIP:INC	DE
 	ADD	A,A
@@ -757,55 +755,16 @@ STEPBACK:
 	ADD	HL,BC
 	RET
 
+; print the decimal value of a byte in register A
+DECBYTE:LD	L,A
+	LD	H,0
 ; print the decimal value of a word in register HL
-DECWORD:LD	A,H
-	OR	A
-	LD	A,L
-	JR	Z,DECBYTE
-	LD	C,L
+DECWORD:LD	C,L
 	LD	B,H
 	RST	$30
 	DEFW	L2D2B + 4	; STACK-BC
 	RST	$30
 	DEFW	L2DE3		; PRINT-FP
-	RET
-
-; print the decimal value of a byte in register A
-DECBYTE:CP	10
-	JR	NC,P_DB1
-	ADD	"0"
-	RST	$10
-	RET
-P_DB1:	LD	E,100
-	SUB	A,E
-	JR	C,P_DB2
-	SUB	A,E
-	LD	D,A
-	LD	A,"2"
-	SBC	A,0
-	RST	$10
-	LD	A,D
-P_DB2:	ADD	A,E
-	ADD	A,A
-	LD	E,A
-	XOR	A
-	LD	B,7
-P_DB2L:	RL	E
-	ADC	A,A
-	DAA
-	DJNZ	P_DB2L
-	LD	E,A
-	RLCA
-	RLCA
-	RLCA
-	RLCA
-	AND	$0F
-	ADD	"0"
-	RST	$10
-	LD	A,E
-	AND	$0F
-	ADD	"0"
-	RST	$10
 	RET
 
 OPERTB:	DEFB	"|"
@@ -851,7 +810,7 @@ S_OPSS:	LD	B,A		; priority
 	PUSH	BC
 	LD	B,A
 	LD	C,$81		; EXCHANGE number,string
-	JP	SWAP
+	RST	$10
 
 S_XOR:	LD	A,$02		; priority like OR
 	CALL	TIGHTER
@@ -877,7 +836,7 @@ S_MOD:	LD	A,$08		; priority like /
 	LD	C,$F2		; mod with same priority
 SWNEXT:	LD	HL,L2790	; S-NEXT
 SWPUSH:	PUSH	HL
-SWAPOP:	JP	SWAP
+SWAPOP:	RST	$10
 
 S_RL:	CALL	BWISE
 	LD	BC,D_RLS
@@ -1213,7 +1172,7 @@ D_ORL:	INC	HL
 D_BITW2:DEC	DE
 	DEC	DE
 	DEC	DE
-D_FSHW:	JP	SWAP
+D_FSHW:	RST	$10
 
 D_FOR:	EX	DE,HL
 	BIT	7,(HL)
@@ -1254,7 +1213,7 @@ D_FCONT:LD	D,A
 	LD	H,$00
 	LD	BC,X3069
 	PUSH	BC
-	JP	SWAP
+	RST	$10
 
 D_FSH2:	NEG
 	CP	$21
@@ -1563,7 +1522,7 @@ D_NFLIP:DEC	HL
 	DEC	HL
 	LD	(HL),E
 SMUL_E:	LD	DE,(STKEND)
-	JP	SWAP
+	RST	$10
 
 D_SLONG:PUSH	HL		; address pointer
 	PUSH	DE		; excess length
@@ -1798,7 +1757,7 @@ D_LBL:	LD	A,(HL)
 	DEC	HL
 	LD	BC,L26B6 + 7	; S-SD-SKIP + 7
 	PUSH	BC
-SW_LBL:	JP	SWAP
+SW_LBL:	RST	$10
 
 F_LBL:	SET	7,(IY+FLAGS2-ERR_NR)	; Mark cache dirty
 	LD	HL,(PROG)
@@ -1898,7 +1857,7 @@ MAIN_ADD_CONT:
 
 	CALL	RSTLBLS
 	POP	BC
-SW_MA:	JP	SWAP
+SW_MA:	RST	$10
 
 RSTLBLS:RES	7,(IY+FLAGS2-ERR_NR)
 	LD	HL,(PROG)
@@ -1972,7 +1931,7 @@ SUB_CONT:
 	JR	NC,SW_SUB	; return, if we are in range
 SUB_OOR:SCF
 	DEC	A
-SW_SUB:	JP	SWAP
+SW_SUB:	RST	$10
 
 STACKSWAP:
 	LD	HL,SWAP
@@ -2046,5 +2005,7 @@ INIT_STRM:
         DEFW    K_CH - CHINFO0 + 1	; stream $01 offset to channel 'K'
         DEFW    S_CH - CHINFO0 + 1	; stream $02 offset to channel 'S'
         DEFW    P_CH - CHINFO0 + 1	; stream $03 offset to channel 'P'
+
+R_LINK:	DEFB	$00, $03, $00, $07, $01, $00, $04, $FF
 
 	DEFS	$4000 - $

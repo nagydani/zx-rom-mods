@@ -162,11 +162,11 @@ STMT_NEXT:
 STMT_LOOP:
 	LD	HL,L1B28	; STMT-LOOP
 	PUSH	HL
-	JP	SWAP
+	RST	$10
 
 LINE_END:
 	BIT	7,(IY+$01)
-	JP	Z,SWAP
+	JR	Z,LE_SWAP
 	LD	HL,(NXTLIN)
 	LD	A,$C0
 	AND	(HL)
@@ -174,7 +174,7 @@ LINE_END:
 	PUSH	HL
 	LD	HL,L1BBF - 1	; XOR A, LINE-USE
 	EX	(SP),HL
-LE_SWAP:JP	SWAP
+LE_SWAP:RST	$10
 
 CMDCLASS2:
 	DEFB	CLASS2_00 - $	; parameterless instruction
@@ -370,7 +370,7 @@ NEST2:	EQU	NESTING + 1
 
 ; instruction routines
 ENDIF:	RES	4,(IY+$37)	; signal true outcome
-	JP	SWAP
+EISW:	RST	$10
 
 ; Skip FOR block if condition unsatisfied
 SKIP_FOR_CONT:
@@ -381,14 +381,14 @@ SKIP_FOR_CONT:
 	CALL	LOOK_PROG2
 	INC	BC		; increment end-of-line pointer
 	LD	(NXTLIN),BC
-	JP	NC,SWAP
+	JR	NC,EISW
 ERROR_I:RST	$30
 	DEFW	L1D84		; I FOR without NEXT
 
 THENLESS:
 	RES	4,(IY+$37)	; signal true outcome
 	CALL	TEST_ZERO
-SWAPNZ:	JP	NZ,SWAP		; Upon true condition, simply continue
+SWAPNZ:	JR	NZ,EISW		; Upon true condition, simply continue
 
 ; Upon false condition start scanning for END IF, ELSE or end of code
 THENLESS0:
@@ -401,7 +401,7 @@ THENLESS0:
 	JR	C,ERROR_S
 	POP	BC		; discard SCAN-LOOP
 SW20:	RST	$20
-	JP	SWAP
+	RST	$10
 
 ELSE:	POP	BC		; discard STMT-RET
 	CALL	SYNTAX_Z
@@ -422,7 +422,7 @@ ELSE_S:	BIT	4,(IY+$37)	; after THEN
 ERRCNZ4:JP	NZ,ERROR_C	; ELSE is an error
 ELSE_1:	LD	BC,L1B29	; STMT-L-1
 ELSE_2:	PUSH	BC
-	JP	SWAP
+	RST	$10
 ELSE_3:	PUSH	BC		; put back STMT-RET
 	LD	BC,(NXTLIN)
 	LD	DE,T_IF
@@ -530,14 +530,14 @@ POKE_L2:EX	AF,AF'
 	JR	Z,POKE_L
 LABEL:
 POKE_SWAP:
-	JP	SWAP
+	RST	$10
 
 USR:	CALL	SYNTAX_Z
 	JR	Z,POKE_SWAP
 	RST	$30
 	DEFW	L1E99		; FIND-INT2
 	PUSH	BC
-	JR	POKE_SWAP
+	RST	$10
 
 TEST_ZERO:
 	LD	HL,(STKEND)
@@ -662,7 +662,7 @@ UNT_C:	LD	E,(HL)
 	LD	D,A		; D = (SUBPPC)
 GOTO_5:	LD	BC,L1E73	; GO-TO-2
 	PUSH	BC
-UNT_SW:	JP	SWAP
+UNT_SW:	RST	$10
 
 END_REP:EX	DE,HL
 	POP	HL
@@ -670,7 +670,7 @@ END_REP:EX	DE,HL
 UNT_ER:	PUSH	DE
 UNT_E:	LD	(ERR_SP),SP
 	PUSH	BC
-	JR	UNT_SW
+	RST	$10
 
 ERROR_U:PUSH	DE
 ERROR2U:PUSH	HL
@@ -797,7 +797,7 @@ SKIPEND:CALL	LOOK_PROG2
 	LD	(NXTLIN),BC
 	JP	C,ERROR_S	; S Missing END (PROC)
 	INC	(IY+$0A)	; advance NSPPC past END PROC
-	JR	SW_LOC
+	RST	$10
 
 LOCAL_R:RST	$20		; advance past the comma
 LOCAL_S:RST	$30
@@ -819,7 +819,7 @@ LOCAL_E:RST	$18		; TODO: ???
 	JR	Z,LOCAL_R
 	LD	HL,L1BEE + 5	; CHECK-END + 5; TODO: array initializer?
 	PUSH	HL
-SW_LOC:	JP	SWAP
+SW_LOC:	RST	$10
 
 LOCAL_I:CP	"="
 	JR	NZ,LOCAL_E
@@ -1018,7 +1018,7 @@ LCL_DM:	EXX
 	PUSH	HL		; error address
 	LD	(ERR_SP),SP
 	PUSH	DE		; return address
-	JR	STCK_SW
+	RST	$10
 
 LCL_STR:LD	(STRLEN),BC
 	PUSH	DE
@@ -1041,7 +1041,7 @@ LCL_STR:LD	(STRLEN),BC
 	RET
 
 STACKQ:	POP	DE		; discard STACKE
-STCK_SW:JP	SWAP
+STCK_SW:RST	$10
 
 STACK:	LD	HL,(ERR_SP)
 	INC	HL
@@ -1062,20 +1062,25 @@ STACKL:	LD	DE,STACKE
 	ADD	A,A
 	JR	NC,ST_NFOR	; not FOR variable
 	LD	A,FOR_T
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	CALL	ST_NUM
 	LD	A,TO_T
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	CALL	ST_NUMV
 	LD	A,STEP_T
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	CALL	ST_NUMV
 	LD	A," "
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	JR	ST_SMTV
 
 STACKE:	LD	A,$0D
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	JR	STACKL
 
 ST_NFOR:RRA
@@ -1098,22 +1103,26 @@ ST_WHL:	LD	A,WHILE_T
 
 ST_GOSUB:
 	LD	A,GOSUB_T
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	JR	ST_STMT
 
 ST_REP:	LD	A,REPEAT_T
-ST_CTX:	RST	$10
+ST_CTX:	RST	$30
+	DEFW	L0010
 ST_SMTV:LD	C,(HL)
 	INC	HL
 	LD	B,(HL)
 	INC	HL
 ST_STMT:LD	A,AT_T
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	PUSH	HL
 	RST	$30
 	DEFW	L1A1B		; OUT-NUM-1
 ST_REF:	LD	A,":"
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	POP	HL
 	LD	A,(HL)
 	DEC	A
@@ -1122,13 +1131,15 @@ ST_REF:	LD	A,":"
 	RET
 
 ST_VAR:	LD	A,LOCAL_T
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	LD	A,C
 	AND	$20
 	JR	Z,ST_STR
 ST_NUM:	CALL	ST_VARN
 	LD	A,"="
-	RST	$10
+	RST	$30
+	DEFW	L0010
 ST_NUMV:RST	$30
 	DEFW	L33B4		; STACK-NUM
 	PUSH	HL
@@ -1148,16 +1159,19 @@ ST_SKIP:LD	E,(HL)
 ST_VARN:LD	A,C
 	AND	$1F		; bottom 5 bits
 	OR	"a"-1
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	BIT	5,C
 	LD	A,"$"
-	CALL	Z,$0010
+	CALL	Z,PRINT_A
 	BIT	6,C
 	RET	NZ
 	LD	A,"("
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	LD	A,")"
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	CALL	ST_SKIP
 	POP	DE		; discard return address
 	RET
@@ -1347,7 +1361,7 @@ LV_CONT:JR	C,LV_NEXT
 	DEFB	$3E		; LD A,skip next byte
 LV_NSTR:EX	AF,AF'
 SW_LV2:	POP	HL
-	JR	SW_LV
+	RST	$10
 
 LV_FOR:	CP	$91		; interpreting FOR?
 	JR	NZ,LV_DIM	; if not, it's a DIM
@@ -1359,7 +1373,7 @@ LV_DIM:	XOR	A
 	RST	$30
 	DEFW	L28B2		; LOOK-VARS
 	LD	(IY+DEFADD+1-ERR_NR),1	; restore without changing flags
-	JR	SW_LV		; return to DIM
+	RST	$10		; return to DIM
 
 ; Handling DIM and argumentless NEXT
 LV_NEXT:LD	A,(T_ADDR)
@@ -1395,7 +1409,7 @@ NEXT:	POP	BC		; discard CLASS-04 return address
 	PUSH	DE		; restore error address
 	LD	(ERR_SP),SP
 NEXT_SW:PUSH	BC		; restore return address
-SW_LV:	JP	SWAP
+SW_LV:	RST	$10
 
 NEXT_LP:LD	BC,$0010
 	ADD	HL,BC
@@ -1521,7 +1535,7 @@ POPCNT:	POP	HL		; new context
 	PUSH	DE		; error address
 	LD	(ERR_SP),SP
 	PUSH	BC		; return address
-	JP	SWAP
+	RST	$10
 
 RENUM:	POP	BC		; return address
 	POP	DE		; error address
@@ -1617,7 +1631,7 @@ TR_IF2:	RST	$18
 	SET	7,(IY+$0D)	; Signal TRACE for STMT-LOOP
 TRACE_R:LD	HL,L1B76	; STMT-RET
 TR_SW:	PUSH	HL
-	JP	SWAP		; return
+	RST	$10		; return
 
 TRACE_EX_TAB:
 	DEFB	IF_T
@@ -1627,6 +1641,9 @@ TRACE_EX_TAB:
 	DEFB	REM_T
 	DEFB	TR_REM - $
 	DEFB	0
+
+TR_IF1:	SET	7,(IY+$0D)	; Signal TRACE for STMT-LOOP
+	JP	STMT_LOOP
 
 TR_IF:	RST	$20
 	RES	4,(IY+$37)	; signal true outcome
@@ -1662,10 +1679,7 @@ TRACE_U:LD	A,$81
 	LD	(ERR_SP),SP
 	LD	DE,X1BA9	; LINE-USE with preliminary check
 	PUSH	DE
-TR_SW1:	JP	SWAP
-
-TR_IF1:	SET	7,(IY+$0D)	; Signal TRACE for STMT-LOOP
-	JP	STMT_LOOP
+TR_SW1:	RST	$10
 
 STEP_CONT:
 	LD	A,(ERR_NR)
@@ -1687,15 +1701,18 @@ STEP_CONT:
 	INC	HL
 TRACE_2:CALL	DECWORD
 	LD	A,":"
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	LD	A,(SUBPPC)
 	CALL	DECBYTE
 	LD	A," "
-	RST	$10
+	RST	$30
+	DEFW	L0010
 
 	RST	$18
 	LD	A,(HL)
-	RST	$10		; TODO: proper line listing
+	RST	$30
+	DEFW	L0010		; TODO: proper line listing
 	
 	RES	3,(IY+$02)	; no edit line
 	LD	HL,FLAGX
@@ -1931,7 +1948,7 @@ PROC_SE:RST	$20
 	CP	TO_T
 	JP	NZ,END05
 READ_3:	LD	HL,L1DEC	; READ-3
-	JP	SWAP
+	RST	$10
 
 PROC:	CALL	SYNTAX_Z
 	JR	Z,PROC_S
@@ -2069,7 +2086,7 @@ PROC_E:	POP	DE		; return address
 	LD	(ERR_SP),SP
 	PUSH	DE
 	RST	$20		; skip closing bracket Of DEF PROC
-	JR	WHILE_E
+	RST	$10
 
 REPEAT:	POP	DE		; DE = return address
 	LD	HL,(SUBPPC - 1)
@@ -2107,7 +2124,7 @@ LOOPFRAME:
 	LD	BC,$0014	; why this much? see $1F02 in ROM1
 	LD	HL,L1F05	; TEST-ROOM
 ENDPR_E:PUSH	HL
-WHILE_E:JP	SWAP
+WHILE_E:RST	$10
 
 WHILE0:	LD	DE,T_WHILE
 	JP	SKIPEND
@@ -2273,7 +2290,7 @@ RET_E:	DEC	HL
 	EX	DE,HL
 	LD	DE,L1F23 + 2	; RETURN + 2
 	PUSH	DE
-	JP	SWAP		; RETURN again
+	RST	$10		; RETURN again
 
 ; Find calling context (GO SUB or PROC)
 CALLCTX:CALL	SKIP_LL
@@ -2359,7 +2376,7 @@ ERROR_B_NC:
 	JP	NC,ERROR_B	; B Integer out of range
 	LD	BC,$8E3B	; ZX PRISM control port, also works with the ZX UNO
 	OUT	(C),A
-	JP	SWAP
+	RST	$10
 
 YIELD_R:LD	HL,(CHANS)
 	LD	BC,$0014
@@ -2536,10 +2553,12 @@ DISPFREE:
 	RET
 
 STEP:	LD	A,$07		; STEP control
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	RST	$30
 	DEFW	L1E94		; FIND-INT1
-	RST	$10
+	RST	$30
+	DEFW	L0010
 	LD	A,(TV_FLAG)
 	RRCA
 	LD	B,$01
@@ -2555,7 +2574,7 @@ K_STEP:	LD	HL,KS_PERM
 	AND	B
 	XOR	(HL)
 	LD	(HL),A
-STP_SW:	JP	SWAP
+STP_SW:	RST	$10
 
 G_ONERR:CP	GOTO_T
 	JR	Z,T_ONERR
@@ -2769,7 +2788,8 @@ READ_CL:RST	$30
 	RST	$30
 	DEFW	L1601		; CHAN-OPEN
 	EX	AF,AF'
-	RST	$10		; add to string
+	RST	$30
+	DEFW	L0030		; add to string
 	POP	HL
 	LD	(CURCHL),HL
 	LD	HL,(K_CUR)

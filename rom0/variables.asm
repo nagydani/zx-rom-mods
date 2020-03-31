@@ -127,7 +127,7 @@ LC_LOOP:CALL	LOC_L
 	JR	LC_LL
 LC_NOTF:LD	HL,L28EF	; V-RUN-SYN
 LC_JP:	EX	(SP),HL		; replace the return address
-LC_SW:	JP	SWAP
+LC_SW:	RST	$10
 
 FN_ARG:	LD	HL,L2951	; STK-FN-ARK
 	JR	LC_JP
@@ -179,13 +179,13 @@ LC_STR:	EX	DE,HL
 	INC	HL		; skip first byte of max. length
 	POP	DE		; discard pointer
 	CP	A		; set Z flag
-	JR	LC_SW
+	RST	$10
 
 LC_ARR:	CP	A		; set Z flag
 	LD	C,$7F
 LC_NUM:	EX	DE,HL
 LC_STRR:POP	DE		; discard pointer
-	JR	LC_SW
+	RST	$10
 
 ; new string variable assignment
 NSTRNG:	AND	$E0
@@ -254,7 +254,7 @@ LSTRNG:	INC	HL
 	POP	BC
 	LD	DE,(K_CUR)
 	XOR	A
-	JR	SW_STR
+	RST	$10
 
 STRNG_CONT:
 	JR	NZ,NSTRNG
@@ -293,7 +293,7 @@ STRNG_Z:POP	BC		; discard return value
 	LD	A,(T_ADDR)
 	CP	$7D		; LET?
 	RET	NZ		; return, if not
-SW_STR:	JP	SWAP
+SW_STR:	RST	$10
 
 STRNG_LONG:
 	PUSH	BC		; string length
@@ -407,7 +407,7 @@ LF_GETN:LD	A,(DE)
 	ADD	HL,DE		; HL points to limit
 	LD	DE,L1D34	; F-L-S
 	PUSH	DE
-	JR	LF_SWAP
+	RST	$10
 
 ; Check local variables for NEXT
 NEXT_CONT:
@@ -422,4 +422,4 @@ NEXT_CONT:
 	EX	(SP),HL
 	LD	HL,X1DB9	; continue with NEXT
 	EX	(SP),HL
-LF_SWAP:JP	SWAP
+LF_SWAP:RST	$10
