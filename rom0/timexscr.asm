@@ -529,17 +529,17 @@ CLIPUP:	DEFB	$05		; division
 	EX	AF,AF'
 	CALL	MASKPIX
 	RST	$28
-	DEFB	$E1		; get old COORDY
-	DEFB	$03		; subtract
-	DEFB	$C3		; store M3
-	DEFB	$02		; delete
-	DEFB	$E0		; get old COORDX
-	DEFB	$03		; subtract
-	DEFB	$03		; subtract
-	DEFB	$01		; exchange
-	DEFB	$E3		; get M3
-	DEFB	$03		; subtract
-	DEFB	$01		; exchange
+	DEFB	$E1		; get old COORDY	; dy, dx, new X, new Y, old Y
+	DEFB	$03		; subtract		; dy, dx, new X, new Y - old Y
+	DEFB	$C3		; store M3		; M3 = new Y - old Y
+	DEFB	$02		; delete		; dy, dx, new X
+	DEFB	$E0		; get old COORDX	; dy, dx, new X, old X
+	DEFB	$03		; subtract		; dy, dx, new X - old X
+	DEFB	$03		; subtract		; dy, new dx
+	DEFB	$01		; exchange		; new dx, dy
+	DEFB	$E3		; get M3		; new dx, dy, new Y - old Y
+	DEFB	$03		; subtract		; new dx, new dy
+	DEFB	$01		; exchange		; new dy, new dx
 	DEFB	$38		; end
 	CALL	SETORIG
 	SCF
@@ -639,15 +639,19 @@ CLIPLF:	DEFB	$05		; division
 	EX	AF,AF'
 	CALL	MASKPIX
 	RST	$28
-	DEFB	$E0		; get old COORDX
-	DEFB	$03		; subtract
-	DEFB	$C2		; store M2
-	DEFB	$02		; delete
-	DEFB	$E1		; get old COORDY
-	DEFB	$03		; subtract
-	DEFB	$03		; subtract
-	DEFB	$E2		; get M2
-	DEFB	$03		; subtract
+	DEFB	$E0		; get old COORDX	; dy, dx, new Y, new X, old X
+	DEFB	$03		; subtract		; dy, dx, new Y, new X - old X
+	DEFB	$C3		; store M3		; M3 = new X - old X
+	DEFB	$02		; delete		; dy, dx, new Y
+	DEFB	$E1		; get old COORDY	; dy, dx, new Y, old Y
+	DEFB	$03		; subtract		; dy, dx, new Y - old Y
+	DEFB	$01		; exchange		; dy, new Y - old Y, dx
+	DEFB	$E3		; get M3		; dy, new Y - old Y, dx, new X - old X
+	DEFB	$03		; subtract		; dy, new Y - old Y, new dx
+	DEFB	$C3		; store M3		; M3 = new dx
+	DEFB	$02		; delete		; dy, new Y - old Y
+	DEFB	$03		; subtract		; new dy
+	DEFB	$E3		; get M3		; new dy, new dx
 	DEFB	$38		; end
 	CALL	SETORIG
 	SCF
