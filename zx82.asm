@@ -1422,7 +1422,7 @@ L03F8:  RST     28H             ;; FP-CALC
                                 ; In the following, the pitch is checked if it is in the range -128<=p<=127
         LD      A,(HL)          ; First byte must be zero, otherwise
         AND     A               ;   error in integer conversion
-        JR      NZ,L046C        ; to REPORT-B
+        JR      NZ,REPORT_B	; to REPORT-B
 
         INC     HL              ;
         LD      C,(HL)          ; C = pos/neg flag = 0/FF
@@ -1432,17 +1432,17 @@ L03F8:  RST     28H             ;; FP-CALC
         RLA                     ;
         SBC     A,A             ; A = 0/FF if B is pos/neg
         CP      C               ; must be the same as C if the pitch is -128<=p<=127
-        JR      NZ,L046C        ; if no, error REPORT-B
+        JR      NZ,REPORT_B	; if no, error REPORT-B
 
         INC     HL              ; if -128<=p<=127, MSB will be 0/FF if B is pos/neg
         CP      (HL)            ; verify this
-        JR      NZ,L046C        ; if no, error REPORT-B
+        JR      NZ,REPORT_B	; if no, error REPORT-B
                                 ; now we know -128<=p<=127
         LD      A,B             ; A = pitch + 60
         ADD     A,$3C           ; if -60<=pitch<=67,
         JP      P,L0425         ;   goto BE-i-OK
 
-        JP      PO,L046C        ; if pitch <= 67 goto REPORT-B
+        JP      PO,REPORT_B	; if pitch <= 67 goto REPORT-B
                                 ;   lower bound of pitch set at -60
 
 ;; BE-I-OK                      ; here, -60<=pitch<=127
@@ -1484,7 +1484,7 @@ L0427:  INC     B               ; increment octave
 
         CALL    L1E94           ; routine FIND-INT1 ; FP duration to A
         CP      $0B             ; if dur > 10 seconds,
-        JR      NC,L046C        ;   goto REPORT-B
+        JR      NC,REPORT_B	;   goto REPORT-B
 
         ;;; The following calculation finds the tone period for HL and the cycle count
         ;;; for DE expected in the BEEPER subroutine.  From the example in the BEEPER comments,
@@ -1528,7 +1528,9 @@ L0427:  INC     B               ; increment octave
 ; default service routine for K, S and P channel output
 PRINT_OUT:
 	JP	C,L09F4
-	CP	$0D
+;;; This entry point is for disabling stream #2 by POKE 23739,111 which
+;;; pointed it to the RET at X096F in the production ROM
+X046F:	CP	$0D
 	RET	NC		; ignore all controls beyond $0C
 
 ; Reset current system channel state
@@ -1542,7 +1544,11 @@ CH_RESET:
 	JP	RESET_P
 
 ;; REPORT-B
-L046C:  RST     08H             ; ERROR-1
+;;; NOTE: This entry point has moved. It might be used by some BASIC extensions but
+;;; There are several other "B Integer out of range" reports that can be used instead.
+;;;L046C:
+REPORT_B:
+	RST     08H             ; ERROR-1
         DEFB    $0A             ; Error Report: Integer out of range
 
 
@@ -3049,7 +3055,7 @@ L0958:  INC     HL              ; address next?
                                 ; as no longer required and space could be
                                 ; useful for adding more lines.
         POP     DE              ; restore the prog/vars pointer
-        RET                     ; return.
+X096F:	RET                     ; return.
 
 ; --------------------------
 ; THE 'SAVE CONTROL' ROUTINE
