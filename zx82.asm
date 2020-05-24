@@ -1457,7 +1457,7 @@ L0427:  INC     B               ; increment octave
 
         ADD     A,$0C           ; A = # semitones above C (0-11)
         PUSH    BC              ; B = octave displacement from middle C, 2's complement: -5<=B<=10
-        LD      HL,L046E        ; Address: semi-tone
+        LD      HL,SEMITONE	; Address: semi-tone
         CALL    LOC_MEM           ; routine LOC-MEM
                                 ;   HL = 5*A + $046E
         CALL    L33B4           ; routine STACK-NUM
@@ -1525,6 +1525,21 @@ L0427:  INC     B               ; increment octave
 
 ; ---
 
+; default service routine for K, S and P channel output
+PRINT_OUT:
+	JP	C,L09F4
+	CP	$0D
+	RET	NC		; ignore all controls beyond $0C
+
+; Reset current system channel state
+CH_RESET:
+	EX	AF,AF'		; Save control code
+	CALL	L21D6		; IN-CHAN-K
+	JP	Z,RESET_K	; If so, reset both service routines
+	LD	BC,$1821	; If not, pre-load top left corner's location
+	CP	"S"
+	JP	Z,IOCTL_S	; Jump to IOCTL
+	JP	RESET_P
 
 ;; REPORT-B
 L046C:  RST     08H             ; ERROR-1
@@ -1541,7 +1556,9 @@ L046C:  RST     08H             ; ERROR-1
 
 ;; semi-tone         five byte fp         decimal freq     note (middle)
 ;;; BUGFIX: re-calculated semitone table using double precision
-L046E:	DEFB	$89, $02, $D0, $12, $86	; 261.6255653006 Hz	C
+SEMITONE:
+;;;L046E:
+	DEFB	$89, $02, $D0, $12, $86	; 261.6255653006 Hz	C
 	DEFB	$89, $0A, $97, $60, $74	; 277.1826309769 Hz	C#
 	DEFB	$89, $12, $D5, $17, $1D	; 293.6647679174 Hz	D
 	DEFB	$89, $1B, $90, $41, $01	; 311.1269837221 Hz	D#
@@ -1608,23 +1625,7 @@ L046E:	DEFB	$89, $02, $D0, $12, $86	; 261.6255653006 Hz	C
 ;;;                                ; and also clear carry.
 ;;;        SET     7,(HL)          ; invert it.
 ;;;        RET                     ; return.
-; default service routine for K, S and P channel output
-PRINT_OUT:
-	JP	C,L09F4
-	CP	$0D
-	RET	NC		; ignore all controls beyond $0C
-
-; Reset current system channel state
-CH_RESET:
-	EX	AF,AF'		; Save control code
-	CALL	L21D6		; IN-CHAN-K
-	JP	Z,RESET_K	; If so, reset both service routines
-	LD	BC,$1821	; If not, pre-load top left corner's location
-	CP	"S"
-	JP	Z,IOCTL_S	; Jump to IOCTL
-	JP	RESET_P
-ZX81_NAME_E:
-	DEFS	$04C2 - $04AA + PRINT_OUT - ZX81_NAME_E
+	DEFS	$04C2 - $
 
 ; =========================================
 ;
@@ -19946,42 +19947,25 @@ SQR:  RST     28H             ;; FP-CALC
 	LD	A,(HL)
 	AND	A
 	RET	Z
+	ADD	A, $80
+	RRA
+	LD	(HL), A
 	INC	HL
-	BIT	7,(HL)
-	JP	NZ,L34E7	; REPORT-A
-	LD	HL,$5BA1
-	LD	A,(HL)
-	XOR	$80
-	SRA	A
-	INC	A
-	JR	Z,ASIS
-	JP	P,ASIS
-	DEC	A
-ASIS:	XOR	$80
-	LD	(HL),A
+	LD	A, (HL)
+	RLA
+	JP	C, L34E7
+	LD	(HL), $7F
+	LD	B, 5
 
-	RST	$28		;;FP-CALC
-SLOOP:	DEFB 	$31	;;duplicate             x,x.
+SLOOP:	RST	$28		;;FP-CALC
+	DEFB 	$31	;;duplicate             x,x.
 	DEFB	$E3	;;get-mem-3             x,x,guess
-	DEFB	$C4	;;st-mem-4              x,x,guess
-	DEFB	$05	;;div                   x,x/guess.
-	DEFB	$E3	;;get-mem-3             x,x/guess,guess
-	DEFB	$0F	;;addition              x,x/guess+guess
-	DEFB	$A2	;;stk-half              x,x/guess+guess,.5
-	DEFB	$04	;;multiply              x,(x/guess+guess)*.5
-	DEFB	$C3	;;st-mem-3              x,newguess
-	DEFB	$E4	;;get-mem-4             x,newguess,oldguess
-	DEFB	$03	;;subtract              x,newguess-oldguess
-	DEFB	$2A	;;abs                   x,difference.
-	DEFB	$37	;;greater-0             x,(0/1).
-	DEFB	$00	;;jump-true             x.
-
-	DEFB	SLOOP - $       ;;to sloop              x.
-
-	DEFB	$02             ;;delete                .
-	DEFB	$E3             ;;get-mem-3             retrieve final guess.
-	DEFB	$38             ;;end-calc              sqr x.
-
+	DEFB	$01	;;exchange		x,guess,x
+	DEFB	$05	;;division		x,guess/x
+	DEFB	$0F	;;addition		x+guess/x
+	DEFB	$38	;;end-calc
+	DEC	(HL)
+	DJNZ	SLOOP
 	RET                   ; return with square root on stack
 
 
