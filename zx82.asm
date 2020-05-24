@@ -1409,10 +1409,10 @@ L03F8:  RST     28H             ;; FP-CALC
         DEFB    $C0             ;;st-mem-0                   ; store integer pitch to memory 0
         DEFB    $03             ;;subtract                   ; calculate fractional part of pitch = fp_pitch - int_pitch
         DEFB    $34             ;;stk-data                   ; push constant
-        DEFB    $EC             ;;Exponent: $7C, Bytes: 4    ; constant = 0.05762265
+        DEFB    $EC             ;;Exponent: $7C, Bytes: 4    ; constant = 0.05776226505
         DEFB    $6C,$98,$1F,$F5 ;;($6C,$98,$1F,$F5)
         DEFB    $04             ;;multiply                   ; compute:
-        DEFB    $A1             ;;stk-one                    ; 1 + 0.05762265 * fraction_part(pitch)
+        DEFB    $A1             ;;stk-one                    ; 1 + 0.05776226505 * fraction_part(pitch)
         DEFB    $0F             ;;addition
         DEFB    $38             ;;end-calc                   ; leave on calc stack
 
