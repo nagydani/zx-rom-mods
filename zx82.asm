@@ -58,7 +58,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 06-MAR-2020
+; Last updated: 04-MAY-2020
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
