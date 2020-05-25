@@ -18377,7 +18377,8 @@ USR_RANGE:
 
 ;; USR-STACK
 ;;; BUGFIX do not allow address overflow
-USR_STACK:
+	LD	HL,(P_RAMT)
+	SBC	HL,BC
 	JP	NC,L2D2B	; jump back and exit via STACK-BC to store
 ;;; L34E4:  JP      L2D2B           ; jump back and exit via STACK-BC to store
 
