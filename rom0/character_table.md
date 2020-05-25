@@ -67,14 +67,51 @@
 
 | hex | symbol | function
 |:---:|:-------|:---
-| 90 | A | user defined graphics
+| 90 | a | user defined graphics
 | ... | ... | ...
-| A4 | U | user defined graphics
+| FF | Z | user defined graphics
 
-## Function and operator tokens
+## Tokens
 
 | hex | symbol
 |:---:|:------
+| 80 | ><
+| 81 | <<
+| 82 | >>
+| 83 | SQ
+| 84 | FPEEK
+| 85 | DPEEK
+| 86 | STICK
+| 87 | TIME$
+| 88 | TIME
+| 89 | ITEM
+| 8A | BIT
+| 8B | MEM$
+| 8C | FREE
+| 8D | REF
+| 8E | ON ERROR
+| 8F | WRITE #
+| 90 | ASSERT
+| 91 | LOCAL
+| 92 | CLIP
+| 93 | DISPLAY
+| 94 | FPOKE
+| 95 | RENUM
+| 96 | SCALE
+| 97 | END WHILE
+| 98 | UNTIL
+| 99 | TRACE
+| 9A | ENDIF
+| 9B | YIELD
+| 9C | REPEAT
+| 9D | EXIT
+| 9E | WHILE
+| 9F | END PROC
+| A0 | STACK
+| A1 | PROC
+| A2 | POP
+| A3 | SPECTRUM
+| A4 | PLAY
 | A5 | RND
 | A6 | INKEY$
 | A7 | PI
@@ -115,73 +152,6 @@
 | CA | LINE
 | CB | THEN
 | CC | TO
-| CD | STEP
-| CE | FREE
-| CF | MEM$
-| D0 | TIME
-| D1 | STICK
-| D2 | DPEEK
-| D3 | OPEN #
-| D4 | EOF #
-| D5 | TIME$
-| D6 | REF
-| D7 | ITEM
-| D8 | HEX
-| D9 | INK
-| DA | PAPER
-| DB | FLASH
-| DC | BRIGHT
-| DD | INVERSE
-| DE | OVER
-| DF | OCT
-| E0 | SQ
-| E1 | FPEEK
-| E2 | ><
-| E3 | <<
-| E4 | DATA
-| E5 | >>
-
-## Instruction tokens
-
-| hex | symbol
-|:---:|:------
-| A5 | TURBO
-| ... |
-| A7 | RENUM
-| A8 | DEF PROC
-| A9 | CLIP
-| AA | STACK
-| AB | LABEL / @
-| AC | POP
-| AD | PLAY
-| ... |
-| B2 | DISPLAY
-| B3 | END WHILE
-| B4 | ON ERROR
-| B5 | SPECTRUM
-| B6 | WRITE #
-| B7 | TRACE
-| B8 | LOCAL
-| B9 | DELETE
-| BA | REPEAT
-| ... |
-| BC | FPOKE
-| ... |
-| BE | ORIG
-| BF | SCALE
-| C0 | USR
-| ... |
-| C2 | UNTIL
-| C3 | ASSERT
-| ... |
-| C5 | END IF
-| C6 | YIELD
-| C7 | PALETTE
-| C8 | EXIT
-| C9 | WHILE
-| CA | END PROC
-| CB | ELSE
-| CC | PROC
 | CD | STEP
 | CE | DEF FN
 | CF | CAT
