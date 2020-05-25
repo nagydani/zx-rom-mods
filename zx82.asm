@@ -25,6 +25,8 @@
 ; SQR replaced by a faster and more accurate one [5<>SQR 25]
 ; TOPWR sped up and fixed for integer exponents [(-10)^5]
 ; RND sped up considerably
+; USR with string argument extensible for more than 21 UDG's
+; BEEP semitone table fixed
 ; PIP set to zero means no keyclicks [POKE 23609,0]
 ; PLOT, DRAW and CIRCLE select "S" channel [	POKE 23749,PEEK 23751
 ;						POKE 23750,PEEK 23752
@@ -58,7 +60,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 04-MAY-2020
+; Last updated: 25-MAY-2020
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -18326,37 +18328,60 @@ L34BC:  CALL    L2BF1           ; routine STK-FETCH fetches the string
         OR      C               ; the length.
         JR      NZ,L34E7        ; to REPORT-A if not a single character.
 
-        LD      A,(DE)          ; fetch the character
-        CALL    L2C8D           ; routine ALPHA sets carry if 'A-Z' or 'a-z'.
-        JR      C,L34D3         ; forward to USR-RANGE if ASCII.
-
+;;; BUGFIX: extensibility for more UDG's
+	LD      HL,(UDG)	; fetch the UDG system variable value.
+	EX	DE,HL
+        LD      A,(HL)          ; fetch the character
         SUB     $90             ; make UDGs range 0-20d
-        JR      C,L34E7         ; to REPORT-A if too low. e.g. usr " ".
+	JR	NC,USR_RANGE	; jump, if UDG
+	LD	A,(HL)		; re-fetch, if not
+;;;
+        CALL    L2C8D           ; routine ALPHA sets carry if 'A-Z' or 'a-z'.
+;;; BUGFIX: extensibility for more UDG's
+	JR	NC,L34E7
+	DEC	A		; offset
+	AND	$1F		; reset topmost bits
 
-        CP      $15             ; Note. this test is not necessary.
-        JR      NC,L34E7        ; to REPORT-A if higher than 20.
-
-        INC     A               ; make range 1-21d to match LSBs of ASCII
+;;;	JR      C,USR_RANGE	; forward to USR-RANGE if ASCII.
+;;;	SUB     $90             ; make UDGs range 0-20d
+;;;	JR      C,L34E7         ; to REPORT-A if too low. e.g. usr " ".
+;;;	CP      $15             ; Note. this test is not necessary.
+;;;	JR      NC,L34E7        ; to REPORT-A if higher than 20.
+;;;	INC     A               ; make range 1-21d to match LSBs of ASCII
 
 ;; USR-RANGE
-L34D3:  DEC     A               ; make range of bits 0-4 start at zero
-        ADD     A,A             ; multiply by eight
-        ADD     A,A             ; and lose any set bits
-        ADD     A,A             ; range now 0 - 25*8
-        CP      $A8             ; compare to 21*8
-        JR      NC,L34E7        ; to REPORT-A if originally higher
+USR_RANGE:
+;;;L34D3:
+;;; BUGFIX: extensibility for more UDG's
+;;;	DEC     A               ; make range of bits 0-4 start at zero
+        ADD     A,A             ; multiply by four
+	LD	L,A
+	LD	H,0
+	ADD	HL,HL
+	ADD	HL,HL
+	ADD	HL,DE
+	LD	C,L
+	LD	B,H
+;;;	ADD     A,A             ; and lose topmost bit
+;;;	ADD     A,A             ; range now 0 - 25*8
+;;;	CP      $A8             ; compare to 21*8
+;;;	JR      NC,L34E7        ; to REPORT-A if originally higher
                                 ; than 'U','u' or graphics U.
+;;;	LD      BC,(UDG)      ; fetch the UDG system variable value.
+;;;	ADD     A,C             ; add the offset to character
+;;;	LD      C,A             ; and store back in register C.
+;;;	JR      NC,L34E4        ; forward to USR-STACK if no overflow.
+;;;	INC     B               ; increment high byte.
 
-        LD      BC,(UDG)      ; fetch the UDG system variable value.
-        ADD     A,C             ; add the offset to character
-        LD      C,A             ; and store back in register C.
-        JR      NC,L34E4        ; forward to USR-STACK if no overflow.
 
-        INC     B               ; increment high byte.
 
 ;; USR-STACK
-L34E4:  JP      L2D2B           ; jump back and exit via STACK-BC to store
+;;; BUGFIX do not allow address overflow
+USR_STACK:
+	JP	NC,L2D2B	; jump back and exit via STACK-BC to store
+;;; L34E4:  JP      L2D2B           ; jump back and exit via STACK-BC to store
 
+	DEFS	$34E7 - $
 ; ---
 
 ;; REPORT-A
