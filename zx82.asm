@@ -5637,9 +5637,7 @@ L1150:  LD      A,(S_POSNL + 1)	; fetch SPOSNL_hi is current line
         JR      NC,L117C        ; forward to ED-C-DONE if no backfilling.
 
 ;; ED-SPACES
-;;; BUGFIX: use hard blank, in case of alternate character set
-L115E:  LD      A,$80		; prepare a hard blank.
-;;; L115E:  LD      A," "           ; prepare a space.
+L115E:  LD      A," "           ; prepare a space.
 ;;; BUGFIX: vector through RST 10h, for abstraction
 	RST	$10
         JR      L1150           ; back to ED-BLANK until all old text blanked.
