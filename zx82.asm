@@ -4021,7 +4021,7 @@ L0C55:  BIT     1,(IY+$01)      ; test FLAGS  - is printer in use ?
         CALL    L1601           ; routine CHAN-OPEN opens it.
 
         LD      SP,(LIST_SP)      ; set stack pointer to LIST_SP
-
+AUTOLIST_END:
         RES     4,(IY+$02)      ; reset TV_FLAG  - signal auto listing finished.
         RET                     ; return ignoring pushed value, CL-SET
                                 ; to MAIN or EDITOR without updating
@@ -6906,9 +6906,14 @@ X16CB:	PUSH    HL              ; perhaps an obsolete entry point.
 ; edit buffer and not workspace.
 ; On entry, HL must point to the end of the something to be deleted.
 
+;;; BUGFIX: We don't need this, but we do need end-of LIST indication
+ENDLIST:RES	6,(IY+$02)	; TV_FLAG
+	POP	BC
+	POP	BC		; drop two return addresses
+	RET
 ;; REC-EDIT
-L16D4:  LD      DE,(E_LINE)      ; fetch start of edit line from E_LINE.
-        JP      L19E5           ; jump forward to RECLAIM-1.
+;;;L16D4:  LD      DE,(E_LINE)      ; fetch start of edit line from E_LINE.
+;;;        JP      L19E5           ; jump forward to RECLAIM-1.
 
 ; --------------------------
 ; The Table INDEXING routine
@@ -7418,8 +7423,12 @@ L17ED:  CALL    LISTALL		; routine LIST-ALL                >>>
 
 ; The return will be to here if no scrolling occurred
 
-        RES     4,(IY+$02)      ; update TV_FLAG  - signal no auto listing.
-        RET                     ; return.
+;;; BUGFIX: Save 2 bytes
+	JP	AUTOLIST_END
+;;;        RES     4,(IY+$02)      ; update TV_FLAG  - signal no auto listing.
+;;;        RET                     ; return.
+
+	DEFS	$17F5 - $
 
 ; ------------
 ; Handle LLIST
@@ -7442,7 +7451,10 @@ L17F5:  LD      A,$03           ; the usual stream for ZX Printer
 L17F9:  LD      A,$02           ; default is stream 2 - the upper screen.
 
 ;; LIST-1
-L17FB:  LD      (IY+$02),$00    ; the TV_FLAG is initialized with bit 0 reset
+L17FB:
+;;; BUGFIX: Signal non-automatic listing
+	LD      (IY+$02),$40    ; the TV_FLAG is initialized with bit 0 reset and bit 6 set
+;;;	LD      (IY+$02),$00    ; the TV_FLAG is initialized with bit 0 reset
                                 ; indicating upper screen in use.
         CALL    L2530           ; routine SYNTAX-Z - checking syntax ?
         CALL    NZ,L1601        ; routine CHAN-OPEN if in run-time.
@@ -7572,12 +7584,13 @@ L1855:  LD      BC,(E_PPC)      ; fetch E_PPC the current line which may be
 	LD      (IY+$2D),E      ; save flag in BREG which is spare.
 ;;; BUGFIX: check set range end
 	CALL	LIST_TO
+	CALL	NC,ENDLIST
 ;;;     LD      A,(HL)          ; get high byte of line number.
 ;;;     CP      $40             ; is it too high ($2F is maximum possible) ?
-        POP     BC              ; drop the return address and
-        RET     NC              ; make an early return if so >>>
+;;;	POP     BC              ; drop the return address and
+;;;	RET     NC              ; make an early return if so >>>
+;;;	PUSH    BC              ; save return address
 
-        PUSH    BC              ; save return address
         CALL    L1A28           ; routine OUT-NUM-2 to print addressed number
                                 ; with leading space.
         INC     HL              ; skip low number byte.
@@ -20250,9 +20263,8 @@ LIST_TO:LD	BC,(MEMBOT+28)
 	SCF
 	RET
 
-; LIST-ALL substitute (8 bytes)
-LISTALL:LD	A,$40
-	LD	(MEMBOT+29),A
+; LIST-ALL substitute (7 bytes)
+LISTALL:LD	(IY+MEMBOT+29-ERR_NR),$40
 	JP	L1833		; LIST-ALL
 
 

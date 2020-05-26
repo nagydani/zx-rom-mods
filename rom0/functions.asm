@@ -278,7 +278,7 @@ S_SWAP:	LD	B,0
 	RST	$10
 
 ERROR_B:RST	$30
-	DEFW	L046C		; B Integer out of range
+	DEFW	L1E9F		; B Integer out of range
 
 D_DPEEK:RST	$30
 	DEFW	L1E99		; FIND_INT2

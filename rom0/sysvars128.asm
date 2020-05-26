@@ -16,7 +16,7 @@
 ; TV_FLAG unused bits
 ; 1 - start echo at cursor position
 ; 2 - start echo at old cursor position
-; 6 - echo only to cursor position
+; 6 - non-automatic listing in progress
 ; 7 - PLAY in progress
 
 CHANZ:		EQU	$5B7F
