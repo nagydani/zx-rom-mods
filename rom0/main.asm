@@ -677,21 +677,35 @@ REPORTL:LD	A,(DE)		; Find end of command line
 
 ; Output token
 ; In: A=token code
-TOKEN_O:LD	DE,TOKENS
-	SUB	$7F
-	LD	B,A
+TOKEN_O:SUB	$7F
+	EX	DE,HL
+	BIT	3,(HL)
+	CALL	Z,PR_SPACE
+	LD	DE,T_ELSE
+	JR	NZ,TOKEN_N	; jump forward in argument mode
+	CP	ELSE_T - $7F
+	JR	Z,TOKEN_S
+TOKEN_N:LD	B,A
 	SUB	INSTRUCTION_T - $7F
 	JR	C,TOKEN		; jump forward for operators
 	SUB	RND_T - INSTRUCTION_T
 	JR	NC, TOKEN1	; token in ROM1
 	PUSH	BC
-	CALL	MSG_SP
+	CALL	PR_SPACE
 	POP	BC
-	DEC	DE
 	PUSH	DE
 	CALL	TOKEN
 	POP	DE
-	JR	MESSAGE
+PR_SPACE:
+	BIT	0,(IY+$01)	; space suppressed?
+	JR	NZ,ZRET		; return with ZF, if so
+	PUSH	AF
+	LD	A," "
+	RST	$30
+	DEFW	L0C3B		; PO_SAVE
+	POP	AF
+ZRET:	CP	A		; set ZF
+	RET
 
 TOKEN1:	RST	$30
 	DEFW	L0C10
@@ -703,9 +717,7 @@ REPORTZ:SUB	$1C
 	ADD	"S"
 	RST	$30
 	DEFW	L0010
-	LD	A," "
-	RST	$30
-	DEFW	L0010
+	CALL	PR_SPACE
 	LD	DE,REPORTS
 TOKEN:	LD	A,(DE)
 	ADD	A,A
@@ -713,7 +725,7 @@ TOKEN:	LD	A,(DE)
 	JR	NC,TOKEN
 	RET	Z		; end of token table
 	DJNZ	TOKEN
-	LD	A,(DE)
+TOKEN_S:LD	A,(DE)
 	CP	" "
 	JR	NZ,MSGNSP
 MSG_SP:	BIT	0,(IY+$01)
@@ -2013,7 +2025,7 @@ CHARSET:INCBIN	"64-cond.bin"
 	INCLUDE	"tokens.asm"
 CHINFO0:
 K_CH:	DEFW	KOUT
-	DEFW	L10A8
+	DEFW	KIN
 	DEFB	"K"
 S_CH:	DEFW	KOUT
 	DEFW	L15C4

@@ -85,7 +85,7 @@
 | 87 | TIME$
 | 88 | TIME
 | 89 | ITEM
-| 8A | BIT
+| 8A | @ / LABEL / DEF PROC
 | 8B | MEM$
 | 8C | FREE
 | 8D | REF
@@ -150,7 +150,7 @@
 | C8 | >=
 | C9 | <>
 | CA | LINE
-| CB | THEN
+| CB | THEN / ELSE
 | CC | TO
 | CD | STEP
 | CE | DEF FN

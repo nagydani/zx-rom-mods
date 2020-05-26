@@ -134,13 +134,16 @@ FC_TOKEN_R1:
         RST     $30
         DEFW    L0C41           ; PO-SEARCH
         EX      DE,HL
-        RST     $30
+FC_TR1:	RST     $30
         DEFW    X007B           ; LD A,(HL)
         CP      " "
         RET	NZ
         INC     HL
-        RST     $30
-        DEFW    X007B           ; LD A,(HL)
-        AND     $7F
-	RET
+; works only with these particular tokens
+	JR	FC_TR1
+; correct, but too long
+;	RST     $30
+;	DEFW    X007B           ; LD A,(HL)
+;	AND     $7F
+;	RET
 

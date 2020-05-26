@@ -3,7 +3,7 @@
 ; bit 0:	direct output (0), to be saved (1)
 ; bit 1:	one extra byte (0), two extra bytes (1)
 ; bit 2:	(blinking) cursor character follows
-; bit 3:	instructions (0), functions/operators (1)
+; bit 3:	instructions (0), arguments (1)
 ; bit 4:	copy of bit 4 of FRAMES
 ; bit 5:	flashing cursor state
 ; bit 6;	8 pixel font (0), 4 pixel font (1)
@@ -244,9 +244,12 @@ KEY_MODE0:
 	CP	$0E
 	JR	C,KEY_CUR	; control keys below EXT
 	JR	NZ,KEY_MODE1	; EXT key?
-	BIT	5,(IY+$30)	; mode K suppressed?
+	LD	HL,FLAGS2
+	BIT	5,(HL)		; mode K suppressed?
 	JR	Z,KEY_MODE1	; jump, if not - toggle mode E
 ; EXT key in K suppressed-mode
+	BIT	2,(HL)		; inside quotes?
+	JR	NZ,KEY_MODE1	; jump, if not - toggle mode U
 	CALL	EDITOR_MODE
 	RET	NZ		; exit, if not editing
 	LD	HL,(E_LINE)
@@ -258,16 +261,13 @@ KEY_MODE0:
 	DEC	HL
 	LD	B,0
 	LD	A,(HL)
-	CP	RND_T		; is the cursor after a token?
+	CP	$80		; is the cursor after a token?
 	JR	C,EXT_NT	; jump, if it is not
 	LD	HL,K_STATE
 	SET	7,(HL)
-	SUB	FREE_T
-	BIT	3,(IY+$37)	; FLAGX, token type before cursor
-	JR	Z,CYC_I		; cycle instructions
-	JR	NC,CYCOR0
-	ADD	A,FREE_T-RND_T
-	LD	DE,X0094
+	SUB	RND_T
+	JR	C,CYCOR0
+	LD	DE,L0095
 CYC_O:	CALL	FC_TOKEN_R1
 EXT_CYC:LD	(K_DATA),A
 	LD	A,$0C
@@ -304,16 +304,11 @@ KEY_FLAG0:
 	CP	A
 	RET
 
-CYCOR0:;	LD	DE,TOKENS0
+CYCOR0:	LD	DE,TOKENS
+	ADD	A,RND_T-$7F
 CYCIR0:	LD	B,A
-	INC	B
 	CALL	FC_TOKEN_R0
 	JR	EXT_CYC
-CYC_I:	LD	DE,X0119-1
-	JR	NC,CYC_O
-	ADD	A,FREE_T-RND_T
-;	LD	DE,TOKENS1	
-	JR	CYCIR0
 
 KEY_CUR:CALL	EDITOR_MODE	; editor mode?
 	SCF
@@ -497,9 +492,15 @@ PCURSOR:PUSH	AF
 	LD	(IY + MASK_T - ERR_NR),$FF	; INK, PAPER, BRIGHT, FLASH 8
 	CALL	CLSET
 	LD	(IY + P_FLAG - ERR_NR),$01	; OVER 1
+	LD	HL,FLAGS2
+	LD	A,(HL)
+	SET	2,(HL)
+	PUSH	AF
 	LD	A,$8F		; full block
 	RST	$30
 	DEFW	L0010
+	POP	AF
+	LD	(HL),A
 	POP	HL
 	LD	(MASK_T),HL
 	POP	HL
@@ -683,22 +684,24 @@ PR_PR:	EX	AF,AF'
 	LD	A,(DE)
 	AND	$40
 	EX	AF,AF'		; ZF' for 8 pixel font, NZF' for 4 pixel font
-	CP	$20
-	JP	C,PR_GR_0
 	CP	$80
 	JP	NC,P_GR_TK
-	CP	":"
-	JR	NZ,PR_NC	; pr-able except colon leaves mode unchanged
-	EX	DE,HL		; restore S/K_STATE into HL and save screen address to DE
-	RES	3,(HL)		; colon sets instr. mode
+	CP	" "
+	JP	C,PR_GR_0
 	BIT	2,(IY+$30)	; inside quotes?
-	JR	NZ,PR_NQ	; if so, jump over instr. count increment
+	JR	NZ,PR_NQ	; if so, jump over formatting
+	EX	DE,HL		; restore S/K_STATE into HL and save screen address to DE
+	CP	":"
+	JR	C,PR_NC		; pre-colon leaves mode unchanged
+	SET	3,(HL)		; post-colon sets argument mode
+	JR	NZ,PR_NC
+	RES	3,(HL)		; colon sets instr. mode
 	PUSH	HL
 	LD	HL,C_SPCC
 	INC	(HL)
 	POP	HL
-PR_NQ:	EX	DE,HL		; restore screen address to HL
-PR_NC:	PUSH	BC
+PR_NC:	EX	DE,HL		; restore screen address to HL
+PR_NQ:	PUSH	BC
 	LD	BC,(CHARS)
 	EX	AF,AF'
 	JR	Z,PR_8
@@ -931,7 +934,16 @@ E_HEAD:	EX	DE,HL
 	LD	H,(HL)
 	PUSH	HL		; channel flag content
 	LD	HL,FLAGS2
-	BIT	5,(HL)
+	BIT	2,(HL)
+	JR	NZ,Q_HEAD	; jump if inside quotes
+	CP	"G"
+	JR	NZ,GE_HEAD
+	LD	A,"X"
+	JR	GE_HEAD
+Q_HEAD:	CP	"E"
+	JR	NZ,GE_HEAD
+	LD	A,"U"
+GE_HEAD:BIT	5,(HL)
 	JR	Z,K_HEAD
 	CP	"K"
 	JR	NZ,K_HEAD
