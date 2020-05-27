@@ -406,13 +406,16 @@ EXT_NR:	DEC	HL
 EXT_OPR:CALL	TOK_F
 EXT_CNT:JR	C,K_INSF
 	OR	A
-	JR	Z,EXT_NF
-	EX	AF,AF'
-	LD	A,(LAST_K)
-	CP	$0E
-	JR	Z,K_INST
-	SCF
-	RET
+	
+	JR	NZ,K_INSF
+	
+;	JR	Z,EXT_NF
+;	EX	AF,AF'
+;	LD	A,(LAST_K)
+;	CP	$0E
+;	JR	Z,K_INST
+;	SCF
+;	RET
 
 EXT_NF:	LD	A,(LAST_K)
 	CP	$0E
@@ -443,8 +446,6 @@ K_INSF:	EX	AF,AF'
 	JR	Z,K_INSX
 	INC	HL
 	DEC	B
-	JR	K_INSX
-
 K_INSX:	LD	A,(LAST_K)
 	CP	$0E
 	JR	Z,K_INST
@@ -854,17 +855,14 @@ KS_IND2:RES	1,(HL)
 	LD	(HL),A
 	RET
 
-DOTOKEN:BIT	2,(IY+FLAGS2-ERR_NR)	; in quotes?
-	RET	Z			; if so, no tokens
-	BIT	4,(IY+FLAGS2-ERR_NR)	; K channel?
-	RET	NZ			; if so, there can be tokens
+P_GR_TK:BIT	4,(IY+FLAGS2-ERR_NR)	; K channel?
+	JR	NZ,P_GRTK		; if so, check quotes
 	BIT	6,(IY+TV_FLAG-ERR_NR)	; non-automatic listing?
-	RET	NZ			; if so, there may be tokens
-	BIT	4,(IY+TV_FLAG-ERR_NR)	; automatic listing?
-	RET
-
-P_GR_TK:CALL	DOTOKEN			; can there be tokens?
-	JP	Z, TOKEN_O		; if so, output token
+	JR	NZ,P_GRTK		; if so, ckeck quotes
+	BIT	4,(IY+TV_FLAG-ERR_NR)	; automatic listing
+	JR	Z,PR_GR_O		; always graphics, if neither of above
+P_GRTK:	BIT	2,(IY+FLAGS2-ERR_NR)	; in quotes
+	JP	Z, TOKEN_O		; if not, output token
 PR_GR_O:SUB	$90
 	JR	NC,PR_UDG
 PR_GR:	LD	B,A

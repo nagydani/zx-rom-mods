@@ -17,6 +17,7 @@ TOK_IN0:LD	DE,T_ELSE
 	JR	Z,TOK_IN	; no new token found
 	ADD	A,C
 	ADD	A,A
+	JR	C,TOK_EL	; partially matched ELSE
 TOK_IN:	EX	AF,AF'
 	LD	DE,L0095+1	; RND token
 	RST	$30
@@ -26,12 +27,12 @@ TOK_IN:	EX	AF,AF'
 	CPL
 	RL	D
 	RET
-TOK_TF:	ADD	A,RND_T-$7F
+TOK_TF:	ADD	A,$5A
 	CPL
 	CP	$7F
 	SCF
 	RET	NZ
-	LD	A,ELSE_T
+TOK_EL:	LD	A,ELSE_T
 	RET
 
 
