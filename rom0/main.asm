@@ -680,6 +680,7 @@ REPORTL:LD	A,(DE)		; Find end of command line
 TOKEN_O:SUB	$7F
 	EX	DE,HL
 	BIT	3,(HL)
+	SET	3,(HL)		; argument mode
 	CALL	Z,PR_SPACE
 	LD	DE,T_ELSE
 	JR	NZ,TOKEN_N	; jump forward in argument mode
@@ -690,20 +691,18 @@ TOKEN_N:LD	B,A
 	JR	C,TOKEN		; jump forward for operators
 	SUB	RND_T - INSTRUCTION_T
 	JR	NC, TOKEN1	; token in ROM1
-	PUSH	BC
-	CALL	PR_SPACE
-	POP	BC
-	PUSH	DE
 	CALL	TOKEN
-	POP	DE
 PR_SPACE:
 	BIT	0,(IY+$01)	; space suppressed?
 	JR	NZ,ZRET		; return with ZF, if so
+	PUSH	HL
 	PUSH	AF
 	LD	A," "
 	RST	$30
 	DEFW	L0C3B		; PO_SAVE
+	EX	DE,HL
 	POP	AF
+	POP	HL
 ZRET:	CP	A		; set ZF
 	RET
 
@@ -717,7 +716,9 @@ REPORTZ:SUB	$1C
 	ADD	"S"
 	RST	$30
 	DEFW	L0010
-	CALL	PR_SPACE
+	LD	A," "
+	RST	$30
+	DEFW	L0010
 	LD	DE,REPORTS
 TOKEN:	LD	A,(DE)
 	ADD	A,A
@@ -738,11 +739,13 @@ MSGNSP:	AND	$7F
 MSGSKIP:INC	DE
 	ADD	A,A
 	JR	NC,MESSAGE
+	CP	$1A		; 2 * CR
+	RET	Z
 	RES	0,(IY+$01)	; allow leading space
 	CP	$40		; 2 * " "
 	RET	NZ
 	INC	A		; clear Z
-	SET	0,(IY+$01)	; suppress leading space
+NOLEAD:	SET	0,(IY+$01)	; suppress leading space
 	RET
 
 	INCLUDE	"reports.asm"

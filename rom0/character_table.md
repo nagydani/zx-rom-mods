@@ -85,7 +85,7 @@
 | 87 | TIME$
 | 88 | TIME
 | 89 | ITEM
-| 8A | @ / LABEL / DEF PROC
+| 8A | BIT
 | 8B | MEM$
 | 8C | FREE
 | 8D | REF

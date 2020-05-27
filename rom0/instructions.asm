@@ -1056,7 +1056,7 @@ STACK:	LD	HL,(ERR_SP)
 	INC	HL		; skip error address
 STACKL:	LD	DE,STACKE
 	PUSH	DE
-	SET	0,(IY+$01)	; suppress leading spaces
+	CALL	NOLEAD		; suppress leading spaces
 	LD	A,$3E
 	LD	C,(HL)
 	INC	HL

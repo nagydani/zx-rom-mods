@@ -4,6 +4,7 @@ COPYRIGHT:
 	DEFB	$8D
 ; functions, etc.
 HEX_T:	EQU	$24	; $
+LABEL_T:EQU	$40	; @
 OCT_T:	EQU	$5C	; \
 RND_T:	EQU	$A5
 ATTR_TK:EQU	$AB
@@ -108,10 +109,10 @@ FREE_T:	EQU	$8C
 	DEFM	"FRE"
 	DEFB	$80+"E"
 
-LABEL_T:EQU	$8D
+BIT_T:EQU	$8D
 ; G s+'2'
-	DEFM	" "
-TOKENS1:DEFB	$80+"@"
+	DEFM	"BI"
+TOKENS1:DEFB	$80+"T"
 
 INSTRUCTION_T:	EQU	$8E
 

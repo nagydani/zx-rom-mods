@@ -335,8 +335,6 @@ EXT_NT:	LD	A,(HL)
 	JR	Z,EXT_N
 	CP	"#"
 	JR	Z,EXT_NS
-	CP	"@"
-	JR	Z,EXT_N
 	BIT	4,(IY+$37)	; FLAGX, operator mode
 	JR	Z,NOREL
 	CP	"<"
@@ -536,6 +534,7 @@ K_RST:	RES	7,(IY+BORDCR-ERR_NR) ; flashing cursor OFF
 	CALL	CLLINE
 	LD	B,2
 K_CLS:	SET	0,(IY+$02)	; clean lower part
+	CALL	NOLEAD		; suppress leading space
 	CALL	CLLINE
 	LD	BC,(K_WIDTH)
 	LD	B,$17		; line 23 for lower screen
@@ -691,9 +690,11 @@ PR_PR:	EX	AF,AF'
 	BIT	2,(IY+$30)	; inside quotes?
 	JR	NZ,PR_NQ	; if so, jump over formatting
 	EX	DE,HL		; restore S/K_STATE into HL and save screen address to DE
-	CP	":"
-	JR	C,PR_NC		; pre-colon leaves mode unchanged
-	SET	3,(HL)		; post-colon sets argument mode
+	CP	"@"
+	JR	NZ,PR_NL	; jump forward if not label
+	BIT	3,(HL)
+	JR	Z,T_LABEL	; in instruction mode, treat it as a token
+PR_NL:	CP	":"
 	JR	NZ,PR_NC
 	RES	3,(HL)		; colon sets instr. mode
 	PUSH	HL
@@ -774,6 +775,12 @@ TSTORE:	RST	$30
 	DEFW	POSTORE
 	RET
 
+T_LABEL:SET	3,(HL)		; set argument mode
+	CALL	PR_SPACE
+	RST	$30
+	DEFW	L0C3B		; PO-SAVE
+	RET
+
 TSTOREX:SUB	$08
 	JR	NZ,TSTORE
 	LD	A,H
@@ -847,14 +854,17 @@ KS_IND2:RES	1,(HL)
 	LD	(HL),A
 	RET
 
-P_GR_TK:BIT	4,(IY+FLAGS2-ERR_NR)	; K channel?
-	JR	NZ,P_GRTK
+DOTOKEN:BIT	2,(IY+FLAGS2-ERR_NR)	; in quotes?
+	RET	Z			; if so, no tokens
+	BIT	4,(IY+FLAGS2-ERR_NR)	; K channel?
+	RET	NZ			; if so, there can be tokens
 	BIT	6,(IY+TV_FLAG-ERR_NR)	; non-automatic listing?
-	JR	NZ,P_GRTK		; if so, there may be tokens
+	RET	NZ			; if so, there may be tokens
 	BIT	4,(IY+TV_FLAG-ERR_NR)	; automatic listing?
-	JR	Z,PR_GR_O		; always graphics, if not
-P_GRTK:	BIT	2,(IY+FLAGS2-ERR_NR)	; In quotes?
-	JP	Z, TOKEN_O		; if not, output token
+	RET
+
+P_GR_TK:CALL	DOTOKEN			; can there be tokens?
+	JP	Z, TOKEN_O		; if so, output token
 PR_GR_O:SUB	$90
 	JR	NC,PR_UDG
 PR_GR:	LD	B,A
@@ -1170,7 +1180,7 @@ TCR0:	INC	DE
 	LD	C,A
 	CALL	POSCR
 	DEC	B
-	RET
+	JP	NOLEAD
 
 TUP:	INC	B
 	LD	A,$18	; TODO: 24 lines
