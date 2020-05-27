@@ -3853,7 +3853,7 @@ X0BE4:	LD      DE,(ATTR_T)      ; make D hold ATTR_T, E hold MASK-T
 L0BFA:  BIT     4,(IY+$57)      ; test P_FLAG  - Is this INK 9 ??
         JR      Z,L0C08         ; skip to PO-ATTR-2 if not
 
-        AND     $F8             ; make ink
+X0C00:	AND     $F8             ; make ink
         BIT     5,A             ; contrast with paper.
         JR      NZ,L0C08        ; to PO-ATTR-2
 
@@ -11098,6 +11098,7 @@ L21FC:  SUB     $C9             ; reduce to control character $10 (INK)
 
         CALL    L1FC3           ; routine UNSTACK-Z returns if checking syntax.
 
+CO_TEMP_4A:
         PUSH    AF              ; save again
         CALL    L1E94           ; routine FIND-INT1 fetches parameter to A.
         LD      D,A             ; transfer now to D
@@ -11308,10 +11309,9 @@ L2287:  LD      A,C             ; value to A
 
 ;; BORDER
 L2294:  CALL    L1E94           ; routine FIND-INT1
-        CP      $08             ; must be in range 0 (black) to 7 (white)
-        JR      NC,L2244        ; back to REPORT-K if not
+	CP      $08             ; must be in range 0 (black) to 7 (white)
+	JR      NC,L2244        ; back to REPORT-K if not
                                 ; 'Invalid colour'.
-
         OUT     ($FE),A         ; outputting to port effects an immediate
                                 ; change.
         RLCA                    ; shift the colour to
@@ -11320,12 +11320,12 @@ L2294:  CALL    L1E94           ; routine FIND-INT1
         BIT     5,A             ; is the number light coloured ?
                                 ; i.e. in the range green to white.
         JR      NZ,L22A6        ; skip to BORDER-1 if so
-
         XOR     $07             ; make the ink white.
 
 ;; BORDER-1
 L22A6:  LD      (BORDCR),A       ; update BORDCR with new paper/ink
         RET                     ; return.
+	DEFS	$22AA - $
 
 ; -----------------
 ; Get pixel address

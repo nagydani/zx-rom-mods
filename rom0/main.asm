@@ -511,18 +511,12 @@ CL9_CONT:
 	DEFW	L21E2 + 4	; CO-TEMP-2 + 4
 	RST	$10
 
-OLD_CONT:
-	LD	A,(T_ADDR)
-	CP	$B2		; POKE ?
-	JP	Z,E_POKE
-	JR	ERRCNZ3
-
 PREFIX_CONT:
 	RST	$18
-	CP	FPEEK_T + 1
+	CP	ONERR_T
 	JR	NC,DSWAP2
 	LD	C,A
-	SUB	FREE_T
+	SUB	SQ_T
 	LD	HL,SCANFUNC2
 	JR	C,IDX_DO
 	LD	HL,FUNCTAB
@@ -537,22 +531,33 @@ PREFIX_CONT:
 	POP	BC		; discard return address
 	JP	(HL)
 
+SPARSE:	LD	HL,INST_T1
+	CALL	INDEXER
+	JR	C,INST_L
+	JP	ERROR_C
+
+OLD_CONT:
+	LD	A,(T_ADDR)
+	CP	$B2		; POKE ?
+	JP	Z,E_POKE
+	JR	ERRCNZ
+
 RUN_CONT:
 	POP	HL		; discard return to REPORT C
 	INC	B		; B=$00 for instruction mismatch and B=$1B for separator mismatch
 	JR	Z,CL9_CONT
 	DJNZ	SEP_MISM
 	JR	NC,OLD_CONT	; old command extended
-	DEC	B		; B becomes FF here
+ 	ADD	A,STEP_T-TURBO_T; shift codes up
 	LD	C,A
+	JR	C,SPARSE
+	DEC	B		; B becomes FF here
 	LD	HL,P_END
 	ADD	HL,BC
-	LD	C,(HL)
 	INC	B		; B becomes 0 again
+INST_L:	LD	C,(HL)
 	ADD	HL,BC
-	CP	$D5		; TOKEN $A3
-	JR	NC,GET_PARAM	; jump for tokens
-ERRCNZ3:JR	ERRCNZ		; TODO: syntax error for other characters
+	JR	GET_PARAM	; jump for tokens
 
 SCAN_LOOP:
 	LD	HL,(T_ADDR)
