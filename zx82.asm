@@ -32,6 +32,8 @@
 ;						POKE 23750,PEEK 23752
 ;						LPRINT ;: CIRCLE INK 2;128,87,87]
 ; LIST, LLIST fixed, does not print cursor, accepts range [LIST 10 TO 20]
+; LIST, LLIST signal operations in bit 6 of TV_FLAG to channel drivers
+; LIST, LLIST hooked to allow for detokenized output, etc.
 ; GO TO and other jumps to line numbers sped up considerably, through binary search.
 ; "scroll?" prompt fixed [PRINT #0;1'2'3'4: FOR i=1 TO 30: PRINT i: NEXT i]
 ; I/O abstraction layer significantly improved
@@ -60,7 +62,7 @@
 ; See http://www.worldofspectrum.org/permits/amstrad-roms.txt for details.
 
 ; -------------------------
-; Last updated: 25-MAY-2020
+; Last updated: 28-MAY-2020
 ; -------------------------
 
 ; Notes on labels: Entry points whose location is exactly the same as it was
@@ -7457,7 +7459,10 @@ L17FB:
 ;;;	LD      (IY+$02),$00    ; the TV_FLAG is initialized with bit 0 reset
                                 ; indicating upper screen in use.
         CALL    L2530           ; routine SYNTAX-Z - checking syntax ?
-        CALL    NZ,L1601        ; routine CHAN-OPEN if in run-time.
+
+;;; BUGFIX: Extensibility
+	CALL	NZ,LIST_EXT
+;;;	CALL    NZ,L1601        ; routine CHAN-OPEN if in run-time.
 
         RST     18H             ; GET-CHAR
         CALL    L2070           ; routine STR-ALTER will alter if '#'.
@@ -20174,6 +20179,11 @@ SARGL:	INC	HL
 	JR	NZ,SARGL
 	JP	SFRBR2
 
+; calling extension hook before LIST or LLIST
+LIST_EXT:
+	CALL	L1601		; CHAN-OPEN
+	JP	LIST_HOOK
+
 ; These bytes should be $FF in case anyone crazy vectors their IM2 from here
 	DEFS	$3901 - $, $FF
 
@@ -20757,23 +20767,23 @@ ALPHANUMS:
 	AND	A		; otherwise clear CF
 	RET
 
-; Long string support in L-STRING (6 bytes)
-LSTK_FETCH:
-	CALL	STRING_HOOK	; ZF always cleared
-	JP	L2BF1		; STK-FETCH
-
-; ---------------------
-; THE 'SPARE' LOCATIONS
-; ---------------------
-
-	DEFS	$3C04 - $, $FF
-
 ; Long-named string variable found (5 bytes)
 STRING_RESULT:
 	POP	HL		; retrieve address
 	INC	HL		; step over "$"+$80
 	CP	A		; clear CF, set ZF
 	JP	IND_STR		; indicate string and return
+
+; ---------------------
+; THE 'SPARE' LOCATIONS
+; ---------------------
+
+	DEFS	$3C01 - $, $FF
+
+; Long string support in L-STRING (6 bytes)
+LSTK_FETCH:
+	CALL	STRING_HOOK	; ZF always cleared
+	JP	L2BF1		; STK-FETCH
 
 ; Abstracted NEW routine (6 bytes)
 NEW:	CALL	NEW_HOOK
@@ -20918,6 +20928,8 @@ INDEXER_2:
 	RET	C		; if code is found, return immediately
 
 INDEXER_HOOK:
+	CALL	NOPAGE
+LIST_HOOK:
 	CALL	NOPAGE
 SCAN_HOOK:
 	CALL	NOPAGE
