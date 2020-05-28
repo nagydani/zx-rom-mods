@@ -85,10 +85,10 @@
 | 87 | TIME$
 | 88 | TIME
 | 89 | ITEM
-| 8A | BIT
+| 8A | REF
 | 8B | MEM$
 | 8C | FREE
-| 8D | REF
+| 8D | @ / LABEL / DEFPROC
 | 8E | ON ERROR
 | 8F | WRITE #
 | 90 | ASSERT

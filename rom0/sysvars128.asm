@@ -2,8 +2,8 @@
 ; 4 - 128k mode
 
 ; FLAGX unused bits
-; 2 - last printed token's type
-; 3 - token type before the cursor
+; 2 -
+; 3 -
 ; 4 - in execution: last IF's outcome is false
 ; 4 - in syntax check: after THEN token
 ; 4 - in editing: operator mode before the cursor
@@ -11,13 +11,17 @@
 
 ; FLAGS2 unused bits
 ; 5 - suppress K mode, if set
+; 6 - PLAY in progress
 ; 7 - jump locations are cached
+SUPPK:		EQU	5
+PLAYBIT:	EQU	6
+JCACHE:		EQU	7
 
 ; TV_FLAG unused bits
 ; 1 - start echo at cursor position
 ; 2 - start echo at old cursor position
 ; 6 - non-automatic listing in progress
-; 7 - PLAY in progress
+; 7 -
 
 CHANZ:		EQU	$5B7F
 OLDSP:		EQU	$5B81

@@ -18,62 +18,6 @@
 ; byte 3:
 ; first argument saved (see TVDATA + 1)
 
-; Determine whether or not to suppress the leading space at the cursor position
-; Pollutes: AF, HL, B
-; Output: DE cursor pointer or one before depending on BIT 2,(TV_FLAG)
-;;SP_CUR:	RES	0,(IY+$01)	; do not suppress leading space
-;;	SCF
-;;	RST	$30
-;;	DEFW	L1195		; SET-DE
-;;	LD	HL,(K_CUR)	; is the cursor
-;;	BIT	2,(IY+TV_FLAG-ERR_NR)	; previous character?
-;;	JR	Z,SP_CUR1
-;;	DEC	HL
-;;SP_CUR1:EX	DE,HL		; at the beginning of
-;;	AND	A		; the current editor
-;;	SBC	HL,DE		; buffer?
-;;	JR	Z,ED_SPC	; if so, leading spaces must be suppressed
-;;	DEC	DE		; before the cursor
-;;	LD	A,(DE)		; do we
-;;	INC	DE		; have
-;;	CP	" "		; a space?
-;;	JR	Z,ED_SPC	; if so, suppress leading space
-;;	SUB	RND_T		; or a token?
-;;	RET	C		; if not, do not suppress
-;;	LD	HL,K_STATE	; if so, is it
-;;	BIT	3,(HL)		; an instruction?
-;;	JR	Z,ED_SPC	; if so, suppress leading space
-;;	LD	B,0		; if it is an operator
-;;	RRA			; CF = 0 at this point
-;;	RL	B
-;;	RRA
-;;	RL	B
-;;	RRA
-;;	RL	B
-;;	LD	HL,SPCTAB
-;;	ADD	A,L
-;;	LD	L,A
-;;	JR	NC,SP_CNC
-;;	INC	HL
-;;SP_CNC:	LD	A,(HL)
-;;	INC	B
-;;ED_MASK:RLCA
-;;	DJNZ	ED_MASK
-;;	RET	NC
-;;ED_SPC:	SET	0,(IY+$01)	; leading space suppression
-;;	RET
-
-; copy edit area
-ED_COPY:PUSH	HL		; save K_STATE address
-	RES	3,(HL)		; begin with instructions
-	RES	7,(IY+BORDCR-ERR_NR)	; flashing cursor OFF
-	CALL	R_SPCC
-	RST	$30
-	DEFW	L111D			; just use ROM1
-	SET	7,(IY+BORDCR-ERR_NR)	; flashing cursor ON
-	POP	HL
-	RET
-
 ; channel K input service routine
 K_IN:	CALL	STACKSWAP
 	LD	HL,K_STATE
@@ -86,7 +30,7 @@ K_IN:	CALL	STACKSWAP
 	RET	NZ
 	LD	A,$0E		; pretend that EXT
 	LD	(LAST_K),A	; has been pressed
-	JP	NOPIP		; in silence
+	JR	NOPIP		; in silence
 
 K_INNK:	BIT	7,(IY+BORDCR-ERR_NR)	; flashing cursor visible?
 	RET	Z
@@ -300,7 +244,7 @@ KEY_MODE1:
 	LD	(HL),$00
 
 KEY_FLAG0:
-	SET	3,(IY+2)
+	SET	3,(IY+$02)
 	CP	A
 	RET
 
@@ -332,6 +276,8 @@ K_ENDK:	LD	HL,(K_CUR)
 
 EXT_NT:	LD	A,(HL)
 	CP	"$"
+	JR	Z,EXT_N
+	CP	"@"
 	JR	Z,EXT_N
 	CP	"#"
 	JR	Z,EXT_NS
@@ -459,21 +405,6 @@ K_INST:	LD	C,B
 	SCF
 	RET
 
-; check editor mode
-; Output: Z is 1 in editor mode, 0 otherwise, CF set
-; Corrupts: HL, DE, F
-EDITOR_MODE:
-	LD	HL,(ERR_SP)
-	LD	E,(HL)
-	INC	HL
-	LD	D,(HL)
-	EX	DE,HL
-	LD	DE,L107F		; ED-ERROR
-	AND	A
-	SBC	HL,DE
-	SCF
-	RET
-
 ; print flashing cursor (invert character)
 PCURSOR:PUSH	AF
 	RST	$30
@@ -561,10 +492,37 @@ EDITOR_HEADER0:
 	DEFB	$11,$87
 	DEFM	"BASIC"
 	DEFB	$80 + ":"
+
 EDITOR_HEADER1:
 	DEFB	$17,$7A,$00,$11,$02,$18,$10,$06,$1A
 	DEFB	$11,$04,$18,$10,$05,$1A,$11,$00,$18
 	DEFB	$0F,$A0
+
+S_IOCTL:DEFW	S_RST	; reset S channel (clear screen, etc.)
+	DEFW	AUTOLIST
+	DEFW	PLOT1	; PLOT a single point
+	DEFW	DRAW2	; DRAW straight line
+	DEFW	DRAW3	; DRAW arc
+	DEFW	CIRCLE	; draw a CIRCLE
+S_IOCTL_END:	EQU	$
+
+POFETCH:EQU	L0B03 + 6
+POSTORE:EQU	L0ADC + 6
+
+; check editor mode
+; Output: Z is 1 in editor mode, 0 otherwise, CF set
+; Corrupts: HL, DE, F
+EDITOR_MODE:
+	LD	HL,(ERR_SP)
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	EX	DE,HL
+	LD	DE,L107F		; ED-ERROR
+	AND	A
+	SBC	HL,DE
+	SCF
+	RET
 
 K_SWAP:	LD	HL,ATTR_T
 	LD	DE,K_ATTR
@@ -575,14 +533,210 @@ K_SAVE:	LDI
 	LDI
 	RET
 
-; channel S output service routine
-S_OUT:	BIT	4,(HL)		; auto-list?
-	JR	Z,S_OUT1
-	EX	AF,AF'
+AUTOLIST:
 	LD	A,(BANK_M)
 	AND	$07
 	RET	NZ		; no auto-list in X channel
-	EX	AF,AF'
+	RES	7,(IY+BORDCR-ERR_NR)	; Flashing cursor OFF
+	RST	$30
+	DEFW	L1795		; AUTO-LIST
+	RET
+
+K_TEMPS:RST	$30
+	DEFW	L0D4D	; TEMPS
+	RES	7,(IY+ATTR_T-ERR_NR)	; flash off
+	RET
+
+; This area must be a data table not to trigger the LOAD trap
+
+EDITOR_HEADERN:
+	DEFM	"NUMERI"
+	DEFB	$80 + "C"
+EDITOR_HEADERS:
+	DEFM	"STRIN"
+	DEFB	$80 + "G"
+
+GR_TAB:	DEFB	$00, $FF
+	DEFB	$FF, $00
+	DEFB	$F0, $00
+	DEFB	$00, $0F
+
+TKETAB:	DEFM	"@$#<>="
+TKETABE:EQU	$
+
+EDITOR_HEADERT:
+	DEFM	"TEXT"
+	DEFB	$80 + " "
+
+TCTRL:	DEFB	TNOP - $	; $00 does nothing
+	DEFB	TQUEST - $	; $01 prints question mark
+	DEFB	TQUEST - $	; $02 prints question mark
+	DEFB	TQUEST - $	; $03 prints question mark
+	DEFB	TQUEST - $	; $04 prints question mark
+	DEFB	TRST - $	; $05 restore permanent attrs
+	DEFB	TCOMMA - $	; $06 tabulates with blanks
+	DEFB	T1CTR - $	; $07 STEP
+	DEFB	TBS - $		; $08 back
+	DEFB	TFW - $		; $09 forward
+	DEFB	TLF - $		; $0A down
+	DEFB	TUP - $		; $0B up
+	DEFB	TFF - $		; $0C clear screen
+	DEFB	TCR - $		; $0D ENTER
+	DEFB	TBLINK - $	; $0E cursor character
+	DEFB	T1CTR - $	; $0F prints inverted character
+	DEFB	T1CTR - $	; $10 INK
+	DEFB	T1CTR - $	; $11 PAPER
+	DEFB	T1CTR - $	; $12 FLASH
+	DEFB	T1CTR - $	; $13 BRIGHT
+	DEFB	T1CTR - $	; $14 INVERSE
+	DEFB	T1CTR - $	; $15 OVER
+	DEFB	T2CTR - $	; $16 AT
+	DEFB	T2CTR - $	; $17 TAB
+
+TFF:	XOR	A
+	BIT	0,(IY+$02)
+	JP	NZ,K_RST
+	JP	S_RST
+
+TQUEST:	LD	A,"?"
+	JP	PR_PR
+
+TFW:	INC	DE
+	LD	A,C
+	DEC	A
+	LD	A,(DE)
+	JR	NZ,TFW1
+	DEC	B
+	INC	A
+	LD	C,A
+TFW1:	CP	C
+	CALL	Z,POSCR
+	DEC	C
+	INC	HL
+	JR	TSTORE3
+
+TCOMMA:	INC	DE
+	EX	AF,AF'		; ???
+	LD	A,(DE)
+	SUB	C
+	OR	$0F
+	INC	A
+POFILL: RST	$30
+	DEFW	POFETCH
+	ADD	A,C
+	DEC	A
+	LD	C,A
+	LD	A,(DE)
+	SUB	A,2
+	AND	C
+	RET	Z
+	LD	D,A
+	SET	0,(IY+01)
+POSPACE:LD	A," "
+	RST	$30
+	DEFW	L0C3B		; PO-SAVE
+	DEC	D
+	JR	NZ,POSPACE
+TNOP:	RET
+
+TBS:	INC	DE
+	LD	A,(DE)
+	INC	A
+	INC	A
+	INC	C
+	INC	SP		; TODO: continue with PO-BACK-1
+	INC	SP
+	PUSH	HL
+	LD	HL,L0A23 + 3	; PO-BACK-1 + 3
+	EX	(SP),HL
+	RST	$10
+
+TCR:	PUSH	DE
+	CALL	TCR0
+	POP	HL
+	RES	3,(HL)		; reset to instruction mode
+TCR1:
+CLSET:	LD	A,B
+	BIT	0,(IY+$02)
+	JR	Z,CLSET1
+	ADD	A,(IY+$31)
+	SUB	$18
+CLSET1:	PUSH	BC
+	LD	B,A
+	RST	$30
+	DEFW	L0E9B		; CL-ADDR
+	POP	BC
+CLSET2:	LD	A,(S_STATE)
+	ADD	A,A
+	ADD	A,A
+	LD	A,(S_WIDTH)
+	BIT	0,(IY+$02)	; upper screen?
+	JR	Z,CLSET3
+	LD	A,(K_STATE)
+	ADD	A,A
+	ADD	A,A
+	LD	A,(K_WIDTH)
+CLSET3:	JR	NC,CLSET5
+	SUB	C
+	SRL	A
+	DEFB	$1E		; LD E,skip next byte
+CLSET5:	SUB	C
+	LD	E,A
+	LD	D,0
+	LD	A,(S_MODE)
+	CP	$10
+	JR	C,CLSET4
+	SRL	E
+	JR	NC,CLSET4
+	SET	5,H
+CLSET4:	ADD	HL,DE
+TSTORE3:JP	TSTORE
+
+TLF:	LD	A,C
+	PUSH	AF
+	CALL	TCR0
+	POP	AF
+	LD	C,A
+	JR	TCR1
+
+TCR0:	INC	DE
+	LD	A,(DE)
+	LD	C,A
+	CALL	POSCR
+	DEC	B
+	JP	NOLEAD
+
+TUP:	INC	B
+	LD	A,$18	; TODO: 24 lines
+	CP	B
+	JR	NC,TCR1
+	DEC	B
+	JR	TCR1
+
+TBLINK:	BIT	0,(IY+TV_FLAG-ERR_NR)
+	JR	Z,T1CTR
+	RET	Z
+	EX	DE,HL
+	SET	2,(HL)	; set blinking or inverse
+	RET
+
+T1CTR:	EX	DE,HL
+TCTR:	SET	0,(HL)
+	INC	HL	; width
+	INC	HL	; tv1
+	LD	(HL),A
+	RET
+
+T2CTR:	EX	DE,HL
+	SET	1,(HL)
+	JR	TCTR
+
+TRST:	RST	$30
+	DEFW	L0D4D	; TEMPS
+	RET
+
+; channel S output service routine
+S_OUT:
 S_OUT1:	LD	HL,S_STATE
 	JR	C,KS_OUT
 ; channel S ioctl
@@ -599,6 +753,7 @@ S_OUT1:	LD	HL,S_STATE
 	LD	H,(HL)
 	LD	L,A
 	JP	(HL)
+
 S_RST:	EX	DE,HL
 	LD	A,(HL)
 	AND	$40		; preserve font width
@@ -618,31 +773,11 @@ S_RST:	EX	DE,HL
 	LD	B,$18		; line 24 for upper screen
 	JP	CLSET
 
-POFETCH:EQU	L0B03 + 6
-POSTORE:EQU	L0ADC + 6
-
-; This area must be a data table not to trigger the LOAD trap
-
-EDITOR_HEADERN:
-	DEFM	"NUMERI"
-	DEFB	$80 + "C"
-EDITOR_HEADERS:
-	DEFM	"STRIN"
-	DEFB	$80 + "G"
-
-GR_TAB:	DEFB	$00, $FF
-	DEFB	$FF, $00
-	DEFB	$F0, $00
-	DEFB	$00, $0F
-
-TKETAB:	DEFM	"@$#<>="
-TKETABE:EQU	$
-
 KS_CTRL:PUSH	HL		; save display address
+	LD	HL,TCTRL
 	PUSH	BC		; save coordinates
 	LD	C,A
 	LD	B,0
-	LD	HL,TCTRL
 	ADD	HL,BC
 	LD	C,(HL)
 	ADD	HL,BC
@@ -650,10 +785,25 @@ KS_CTRL:PUSH	HL		; save display address
 	EX	(SP),HL		; restore display address, stack destination
 	RET
 
+P_GR_TK:BIT	4,(IY+FLAGS2-ERR_NR)	; K channel?
+	JR	NZ,P_GRTK		; if so, check quotes
+	BIT	6,(IY+TV_FLAG-ERR_NR)	; non-automatic listing?
+	JR	NZ,P_GRTK		; if so, ckeck quotes
+	BIT	4,(IY+TV_FLAG-ERR_NR)	; automatic listing
+	JR	Z,PR_GR_O		; always graphics, if neither of above
+P_GRTK:	BIT	2,(IY+FLAGS2-ERR_NR)	; in quotes
+	JP	Z, TOKEN_O		; if not, output token
+PR_GR_O:SUB	$90
+	JR	NC,PR_UDG
+PR_GR:	LD	B,A
+	LD	HL,MEMBOT
+	RST	$30
+	DEFW	LPOGR1		; PO-GR-1 mosaic
+	JR	PR_GR_E
+
 ; channel K output service routine
 K_OUT:	CALL	STACKSWAP
-	LD	HL,TV_FLAG
-	BIT	0,(HL)
+	BIT	0,(IY+TV_FLAG-ERR_NR)
 	JR	Z,S_OUT
 	LD	HL,K_STATE
 	JP	NC,K_IOCTL
@@ -682,32 +832,62 @@ PR_PR:	EX	AF,AF'
 	AND	$40
 	EX	AF,AF'		; ZF' for 8 pixel font, NZF' for 4 pixel font
 	CP	$80
-	JP	NC,P_GR_TK
+	JR	NC,P_GR_TK
 	CP	" "
-	JP	C,PR_GR_0
-	BIT	2,(IY+$30)	; inside quotes?
-	JR	NZ,PR_NQ	; if so, jump over formatting
-	EX	DE,HL		; restore S/K_STATE into HL and save screen address to DE
-	CP	"@"
-	JR	NZ,PR_NL	; jump forward if not label
-	BIT	3,(HL)
-	JR	Z,T_LABEL	; in instruction mode, treat it as a token
-PR_NL:	CP	":"
-	JR	NZ,PR_NC
-	RES	3,(HL)		; colon sets instr. mode
-	PUSH	HL
-	LD	HL,C_SPCC
-	INC	(HL)
-	POP	HL
-PR_NC:	EX	DE,HL		; restore screen address to HL
-PR_NQ:	PUSH	BC
+	JR	NC,PR_GR_0
+	EX	AF,AF'
+	JR	NZ,PR_GR_4
+	EX	AF,AF'
+	LD	C,A
+	AND	$06
+	LD	E,A
+	LD	D,0
+	LD	HL,GR_TAB
+	ADD	HL,DE
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	LD	HL,MEMBOT
+	LD	B,8
+	RR	C
+	JR	C,PR_GR_R
+PR_GR_L:LD	(HL),E
+	INC	L
+	RL	D
+	RL	E
+	DJNZ	PR_GR_L
+	JR	PR_GR_E
+
+PR_UDG:	PUSH	BC
+	LD	BC,(UDG)
+	EX	DE,HL
+	EX	AF,AF'
+	SCF
+	JR	PR_FULL
+
+PR_GR_R:RR	E
+	RR	D
+	LD	(HL),D
+	INC	L
+	DJNZ	PR_GR_R
+PR_GR_E:RST	$30
+	DEFW	POFETCH
+	LD	DE,MEMBOT
+	JR	PR_ALL
+
+PR_GR_4:EX	AF,AF'
+PR_GR_0:PUSH	BC
 	LD	BC,(CHARS)
 	EX	AF,AF'
 	JR	Z,PR_8
 	LD	BC,(CHARS4)
 PR_8:	EX	AF,AF'
 PR_CH2:	EX	DE,HL		; screen address to DE, S/K_STATE to HL
-	LD	HL,FLAGS
+	BIT	2,(IY+FLAGS-ERR_NR)
+	RES	3,(HL)
+	JR	Z,PR_K		; printing in K mode
+	SET	3,(HL)		; printing arguments
+PR_K:	LD	HL,FLAGS
 	RES	0,(HL)
 	CP	" "
 	JR	NZ,PR_CH3
@@ -773,12 +953,6 @@ TSTORE:	RST	$30
 	DEFW	POSTORE
 	RET
 
-T_LABEL:SET	3,(HL)		; set argument mode
-	CALL	PR_SPACE
-	RST	$30
-	DEFW	L0C3B		; PO-SAVE
-	RET
-
 TSTOREX:SUB	$08
 	JR	NZ,TSTORE
 	LD	A,H
@@ -789,12 +963,9 @@ TSTOREX:SUB	$08
 	DEC	HL
 	JR	TSTORE
 
-; reset colon counters
-R_SPCC:	LD	HL,C_SPCC
-	LD	(HL),1
-	DEC	L
-	LD	(HL),1
-	RET
+PRTAB:	LD	DE,MEMBOT+8
+	LD	A,H
+	JP	POFILL
 
 ; channel K/S indirect output
 KS_IND:	BIT	1,(HL)
@@ -841,10 +1012,6 @@ COTEMP5:CP	$07
 PRTABC:	EX	(SP),HL
 	RST	$10
 
-PRTAB:	LD	DE,MEMBOT+8
-	LD	A,H
-	JP	POFILL
-
 KS_IND2:RES	1,(HL)
 	INC	HL	; width
 	INC	HL	; tv1
@@ -852,79 +1019,8 @@ KS_IND2:RES	1,(HL)
 	LD	(HL),A
 	RET
 
-P_GR_TK:BIT	4,(IY+FLAGS2-ERR_NR)	; K channel?
-	JR	NZ,P_GRTK		; if so, check quotes
-	BIT	6,(IY+TV_FLAG-ERR_NR)	; non-automatic listing?
-	JR	NZ,P_GRTK		; if so, ckeck quotes
-	BIT	4,(IY+TV_FLAG-ERR_NR)	; automatic listing
-	JR	Z,PR_GR_O		; always graphics, if neither of above
-P_GRTK:	BIT	2,(IY+FLAGS2-ERR_NR)	; in quotes
-	JP	Z, TOKEN_O		; if not, output token
-PR_GR_O:SUB	$90
-	JR	NC,PR_UDG
-PR_GR:	LD	B,A
-	LD	HL,MEMBOT
-	EX	AF,AF'
-	JR	NZ,MOSAIC
-	EX	AF,AF'
-	RST	$30
-	DEFW	LPOGR1		; PO-GR-1 mosaic
-	JR	PR_GR_E
-MOSAIC:	SCF
-	EX	AF,AF'
-	CALL	MOSAIC2
-	CALL	MOSAIC2
-	JR	PR_GR_E
-MOSAIC2:RR	B
-	SBC	A,A
-	AND	$03
-	LD	C,A
-	RR	B
-	SBC	A,A
-	AND	$0C
-	RST	$30
-	DEFW	LPOGR4		; dump 4 bytes of the mosaic
-	RET
-
 PRSTEP:	LD	A,D
 	JP	TEMPS4
-
-PR_UDG:	PUSH	BC
-	LD	BC,(UDG)
-	EX	DE,HL
-	EX	AF,AF'
-	SCF
-	JP	PR_FULL
-
-PR_GR_0:LD	C,A
-	AND	$06
-	LD	E,A
-	LD	D,0
-	LD	HL,GR_TAB
-	ADD	HL,DE
-	LD	E,(HL)
-	INC	HL
-	LD	D,(HL)
-	LD	HL,MEMBOT
-	LD	B,8
-	RR	C
-	JR	C,PR_GR_R
-PR_GR_L:LD	(HL),E
-	INC	L
-	RL	D
-	RL	E
-	DJNZ	PR_GR_L
-	JR	PR_GR_E
-
-PR_GR_R:RR	E
-	RR	D
-	LD	(HL),D
-	INC	L
-	DJNZ	PR_GR_R
-PR_GR_E:RST	$30
-	DEFW	POFETCH
-	LD	DE,MEMBOT
-	JP	PR_ALL
 
 E_QUEST:LD	HL,(X_PTR)
 	LD	(K_CUR),HL
@@ -1016,7 +1112,7 @@ E_HEAD1:LD	(FLAGS),A
 	POP	DE			; restore channel flag address into DE
 	LD	(DE),A
 	LD	(K_SAV2),A		; save channel flag content
-TSTORE3:JP	TSTORE
+	JP	TSTORE
 
 E_HEADT:LD	DE,EDITOR_HEADERT
 	CALL	MESSAGE
@@ -1034,192 +1130,6 @@ E_HEADT:LD	DE,EDITOR_HEADERT
 	SBC	HL,DE
 	CALL	DECWORD
 	JR	E_HEAD0
-
-EDITOR_HEADERT:
-	DEFM	"TEXT"
-	DEFB	$80 + " "
-
-TCTRL:	DEFB	TNOP - $	; $00 does nothing
-	DEFB	TQUEST - $	; $01 prints question mark
-	DEFB	TQUEST - $	; $02 prints question mark
-	DEFB	TQUEST - $	; $03 prints question mark
-	DEFB	TQUEST - $	; $04 prints question mark
-	DEFB	TRST - $	; $05 restore permanent attrs
-	DEFB	TCOMMA - $	; $06 tabulates with blanks
-	DEFB	T1CTR - $	; $07 STEP
-	DEFB	TBS - $		; $08 back
-	DEFB	TFW - $		; $09 forward
-	DEFB	TLF - $		; $0A down
-	DEFB	TUP - $		; $0B up
-	DEFB	TFF - $		; $0C clear screen
-	DEFB	TCR - $		; $0D ENTER
-	DEFB	TBLINK - $	; $0E cursor character
-	DEFB	T1CTR - $	; $0F prints inverted character
-	DEFB	T1CTR - $	; $10 INK
-	DEFB	T1CTR - $	; $11 PAPER
-	DEFB	T1CTR - $	; $12 FLASH
-	DEFB	T1CTR - $	; $13 BRIGHT
-	DEFB	T1CTR - $	; $14 INVERSE
-	DEFB	T1CTR - $	; $15 OVER
-	DEFB	T2CTR - $	; $16 AT
-	DEFB	T2CTR - $	; $17 TAB
-
-TFW:	INC	DE
-	LD	A,C
-	DEC	A
-	LD	A,(DE)
-	JR	NZ,TFW1
-	DEC	B
-	INC	A
-	LD	C,A
-TFW1:	CP	C
-	CALL	Z,POSCR
-	DEC	C
-	INC	HL
-	JR	TSTORE3
-
-TFF:	XOR	A
-	BIT	0,(IY+$02)
-	JP	NZ,K_RST
-	JP	S_RST
-
-TQUEST:	LD	A,"?"
-	JP	PR_PR
-
-TCOMMA:	INC	DE
-	EX	AF,AF'		; ???
-	LD	A,(DE)
-	SUB	C
-	OR	$0F
-	INC	A
-POFILL: RST	$30
-	DEFW	POFETCH
-	ADD	A,C
-	DEC	A
-	LD	C,A
-	LD	A,(DE)
-	SUB	A,2
-	AND	C
-	RET	Z
-	LD	D,A
-	SET	0,(IY+01)
-POSPACE:LD	A," "
-	RST	$30
-	DEFW	L0C3B		; PO-SAVE
-	DEC	D
-	JR	NZ,POSPACE
-TNOP:	RET
-
-TBS:	INC	DE
-	LD	A,(DE)
-	INC	A
-	INC	A
-	INC	C
-	INC	SP		; TODO: continue with PO-BACK-1
-	INC	SP
-	PUSH	HL
-	LD	HL,L0A23 + 3	; PO-BACK-1 + 3
-	EX	(SP),HL
-	RST	$10
-
-TCR:	PUSH	DE
-	CALL	TCR0
-	POP	HL
-	RES	3,(HL)
-TCR1:
-CLSET:	LD	A,B
-	BIT	0,(IY+$02)
-	JR	Z,CLSET1
-	ADD	A,(IY+$31)
-	SUB	$18
-CLSET1:	PUSH	BC
-	LD	B,A
-	RST	$30
-	DEFW	L0E9B		; CL-ADDR
-	POP	BC
-CLSET2:	LD	A,(S_STATE)
-	ADD	A,A
-	ADD	A,A
-	LD	A,(S_WIDTH)
-	BIT	0,(IY+$02)	; upper screen?
-	JR	Z,CLSET3
-	LD	A,(K_STATE)
-	ADD	A,A
-	ADD	A,A
-	LD	A,(K_WIDTH)
-CLSET3:	JR	NC,CLSET5
-	SUB	C
-	SRL	A
-	DEFB	$1E		; LD E,skip next byte
-CLSET5:	SUB	C
-	LD	E,A
-	LD	D,0
-	LD	A,(S_MODE)
-	CP	$10
-	JR	C,CLSET4
-	SRL	E
-	JR	NC,CLSET4
-	SET	5,H
-CLSET4:	ADD	HL,DE
-	JP	TSTORE
-
-TLF:	LD	A,C
-	PUSH	AF
-	CALL	TCR0
-	POP	AF
-	LD	C,A
-	JR	TCR1
-
-TCR0:	INC	DE
-	LD	A,(DE)
-	LD	C,A
-	CALL	POSCR
-	DEC	B
-	JP	NOLEAD
-
-TUP:	INC	B
-	LD	A,$18	; TODO: 24 lines
-	CP	B
-	JR	NC,TCR1
-	DEC	B
-	JR	TCR1
-
-TBLINK:	BIT	0,(IY+TV_FLAG-ERR_NR)
-	JR	Z,T1CTR
-	RET	Z
-	EX	DE,HL
-	SET	2,(HL)	; set blinking or inverse
-	BIT	3,(HL)
-	LD	HL,FLAGX
-	RES	4,(HL)
-	JR	Z,TBL_I
-	SET	4,(HL)
-TBL_I:	LD	A,(HL)
-	RES	3,(HL)
-	AND	$04
-	RET	Z
-	SET	3,(HL)
-	RET
-
-T1CTR:	EX	DE,HL
-TCTR:	SET	0,(HL)
-	INC	HL	; width
-	INC	HL	; tv1
-	LD	(HL),A
-	RET
-
-T2CTR:	EX	DE,HL
-	SET	1,(HL)
-	JR	TCTR
-
-TRST:	RST	$30
-	DEFW	L0D4D	; TEMPS
-	RET
-
-K_TEMPS:RST	$30
-	DEFW	L0D4D	; TEMPS
-	RES	7,(IY+ATTR_T-ERR_NR)	; flash off
-	RET
 
 ; Print condensed (4 pixel wide) character
 ; BC coordinates, HL target, DE matrix, CF side
@@ -1344,12 +1254,6 @@ PROL2:	RRD
 	DJNZ	PROL2
 	JR	PORET1
 
-AUTOLIST:
-	RES	7,(IY+BORDCR-ERR_NR)	; Flashing cursor OFF
-	RST	$30
-	DEFW	L1795		; AUTO-LIST
-	RET
-
 TEMPS_CONT:
 	CALL	STACKSWAP
 TEMPS3:	LD	A,(TV_FLAG)
@@ -1414,12 +1318,26 @@ STEP4:	BIT	6,(HL)
 	DEC	(HL)
 	RET
 
-S_IOCTL:DEFW	S_RST	; reset S channel (clear screen, etc.)
-	DEFW	AUTOLIST
-	DEFW	PLOT1	; PLOT a single point
-	DEFW	DRAW2	; DRAW straight line
-	DEFW	DRAW3	; DRAW arc
-	DEFW	CIRCLE	; draw a CIRCLE
-S_IOCTL_END:	EQU	$
+; Short routines without relative addresses to fill gaps
+
+; reset colon counters
+R_SPCC:	LD	HL,C_SPCC
+	LD	(HL),1
+	DEC	L
+	LD	(HL),1
+	RET
+
+; copy edit area
+ED_COPY:PUSH	HL		; save K_STATE address
+	RES	3,(HL)		; start in K mode
+	RES	7,(IY+BORDCR-ERR_NR)	; flashing cursor OFF
+	CALL	R_SPCC
+	RST	$30
+	DEFW	L111D			; just use ROM1
+	SET	7,(IY+BORDCR-ERR_NR)	; flashing cursor ON
+	POP	HL
+	RET
+
+
 
 	INCLUDE	"timexscr.asm"
