@@ -18,6 +18,9 @@
 ; byte 3:
 ; first argument saved (see TVDATA + 1)
 
+POFETCH:EQU	L0B03 + 6
+POSTORE:EQU	L0ADC + 6
+
 ; channel K input service routine
 K_IN:	CALL	STACKSWAP
 	LD	HL,K_STATE
@@ -470,44 +473,19 @@ K_CLS:	SET	0,(IY+$02)	; clean lower part
 	LD	(RETADDR),BC
 S_IO_E:	JP	CLSET
 
-; This area must be a data table not to trigger the SAVE trap
+AUTOLIST:
+	LD	A,(BANK_M)
+	AND	$07
+	RET	NZ		; no auto-list in X channel
+	RES	7,(IY+BORDCR-ERR_NR)	; Flashing cursor OFF
+	RST	$30
+	DEFW	L1795		; AUTO-LIST
+	RET
 
-; K-MODE translation table
-K_MODE:	DEFB	"@",LABEL_T
-	DEFB	0
-
-; L-MODE translation table
-L_MODE:	DEFB	$E2,"~"
-	DEFB	$C3,"|"
-	DEFB	$CD,"\\"
-	DEFB	$CC,"{"
-	DEFB	$CB,"}"
-	DEFB	$C6,"["
-	DEFB	$C5,"]"
-	DEFB	$AC,$7F		; copyright
-	DEFB	0
-
-EDITOR_HEADER0:
-	DEFB	$14,$01,$16,$00,$00,$13,$01,$10,$00
-	DEFB	$11,$87
-	DEFM	"BASIC"
-	DEFB	$80 + ":"
-
-EDITOR_HEADER1:
-	DEFB	$17,$7A,$00,$11,$02,$18,$10,$06,$1A
-	DEFB	$11,$04,$18,$10,$05,$1A,$11,$00,$18
-	DEFB	$0F,$A0
-
-S_IOCTL:DEFW	S_RST	; reset S channel (clear screen, etc.)
-	DEFW	AUTOLIST
-	DEFW	PLOT1	; PLOT a single point
-	DEFW	DRAW2	; DRAW straight line
-	DEFW	DRAW3	; DRAW arc
-	DEFW	CIRCLE	; draw a CIRCLE
-S_IOCTL_END:	EQU	$
-
-POFETCH:EQU	L0B03 + 6
-POSTORE:EQU	L0ADC + 6
+K_TEMPS:RST	$30
+	DEFW	L0D4D	; TEMPS
+	RES	7,(IY+ATTR_T-ERR_NR)	; flash off
+	RET
 
 ; check editor mode
 ; Output: Z is 1 in editor mode, 0 otherwise, CF set
@@ -533,40 +511,18 @@ K_SAVE:	LDI
 	LDI
 	RET
 
-AUTOLIST:
-	LD	A,(BANK_M)
-	AND	$07
-	RET	NZ		; no auto-list in X channel
-	RES	7,(IY+BORDCR-ERR_NR)	; Flashing cursor OFF
+; copy edit area
+ED_COPY:PUSH	HL		; save K_STATE address
+	RES	3,(HL)		; start in K mode
+	RES	7,(IY+BORDCR-ERR_NR)	; flashing cursor OFF
+	CALL	R_SPCC
 	RST	$30
-	DEFW	L1795		; AUTO-LIST
+	DEFW	L111D			; just use ROM1
+	SET	7,(IY+BORDCR-ERR_NR)	; flashing cursor ON
+	POP	HL
 	RET
 
-K_TEMPS:RST	$30
-	DEFW	L0D4D	; TEMPS
-	RES	7,(IY+ATTR_T-ERR_NR)	; flash off
-	RET
-
-; This area must be a data table not to trigger the LOAD trap
-
-EDITOR_HEADERN:
-	DEFM	"NUMERI"
-	DEFB	$80 + "C"
-EDITOR_HEADERS:
-	DEFM	"STRIN"
-	DEFB	$80 + "G"
-
-GR_TAB:	DEFB	$00, $FF
-	DEFB	$FF, $00
-	DEFB	$F0, $00
-	DEFB	$00, $0F
-
-TKETAB:	DEFM	"@$#<>="
-TKETABE:EQU	$
-
-EDITOR_HEADERT:
-	DEFM	"TEXT"
-	DEFB	$80 + " "
+; This area must be a data table not to trigger the SAVE trap
 
 TCTRL:	DEFB	TNOP - $	; $00 does nothing
 	DEFB	TQUEST - $	; $01 prints question mark
@@ -601,20 +557,6 @@ TFF:	XOR	A
 TQUEST:	LD	A,"?"
 	JP	PR_PR
 
-TFW:	INC	DE
-	LD	A,C
-	DEC	A
-	LD	A,(DE)
-	JR	NZ,TFW1
-	DEC	B
-	INC	A
-	LD	C,A
-TFW1:	CP	C
-	CALL	Z,POSCR
-	DEC	C
-	INC	HL
-	JR	TSTORE3
-
 TCOMMA:	INC	DE
 	EX	AF,AF'		; ???
 	LD	A,(DE)
@@ -639,6 +581,28 @@ POSPACE:LD	A," "
 	JR	NZ,POSPACE
 TNOP:	RET
 
+TBLINK:	BIT	0,(IY+TV_FLAG-ERR_NR)
+	JR	Z,T1CTR
+	RET	Z
+	EX	DE,HL
+	SET	2,(HL)	; set blinking or inverse
+	RET
+
+T1CTR:	EX	DE,HL
+TCTR:	SET	0,(HL)
+	INC	HL	; width
+	INC	HL	; tv1
+	LD	(HL),A
+	RET
+
+T2CTR:	EX	DE,HL
+	SET	1,(HL)
+	JR	TCTR
+
+TRST:	RST	$30
+	DEFW	L0D4D	; TEMPS
+	RET
+
 TBS:	INC	DE
 	LD	A,(DE)
 	INC	A
@@ -650,6 +614,61 @@ TBS:	INC	DE
 	LD	HL,L0A23 + 3	; PO-BACK-1 + 3
 	EX	(SP),HL
 	RST	$10
+
+TFW:	INC	DE
+	LD	A,C
+	DEC	A
+	LD	A,(DE)
+	JR	NZ,TFW1
+	DEC	B
+	INC	A
+	LD	C,A
+TFW1:	CP	C
+	CALL	Z,POSCR
+	DEC	C
+	INC	HL
+	JR	TSTORE3
+
+TLF:	LD	A,C
+	PUSH	AF
+	CALL	TCR0
+	POP	AF
+	LD	C,A
+	JR	TCR1
+
+TCR0:	INC	DE
+	LD	A,(DE)
+	LD	C,A
+	CALL	POSCR
+	DEC	B
+	JP	NOLEAD
+
+; This area must be a data table not to trigger the LOAD trap
+
+; K-MODE translation table
+K_MODE:	DEFB	"@",LABEL_T
+	DEFB	0
+
+; L-MODE translation table
+L_MODE:	DEFB	$E2,"~"
+	DEFB	$C3,"|"
+	DEFB	$CD,"\\"
+	DEFB	$CC,"{"
+	DEFB	$CB,"}"
+	DEFB	$C6,"["
+	DEFB	$C5,"]"
+	DEFB	$AC,$7F		; copyright
+	DEFB	0
+
+TKETAB:	DEFM	"@$#<>="
+TKETABE:EQU	$
+
+TUP:	INC	B
+	LD	A,$18	; TODO: 24 lines
+	CP	B
+	JR	NC,TCR1
+	DEC	B
+	JR	TCR1
 
 TCR:	PUSH	DE
 	CALL	TCR0
@@ -691,49 +710,6 @@ CLSET5:	SUB	C
 	SET	5,H
 CLSET4:	ADD	HL,DE
 TSTORE3:JP	TSTORE
-
-TLF:	LD	A,C
-	PUSH	AF
-	CALL	TCR0
-	POP	AF
-	LD	C,A
-	JR	TCR1
-
-TCR0:	INC	DE
-	LD	A,(DE)
-	LD	C,A
-	CALL	POSCR
-	DEC	B
-	JP	NOLEAD
-
-TUP:	INC	B
-	LD	A,$18	; TODO: 24 lines
-	CP	B
-	JR	NC,TCR1
-	DEC	B
-	JR	TCR1
-
-TBLINK:	BIT	0,(IY+TV_FLAG-ERR_NR)
-	JR	Z,T1CTR
-	RET	Z
-	EX	DE,HL
-	SET	2,(HL)	; set blinking or inverse
-	RET
-
-T1CTR:	EX	DE,HL
-TCTR:	SET	0,(HL)
-	INC	HL	; width
-	INC	HL	; tv1
-	LD	(HL),A
-	RET
-
-T2CTR:	EX	DE,HL
-	SET	1,(HL)
-	JR	TCTR
-
-TRST:	RST	$30
-	DEFW	L0D4D	; TEMPS
-	RET
 
 ; channel S output service routine
 S_OUT:
@@ -1326,18 +1302,5 @@ R_SPCC:	LD	HL,C_SPCC
 	DEC	L
 	LD	(HL),1
 	RET
-
-; copy edit area
-ED_COPY:PUSH	HL		; save K_STATE address
-	RES	3,(HL)		; start in K mode
-	RES	7,(IY+BORDCR-ERR_NR)	; flashing cursor OFF
-	CALL	R_SPCC
-	RST	$30
-	DEFW	L111D			; just use ROM1
-	SET	7,(IY+BORDCR-ERR_NR)	; flashing cursor ON
-	POP	HL
-	RET
-
-
 
 	INCLUDE	"timexscr.asm"

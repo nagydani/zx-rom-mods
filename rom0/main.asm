@@ -108,7 +108,7 @@ NEW128:	DI
 	JP	STARTN
 
 INIT_5B00:	EQU	$
-
+; This stuff does not run here, it gets copied to $5B00
 	ORG	$5B00
 SWAP:	PUSH	AF
 	PUSH	BC
@@ -198,6 +198,7 @@ S_MODE:	EQU	K_CUR_S+2	; video mode: b7..b3 - resolution, b2..b0 - palette
 INIT_5B00_L:	EQU	$ - $5B00
 
 	ORG	INIT_5B00 + INIT_5B00_L
+
 F_SCAN:	LD	HL,10
 	ADD	HL,SP
 	LD	A,(HL)
@@ -216,9 +217,31 @@ F_SCAN:	LD	HL,10
 	LD	L,A
 JP_HL:	JP	(HL)
 
+SKIP_OVER:
+	CP	$21
+	RET	NC
+	CP	$0D
+	RET	Z
+	CP	1
+	RET	C
+	CP	6
+	CCF
+	RET	NC
+	CP	$18
+	CCF
+	RET	C
+	INC	HL
+	CP	$16
+	JR	C,SKIPS2
+	INC	HL
+SKIPS2:	SCF
+	LD	(CH_ADD),HL
+	RET
+
 	INCLUDE "channels.asm"
 	INCLUDE	"xchannel.asm"
 	INCLUDE "tokenizer.asm"
+	INCLUDE "editorhead.asm"
 
 PR_OUT:
 PR_IN:
@@ -377,27 +400,6 @@ TEMP_PTR1:
 TEMP_PTR2:
 	LD	(CH_ADD),HL
 	LD	A,(HL)
-	RET
-
-SKIP_OVER:
-	CP	$21
-	RET	NC
-	CP	$0D
-	RET	Z
-	CP	1
-	RET	C
-	CP	6
-	CCF
-	RET	NC
-	CP	$18
-	CCF
-	RET	C
-	INC	HL
-	CP	$16
-	JR	C,SKIPS2
-	INC	HL
-SKIPS2:	SCF
-	LD	(CH_ADD),HL
 	RET
 
 MULS_S:	LD	BC,$104C	; tight multiplication
@@ -2169,5 +2171,18 @@ INIT_STRM:
         DEFW    P_CH - CHINFO0 + 1	; stream $03 offset to channel 'P'
 
 R_LINK:	DEFB	$00, $03, $00, $07, $01, $00, $04, $FF
+
+S_IOCTL:DEFW	S_RST	; reset S channel (clear screen, etc.)
+	DEFW	AUTOLIST
+	DEFW	PLOT1	; PLOT a single point
+	DEFW	DRAW2	; DRAW straight line
+	DEFW	DRAW3	; DRAW arc
+	DEFW	CIRCLE	; draw a CIRCLE
+S_IOCTL_END:	EQU	$
+
+GR_TAB:	DEFB	$00, $FF
+	DEFB	$FF, $00
+	DEFB	$F0, $00
+	DEFB	$00, $0F
 
 	DEFS	$4000 - $
