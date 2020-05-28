@@ -167,8 +167,7 @@ EAST:	DEFB	$1F
 COORDS2:DEFW	$57A0
 KS_PERM:DEFB	0		; additional permanent attributes
 CHARS4:	DEFW	CHARSET - $0080
-K_SPCC:	DEFB	1
-C_SPCC:	DEFB	1
+C_PCC:	DEFB	1		; colon counter
 BANK_F:	DEFB	$06
 	DEFS	$5b58 - $	; minimal Investrónica compatibility
 TARGET:	DEFW	0
@@ -688,7 +687,7 @@ TOKEN_O:SUB	$7F
 	EX	DE,HL
 	BIT	3,(HL)
 	CALL	Z,PR_SPACE
-	LD	DE,T_ELSE
+TOKEN_L:LD	DE,T_ELSE
 	JR	NZ,TOKEN_N	; jump forward in argument mode
 	CP	ELSE_T - $7F
 	JR	Z,TOKEN_S
@@ -1997,7 +1996,7 @@ STACKSWAP:
 	INCLUDE	"instructions.asm"
 	INCLUDE "serial.asm"
 
-	DEFS	SCAN_HOOK - 27 - $
+	DEFS	LIST_HOOK - 27 - $
 
 ; on error handling
 ONERRJ:	JP	ONERR_DO
@@ -2013,6 +2012,7 @@ CH_NI:	JP	NEW_X_IN
 
 ; jump table from ROM1
 	JP	INDEX_CONT
+	JP	LIST_CONT
 	JP	SCAN_CONT
 	JP	SUB_CONT
 	JP	STRNG_CONT

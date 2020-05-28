@@ -1,3 +1,4 @@
+
 ;************************************************************************
 ;** An Assembly File Listing to generate a 16K ROM for the ZX Spectrum **
 ;************************************************************************
@@ -7460,9 +7461,7 @@ L17FB:
                                 ; indicating upper screen in use.
         CALL    L2530           ; routine SYNTAX-Z - checking syntax ?
 
-;;; BUGFIX: Extensibility
-	CALL	NZ,LIST_EXT
-;;;	CALL    NZ,L1601        ; routine CHAN-OPEN if in run-time.
+	CALL    NZ,L1601        ; routine CHAN-OPEN if in run-time.
 
         RST     18H             ; GET-CHAR
         CALL    L2070           ; routine STR-ALTER will alter if '#'.
@@ -7655,7 +7654,9 @@ OUT_LINE5:
         JR      Z,L18B4		; to OUT-LINE6, if so, as line is finished.
 
         EX      DE,HL           ; save the pointer in DE.
-        CALL    L1937           ; routine OUT-CHAR to output character/token.
+;;; BUGFIX: Extensibility
+	CALL	LIST_EXT
+;;;	CALL    L1937           ; routine OUT-CHAR to output character/token.
 
         JR      OUT_LINE4	; back to OUT-LINE4 until entire line is done.
 
@@ -20181,8 +20182,8 @@ SARGL:	INC	HL
 
 ; calling extension hook before LIST or LLIST
 LIST_EXT:
-	CALL	L1601		; CHAN-OPEN
-	JP	LIST_HOOK
+	CALL	LIST_HOOK
+	JP	L1937			; OUT-CHAR
 
 ; These bytes should be $FF in case anyone crazy vectors their IM2 from here
 	DEFS	$3901 - $, $FF

@@ -455,7 +455,8 @@ K_RST:	RES	7,(IY+BORDCR-ERR_NR) ; flashing cursor OFF
 	CALL	K_TEMPS
 	SCF
 	CALL	K_SWAP
-	CALL	R_SPCC
+	LD	HL,C_PCC
+	LD	(HL),1
 	LD	HL,DF_SZ
 	LD	B,(HL)		; fetch lower screen line count
 	EX	AF,AF'
@@ -515,7 +516,9 @@ K_SAVE:	LDI
 ED_COPY:PUSH	HL		; save K_STATE address
 	RES	3,(HL)		; start in K mode
 	RES	7,(IY+BORDCR-ERR_NR)	; flashing cursor OFF
-	CALL	R_SPCC
+	LD	HL,C_PCC
+	LD	(HL),1
+	LD	(IY+T_ADDR-ERR_NR),H	; not LLIST
 	RST	$30
 	DEFW	L111D			; just use ROM1
 	SET	7,(IY+BORDCR-ERR_NR)	; flashing cursor ON
@@ -809,6 +812,8 @@ PR_PR:	EX	AF,AF'
 	EX	AF,AF'		; ZF' for 8 pixel font, NZF' for 4 pixel font
 	CP	$80
 	JR	NC,P_GR_TK
+	CP	":"
+	CALL	Z,PR_COLON
 	CP	" "
 	JR	NC,PR_GR_0
 	EX	AF,AF'
@@ -860,9 +865,9 @@ PR_GR_0:PUSH	BC
 PR_8:	EX	AF,AF'
 PR_CH2:	EX	DE,HL		; screen address to DE, S/K_STATE to HL
 	BIT	2,(IY+FLAGS-ERR_NR)
-	RES	3,(HL)
-	JR	Z,PR_K		; printing in K mode
-	SET	3,(HL)		; printing arguments
+	SET	3,(HL)
+	JR	NZ,PR_K		; printing arguments
+	RES	3,(HL)		; printing printing in K mode
 PR_K:	LD	HL,FLAGS
 	RES	0,(HL)
 	CP	" "
@@ -1059,7 +1064,7 @@ E_HEADI:CALL	MESSAGE
 	JR	E_HEAD0
 
 E_HEADB:CALL	MESSAGE
-	LD	A,(C_SPCC)
+	LD	A,(C_PCC)
 	CALL	DECBYTE
 E_HEAD0:LD	A,$06			; tabulation
 	RST	$30
@@ -1296,11 +1301,14 @@ STEP4:	BIT	6,(HL)
 
 ; Short routines without relative addresses to fill gaps
 
-; reset colon counters
-R_SPCC:	LD	HL,C_SPCC
-	LD	(HL),1
-	DEC	L
-	LD	(HL),1
+; count colons:
+PR_COLON:
+	BIT	2,(IY+FLAGS2-ERR_NR)
+	RET	NZ
+	PUSH	HL
+	LD	HL,C_PCC
+	INC	(HL)
+	POP	HL
 	RET
 
 	INCLUDE	"timexscr.asm"

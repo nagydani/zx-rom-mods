@@ -83,17 +83,11 @@ P_SCALE:DEFB	$08, $00
 P_USR:	DEFB	$06, $00
 	DEFW	USR
 
-P_LABEL:DEFB	$0A, $00	; just a label
+P_LABEL:DEFB	$0A, $05	; a label followed by stuff
 	DEFW	LABEL
 
 P_PROC:	DEFB	$05
 	DEFW	PROC
-
-P_DEFPROC:
-	DEFB	$0A		; label
-	DEFB	"("
-	DEFB	$05		; list of arguments
-	DEFW	DEFPROC
 
 P_ENDPROC:
 	DEFB	$05
@@ -536,7 +530,6 @@ EPOKE:	LD	C,E
 POKE_L2:EX	AF,AF'
 	CP	","
 	JR	Z,POKE_L
-LABEL:
 POKE_SWAP:
 	RST	$10
 
@@ -779,7 +772,9 @@ UPD_DO:	POP	BC		; discard marker, B=0
 	DEFW	L24FB + 1	; SCANNING + 1
 	RET
 
-DEFPROC:RST	$18
+LABEL:	CP	"("
+	JP	NZ,END05
+	RST	$20
 	CP	")"
 	JR	Z,DP_E
 DP_L:	RST	$30
@@ -2859,5 +2854,28 @@ SCALE_C:LD	(MEM),HL
 	DEFB	$02		; delete
 	DEFB	$38		; end
 	RST	$10
+
+LIST_CONT:
+	BIT	7,A
+	JR	Z,LIST_SW	; not a token
+	LD	C,A
+	LD	A,(T_ADDR)
+	CP	$DD
+	LD	A,C
+	JR	NZ,LIST_SW	; not LLIST
+	PUSH	DE
+	SUB	$7F
+	LD	HL,FLAGS
+	BIT	2,(HL)
+	CALL	Z,PR_SPACE
+	RES     2,(HL)		; command follows
+	CP	THEN_T
+	JR	Z,LIST_K
+	SET	2,(HL)		; arguments follow
+LIST_K:	CALL	TOKEN_L
+	POP	DE
+	INC	SP
+	INC	SP		; discard return address
+LIST_SW:RST	$10
 
 	INCLUDE	"play.asm"
