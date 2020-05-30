@@ -57,10 +57,13 @@ K_INNK:	BIT	7,(IY+BORDCR-ERR_NR)	; flashing cursor visible?
 K_IN0:	BIT	3,(IY+$02)
 	CALL	NZ,ED_COPY
 	AND	A
+	PUSH	HL
+	LD	HL,FLAGS
 	BIT	5,(IY+$30)	; mode K suppressed?
 	JR	Z,K_IN1		; jump, if not
-	SET	3,(IY+$01)	; switch off K mode
-K_IN1:	BIT	5,(IY+$01)
+	SET	3,(HL)		; switch off K mode
+K_IN1:	BIT	5,(HL)		; key pressed?
+	POP	HL
 	JR	Z,K_INNK	; no key pressed
 	BIT	5,(HL)
 	RES	5,(HL)
@@ -134,14 +137,7 @@ K_ENTP:	RES	4,(IY+$37)	; allow ELSE
 	SCF
 	JR	K_ING3
 
-K_INB:	BIT	3,(IY+$01)	; mode K?
-	JR	NZ,K_MDL	; jump, if not
-	LD	HL,K_MODE	; mode K translation
-	LD	C,A
-	CALL	INDEXER
-	LD	A,C
-	JR	NC,K_MDL
-	LD	A,(HL)
+K_INB:
 K_MDL:	CP	" "
 	JR	Z,KEY_M_K0	; jump, if space
 K_NSP:	LD	(K_DATA),A
@@ -280,12 +276,8 @@ K_ENDK:	LD	HL,(K_CUR)
 EXT_NT:	LD	A,(HL)
 	CP	"$"
 	JR	Z,EXT_N
-	CP	"@"
-	JR	Z,EXT_N
 	CP	"#"
 	JR	Z,EXT_NS
-	BIT	4,(IY+$37)	; FLAGX, operator mode
-	JR	Z,NOREL
 	CP	"<"
 	JR	Z,EXT_NR
 	CP	">"
@@ -525,6 +517,16 @@ ED_COPY:PUSH	HL		; save K_STATE address
 	POP	HL
 	RET
 
+; count colons:
+PR_COLON:
+	BIT	2,(IY+FLAGS2-ERR_NR)
+	RET	NZ
+	PUSH	HL
+	LD	HL,C_PCC
+	INC	(HL)
+	POP	HL
+	RET
+
 ; This area must be a data table not to trigger the SAVE trap
 
 TCTRL:	DEFB	TNOP - $	; $00 does nothing
@@ -647,10 +649,6 @@ TCR0:	INC	DE
 	JP	NOLEAD
 
 ; This area must be a data table not to trigger the LOAD trap
-
-; K-MODE translation table
-K_MODE:	DEFB	"@",LABEL_T
-	DEFB	0
 
 ; L-MODE translation table
 L_MODE:	DEFB	$E2,"~"
@@ -1300,15 +1298,5 @@ STEP4:	BIT	6,(HL)
 	RET
 
 ; Short routines without relative addresses to fill gaps
-
-; count colons:
-PR_COLON:
-	BIT	2,(IY+FLAGS2-ERR_NR)
-	RET	NZ
-	PUSH	HL
-	LD	HL,C_PCC
-	INC	(HL)
-	POP	HL
-	RET
 
 	INCLUDE	"timexscr.asm"

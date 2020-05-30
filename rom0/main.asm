@@ -237,6 +237,17 @@ SKIPS2:	SCF
 	LD	(CH_ADD),HL
 	RET
 
+INDEXER_1:
+	INC	HL
+INDEXER:LD	A,(HL)
+	AND	A
+	RET	Z
+	CP	C
+	INC	HL
+	JR	NZ,INDEXER_1
+	SCF
+	RET
+
 	INCLUDE "channels.asm"
 	INCLUDE	"xchannel.asm"
 	INCLUDE "tokenizer.asm"
@@ -656,17 +667,6 @@ C_THEN:	LD	A,THEN_T	; THEN
 	LD	HL,L1B29	; STMT-L-1
 ERROLD:	EX	(SP),HL
 SWERR:	RST	$10		; we're done here
-
-INDEXER_1:
-	INC	HL
-INDEXER:LD	A,(HL)
-	AND	A
-	RET	Z
-	CP	C
-	INC	HL
-	JR	NZ,INDEXER_1
-	SCF
-	RET
 
 ERROR:	LD	HL,(CH_ADD)
 	LD	(X_PTR),HL
