@@ -5,7 +5,7 @@ REPORTS:EQU	$-1
 	DEFB	$80+"d"		; T
 	DEFM	"UNTIL without REPEA"
 	DEFB	$80+"T"		; U
-	DEFM	"ASSERT faile"
+	DEFM	"Assertion faile"
 	DEFB	$80+"d"		; V
 	DEFM	"END WHILE without WHIL"
 	DEFB	$80+"E"		; W
