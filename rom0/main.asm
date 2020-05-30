@@ -512,6 +512,12 @@ CL9_CONT:
 	DEFW	L21E2 + 4	; CO-TEMP-2 + 4
 	RST	$10
 
+SPARSE:	LD	HL,INST_T1
+	CALL	INDEXER
+	LD	A,$FF
+	JR	C,INST_L
+	JP	ERROR_C
+
 PREFIX_CONT:
 	RST	$18
 	CP	ONERR_T
@@ -532,16 +538,11 @@ PREFIX_CONT:
 	POP	BC		; discard return address
 	JP	(HL)
 
-SPARSE:	LD	HL,INST_T1
-	CALL	INDEXER
-	JR	C,INST_L
-	JP	ERROR_C
-
 OLD_CONT:
 	LD	A,(T_ADDR)
 	CP	$B2		; POKE ?
 	JP	Z,E_POKE
-	JR	ERRCNZ
+	JR	ERRCNZ3
 
 RUN_CONT:
 	POP	HL		; discard return to REPORT C
@@ -558,7 +559,26 @@ RUN_CONT:
 	INC	B		; B becomes 0 again
 INST_L:	LD	C,(HL)
 	ADD	HL,BC
-	JR	GET_PARAM	; jump for tokens
+	CP	INSTRUCTION_T + $53	; TODO: magic number
+	JR	NC,GET_PARAM	; jump for tokens
+	CALL	SYNTAX_Z
+	JR	NZ,ERRCNZ
+	CP	"@" + $53	; TODO: magic number
+ERRCNZ3:JR	NZ,ERRCNZ
+	RST	$30
+	DEFW	L19FB		; E-LINE-NO
+	RST	$18
+	DEC	HL
+	LD	A,(SUBPPC)
+	LD	E,0
+	LD	D,A
+	RST	$30
+	DEFW	L198B		; EACH-STMT
+	RST	$20
+	LD	(HL),LABEL_T
+	RST	$20
+	LD	HL,P_LABEL
+	JR	GET_PARAM
 
 SCAN_LOOP:
 	LD	HL,(T_ADDR)
@@ -1817,7 +1837,7 @@ F_LBL:	SET	7,(IY+FLAGS2-ERR_NR)	; Mark cache dirty
 F_LBLL:	LD	A,(HL)
 	AND	$C0
 	JR	NZ,ERROR_T	; T Label not found
-	LD	DE,(MEMBOT+25)	; Label marker (LABEL_T or DEFPROC_T)
+	LD	DE,LABEL_T	; Label marker
 	RST	$30
 	DEFW	X1D91		; inside LOOK-PROG
 	JR	C,ERROR_T	; T Label not found

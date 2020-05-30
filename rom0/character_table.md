@@ -91,7 +91,7 @@
 | 8D | @ / LABEL / DEFPROC
 | 8E | ON ERROR
 | 8F | WRITE #
-| 90 | ASSERT
+| 90 | DELETE
 | 91 | LOCAL
 | 92 | CLIP
 | 93 | DISPLAY
