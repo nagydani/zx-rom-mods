@@ -134,6 +134,7 @@ K_ENT:	LD	HL,0
 	LD	(IY+DEFADD+1-ERR_NR),1	; TODO: this is an ugly hack
 	RES	7,(IY+BORDCR-ERR_NR)	; turn off flashing cursor
 K_ENTP:	RES	4,(IY+$37)	; allow ELSE
+	RES	2,(IY+FLAGS-ERR_NR)	; K mode output (another ugly hack)
 	SCF
 	JR	K_ING3
 
@@ -470,14 +471,10 @@ AUTOLIST:
 	LD	A,(BANK_M)
 	AND	$07
 	RET	NZ		; no auto-list in X channel
+	RES	5,(IY+FLAGX-ERR_NR)	; track mode state
 	RES	7,(IY+BORDCR-ERR_NR)	; Flashing cursor OFF
 	RST	$30
 	DEFW	L1795		; AUTO-LIST
-	RET
-
-K_TEMPS:RST	$30
-	DEFW	L0D4D	; TEMPS
-	RES	7,(IY+ATTR_T-ERR_NR)	; flash off
 	RET
 
 ; check editor mode
@@ -674,6 +671,7 @@ TUP:	INC	B
 TCR:	PUSH	DE
 	CALL	TCR0
 	POP	HL
+	RES	2,(IY+FLAGS-ERR_NR)	; track instruction mode
 	RES	3,(HL)		; reset to instruction mode
 TCR1:
 CLSET:	LD	A,B
@@ -735,10 +733,9 @@ S_RST:	EX	DE,HL
 	LD	A,(HL)
 	AND	$40		; preserve font width
 	LD	(HL),A
-	LD	HL,COORDX
-	LD	DE,COORDX+1
-	LD	BC,2*5-1
-	LD	(HL),A
+	LD	HL,COORDX-SWAP+INIT_5B00
+	LD	DE,COORDX
+	LD	BC,2*5
 	LDIR			; clear last PLOT coordinates
 	RES	0,(IY+$30)	; update FLAGS2 - signal main screen is clear.
 	RST	$30
@@ -1298,5 +1295,10 @@ STEP4:	BIT	6,(HL)
 	RET
 
 ; Short routines without relative addresses to fill gaps
+
+K_TEMPS:RST	$30
+	DEFW	L0D4D	; TEMPS
+	RES	7,(IY+ATTR_T-ERR_NR)	; flash off
+	RET
 
 	INCLUDE	"timexscr.asm"

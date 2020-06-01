@@ -2861,14 +2861,8 @@ LIST_CONT:
 	JR	NZ,LIST_SW	; not LLIST
 	PUSH	DE
 	SUB	$7F
-	LD	HL,FLAGS
-	BIT	2,(HL)
-	CALL	Z,PR_SPACE
-	RES     2,(HL)		; command follows
-	CP	THEN_T
-	JR	Z,LIST_K
-	SET	2,(HL)		; arguments follow
-LIST_K:	CALL	TOKEN_L
+	BIT	2,(IY+FLAGS-ERR_NR)
+	CALL	TOKEN_L
 	POP	DE
 	POP	HL		; discard return address
 LIST_SW:RST	$10
