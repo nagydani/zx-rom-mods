@@ -18399,7 +18399,9 @@ USR_RANGE:
 ;;; BUGFIX do not allow address overflow
 	LD	HL,(P_RAMT)
 	SBC	HL,BC
-	JP	NC,L2D2B	; jump back and exit via STACK-BC to store
+;;; BUGFIX: Don't restore IY, it's okay
+	JP	NC,STACKBC
+;;;	JP	NC,L2D2B	; jump back and exit via STACK-BC to store
 ;;; L34E4:  JP      L2D2B           ; jump back and exit via STACK-BC to store
 
 	DEFS	$34E7 - $
@@ -19132,7 +19134,9 @@ L3674:  CALL    L2BF1           ; Routine STK-FETCH to fetch and delete the
                                 ; string parameters from the calculator stack.
                                 ; Register BC now holds the length of string.
 
-        JP      L2D2B           ; Jump back to STACK-BC to save result on the
+;;; BUGFIX: Don't restore IY, it's okay
+	JP	STACKBC
+;;;	JP      L2D2B           ; Jump back to STACK-BC to save result on the
                                 ; calculator stack (with memory check).
 
 ; -------------------------------------
