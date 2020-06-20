@@ -16450,10 +16450,13 @@ L2F8B:  PUSH    DE              ; preserve DE.
 
 ;; PREP-ADD
 L2F9B:  LD      A,(HL)          ; pick up exponent
-        LD      (HL),$00        ; make location zero
+;;; BUGFIX: performance
+;;;	LD      (HL),$00        ; make location zero
         AND     A               ; test if number is zero
         RET     Z               ; return if so
-
+;;; BUGFIX: performance
+	LD      (HL),$00        ; make location zero
+;;;
         INC     HL              ; address mantissa
         BIT     7,(HL)          ; test the sign bit
         SET     7,(HL)          ; set it to implied state
