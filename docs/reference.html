@@ -304,6 +304,10 @@ for 1 &le; <em>n</em> &le; 65534.
 Equivalent to <code>2.718281829^</code> <em>x</em>. 
 Inverse function of <a href="#ln"><code>LN </code><em>x</em></a>.</dd>
 
+<dt><a name="fpeek"><code>FPEEK </code><em>n</em></dt>
+<dd>Returns the 5-byte (40-bit) value at memory address <em>n</em>.
+</dd>
+
 <dt><code>IN </code><em>n</em></dt>
 <dd>Read I/O port <em>n</em>.</dd>
 
@@ -360,7 +364,11 @@ stack is returned as a number.</dd>
 
 <dt><code>USR </code><em>a$</em></dt>
 <dd>Returns the address of the user-defined graphics character (UDG) supplied in 
-<em>a$</em>.</dd>
+<em>a$</em>. By supplying the UDG itself as <em>a$</em>, the address of all 112 
+possible UDG bitmaps can be accessed. For backwards compatibility, <code>USR</code> 
+also accepts letters, in which case, irrespectively of whether they are capital or 
+lower-case, only the first 26 UDG bitmap addresses can be returned.
+</dd>
 
 <dt><code>VAL </code><em>a$</em></dt>
 <dd>Evaluates numeric expression in <em>a$</em>.</dd>
@@ -503,7 +511,7 @@ Equivalent to <em>x</em><code>=0</code>.</dd>
 <h2><a name="inst">Instructions</a></h2>
 
 <dl>
-<dt><code>ASSERT</code> <em>condition</em></dt>
+<dt><code>AND</code> <em>condition</em></dt>
 <dd>Evaluates numeric expression <em>condition</em> and stops, if it equals
 zero, reporting
 &quot;<code>V ASSERT failed</code>&quot;
@@ -548,10 +556,7 @@ conditions to find out when they do not hold.
 <dt><code>DEF FN</code> <em>name</em><code>(</code>[<em>argument</em>[<code>,</code>...]]<code>)=</code><em>expression</em></dt>
 <dd>...</dd>
 
-<dt><code>DEF PROC</code> <em>name</em><code>(</code>[[<code>REF </code>]<em>argument</em>[<code>,</code>...]]<code>)</code></dt>
-<dd>...</dd>
-
-<dt><code>DELETE</code> <em>variable</em> [<code>,<code> <em>variable</em>[<code>,</code>...]]</dt>
+<dt><code>DELETE</code> <em>variable</em> [<code>,</code> <em>variable</em>[<code>,</code>...]]</dt>
 <dd>...</dd>
 
 <dt><code>DELETE</code> [<em>line_number</em>][<code> TO </code>[<em>line_number</em>]]</dt>
@@ -584,7 +589,7 @@ conditions to find out when they do not hold.
 <dt><code>FLASH</code> <em>attribute_bit</em></dt>
 <dd>...</dd>
 
-<dt><code>FOR</code> <em>name</em><code>=</code><em>start</em> <code>TO</code> <em>end</em> [<code>STEP</code> <em>step</em>]</dt>
+<dt><a name="for"><code>FOR</code></a> <em>name</em><code>=</code><em>start</em> <code>TO</code> <em>end</em> [<code>STEP</code> <em>step</em>]</dt>
 <dd>...</dd>
 
 <dt><code>FORMAT</code></dt>
@@ -608,7 +613,7 @@ conditions to find out when they do not hold.
 <dt><code>INVERSE</code> <em>attribute_bit</em></dt>
 <dd>...</dd>
 
-<dt><code>@</code><em>label</em></dt>
+<dt><code>@</code><em>label</em> [<code>(</code><em>item</em>[<code>,</code>...]<code>)</code>]</dt>
 <dd>...</dd>
 
 <dt><code>LET</code> <em>variable_reference</em>[<em>operator</em>]<code>=</code>value</dt>
@@ -639,7 +644,11 @@ conditions to find out when they do not hold.
 <dd>...</dd>
 
 <dt><code>NEXT</code> [<em>variable_name</em>]</dt>
-<dd>...</dd>
+<dd>Execute the <code>NEXT</code> iteration of a <a href="#for"><code>FOR</code></a> loop. 
+Without arguments, it refers to the innermost loop and the loop variable (which is always 
+local in ZX85 BASIC) is reclaimed after the loop has run its course. Otherwise, the loop 
+variable is incremented past its target without jumping back to after the <code>FOR</code>
+statement.</dd>
 
 <dt><code>ON ERROR</code></dt>
 <dd>...</dd>
@@ -665,10 +674,11 @@ conditions to find out when they do not hold.
 <dt><code>PAUSE</code> <em>delay</em></dt>
 <dd>...</dd>
 
-<dt><code>PLAY</code></dt>
-<dd>...</dd>
+<dt><code>PLAY</code> <em>a$</em> [<code>,</code> ...]</dt>
+<dd>Concurrently play strings containing music definition in a domain-specific language (DSL).
+It can use PSG or MIDI as output device, as specified in the DSL.</dd>
 
-<dt><code>PLOT</code> [<code>#</code><em>stream</em>,] [<em>attributes</em>;] <em>x_coordinate</em><code>,</code><em>y_coordinate</em></dt>
+<dt><code>PLOT</code> [<code>#</code><em>stream</em><code>,</code>] [<em>attributes</em><code>;</code>] <em>x_coordinate</em><code>,</code><em>y_coordinate</em></dt>
 <dd>...</dd>
 
 <dt><code>POKE</code> <em>address</em><code>,</code><em>value</em> [<code>,</code><em>value</em>...]</dt>
