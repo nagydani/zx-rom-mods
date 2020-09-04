@@ -1087,12 +1087,12 @@ the DELETE key is pressed, at which point the entire program is
 <code>RUN</code> again.</p>
 
 <p>Now it is time to flesh out the procedures called from the main loop. The 
-definitions of procedures begin with the <code>DEF PROC</code> keyword,
+definitions of procedures begin with the <code>@</code> label marker,
 followed by the name of the procedure and its parameters. The definition
 ends with the <code>END PROC</code> keyword.</p>
 
 <pre>
- 190 DEF PROC drop()
+ 190 @drop()
  200  LOCAL x,y,k
  210  FOR i=1 TO 4: FOR j=1 TO 4
  220   IF NOT b(i,j)
@@ -1204,7 +1204,7 @@ the corresponding <em><strong>element</strong></em> of array
 the procedure of random placement of a new tile.</p>
 
 <pre>
- 310 DEF PROC move(i,j,x,y)
+ 310 @move(i,j,x,y)
  320  FOR n=1 TO 4
  330   PROC slide(i,j,x,y)
  340   LET i+=y: LET j-=x
@@ -1233,7 +1233,7 @@ would be the job of procedure <code>move</code> rather than the main loop.</p>
 as follows:
 </p>
 <pre>
- 310 DEF PROC move(k)
+ 310 @move(k)
  315  LOCAL i=k?(1,4,4,1),j=k?(1,4,1,4),x=k?(0,0,-1,1),y=k?(1,-1,0,0)
 </pre>
 <p>Thus, <code>PROC move</code> takes a single parameter, the direction of
@@ -1249,7 +1249,7 @@ last one is used, though this can never happen in this program.
 </div>
 
 <pre>
- 370 DEF PROC slide(i,j,x,y)
+ 370 @slide(i,j,x,y)
  380  LOCAL k=i,l=j
  390  FOR n=1 TO 3
  400   LET i+=x: LET j+=y
@@ -1306,7 +1306,7 @@ itself, allowing for using variables local to the loop.</p>
 </div>
 
 <pre>
- 580 DEF PROC board()
+ 580 @board()
  590  FOR i=1 TO 4: FOR j=1 TO 4
  600   PROC tile(i,j,b(i,j))
  610  NEXT : NEXT 
@@ -1318,7 +1318,7 @@ the board and calls <code>PROC tile</code> to draw the tiles and empty
 cells, as the case might be.</p>
 
 <pre>
- 630 DEF PROC tile(x,y,k)
+ 630 @tile(x,y,k)
  640  LOCAL k$=k?("",STR$ (2^k))
  650  LET k$=" "*(4-LEN k$)+k$
  660  PRINT AT x*5-2,y*5-4;k$
