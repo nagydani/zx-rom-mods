@@ -22,12 +22,12 @@
 	DEFB	P_POP - $	; POP
 	DEFB	P_SPECTRUM - $	; SPECTRUM
 	DEFB	P_PLAY - $	; PLAY
-	DEFB	P_PLUG - $	; RND		
-	DEFB	P_PLUG - $	; INKEY$	
-	DEFB	P_PLUG - $	; PI		
-	DEFB	P_PLUG - $	; FN		
+	DEFB	P_PLUG - $	; RND
+	DEFB	P_PLUG - $	; INKEY$
+	DEFB	P_PLUG - $	; PI
+	DEFB	P_PLUG - $	; FN
 	DEFB	P_ORIG - $	; POINT
-	DEFB	P_PLUG - $	; SCREEN$	
+	DEFB	P_PLUG - $	; SCREEN$
 	DEFB	P_PALETTE - $	; ATTR
 	DEFB	P_TURBO - $	; AT
 P_END:	EQU	$
@@ -322,7 +322,7 @@ LABEL_S:LD	A,(DE)
 	JR	C,LABEL_S	; skip indent
 LABEL_N:RST	$30
 	DEFW	L2D1B		; NUMERIC
-	JR	C,LABEL_C
+	JR	C,LABEL_C	; if CF then DE = beginning of first statement
 	INC	DE
 	LD	A,(DE)
 	JR	LABEL_N		; skip line number
@@ -332,12 +332,12 @@ LABEL_C:LD	A,(SUBPPC)
 	INC	HL
 	PUSH	HL		; length goes here
 	INC	HL
-	INC	HL
-	LD	(HL),A
+	INC	HL		; skip length
+	LD	(HL),A		; statement number
 	INC	HL
 	EX	DE,HL
 	SCF
-	SBC	HL,DE
+	SBC	HL,DE		; relative pointer to before first statement
 	EX	DE,HL
 	LD	(HL),E
 	INC	HL
@@ -1997,7 +1997,7 @@ PROC_L0:INC	HL
 PROC_L1:INC	HL
 	LD	A,(HL)
 	CP	$21
-	JR	NC,PROC_L1
+	JR	C,PROC_L1
 	CP	")"
 	JR	NZ,PROC_L	; non-empty PROC
 	LD	(DATADD),HL	; closing brace of PROC
@@ -2056,7 +2056,6 @@ PROC_X:	EXX
 	LD	(DATADD),HL
 	LD	HL,(X_PTR)
 	LD	(CH_ADD),HL
-	INC	HL
 	RST	$18		; separator in DEF PROC
 	CP	","
 	JR	NZ,PROC_E

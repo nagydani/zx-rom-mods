@@ -425,21 +425,21 @@ JP_LBL:	LD	HL,(PROG)
 	SBC	HL,BC		; subtract large target from PROG
 	LD	E,(HL)
 	INC	HL
-	LD	D,(HL)
+	LD	D,(HL)		; DE = length
 	ADD	HL,DE
 	LD	(CH_ADD),HL
 	SBC	HL,DE
 	INC	HL
 	LD	DE,SUBPPC
-	LDI
+	LDI			; statement number
 	LD	E,(HL)
 	INC	HL
-	LD	D,(HL)
+	LD	D,(HL)		; relative pointer to before first statement
 	ADD	HL,DE
 	DEC	HL
 	LD	D,(HL)
 	DEC	HL
-	LD	E,(HL)
+	LD	E,(HL)		; DE = length of line
 	EX	DE,HL
 	ADD	HL,DE
 	INC	HL
