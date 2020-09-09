@@ -979,10 +979,10 @@ not a REPL, as the game only uses the canvas, not the console.<p>
   80   REPEAT 
   90    LET k=CODE INKEY$
  100   UNTIL k>=8 AND k<=12
- 110   IF k=8 THEN PROC move(1,1,0,1)
- 120   ELSE IF k=9 THEN PROC move(4,4,0,-1)
- 130   ELSE IF k=10 THEN PROC move(4,1,-1,0)
- 140   ELSE IF k=11 THEN PROC move(1,4,1,0)
+ 110   IF k=8 THEN PROC tilt(1,1,0,1)
+ 120   ELSE IF k=9 THEN PROC tilt(4,4,0,-1)
+ 130   ELSE IF k=10 THEN PROC tilt(4,1,-1,0)
+ 140   ELSE IF k=11 THEN PROC tilt(1,4,1,0)
  150  UNTIL action OR k=12
  160  PROC board()
  170 UNTIL k=12
@@ -1069,7 +1069,7 @@ We can replace it with a statement that expresses it more clearly:</p>
 
 <pre>
 DELETE 110 TO 140
-110 IF k<>12 THEN PROC move(k-8)
+110 IF k<>12 THEN PROC tilt(k-8)
 </pre> 
 
 <p>The <code>&lt;&gt;</code> sign means <em><strong>not 
@@ -1204,7 +1204,7 @@ the corresponding <em><strong>element</strong></em> of array
 the procedure of random placement of a new tile.</p>
 
 <pre>
- 310 @move(i,j,x,y)
+ 310 @tilt(i,j,x,y)
  320  FOR n=1 TO 4
  330   PROC slide(i,j,x,y)
  340   LET i+=y: LET j-=x
@@ -1233,7 +1233,7 @@ would be the job of procedure <code>move</code> rather than the main loop.</p>
 as follows:
 </p>
 <pre>
- 310 @move(k)
+ 310 @tilt(k)
  315  LOCAL i=k?(1,4,4,1),j=k?(1,4,1,4),x=k?(0,0,-1,1),y=k?(1,-1,0,0)
 </pre>
 <p>Thus, <code>PROC move</code> takes a single parameter, the direction of
