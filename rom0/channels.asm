@@ -510,6 +510,12 @@ ED_COPY:PUSH	HL		; save K_STATE address
 	LD	(IY+T_ADDR-ERR_NR),H	; not LLIST
 	RST	$30
 	DEFW	L111D			; just use ROM1
+	LD	BC,(S_POSNL)
+	LD	HL,(ECHO_E)
+	PUSH	HL
+	CALL	CLSET
+	POP	HL
+	LD	(ECHO_E),HL
 	SET	7,(IY+BORDCR-ERR_NR)	; flashing cursor ON
 	POP	HL
 	RET
