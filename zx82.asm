@@ -20295,8 +20295,7 @@ LIST_RANGE:
 LIST_RANGE_1:
 	CALL	NZ,L1CDE	; FETCH-NUM (number or use zero)
 LIST_RANGE_2:
-	LD	A,$40
-	LD	(MEMBOT+29),A	; set interval end
+	LD	(IY+MEMBOT+29-ERR_NR),$40	; set interval end
 	RST	$18
 	CP	$CC		; TO token
 	RET	NZ
@@ -20306,9 +20305,8 @@ LIST_RANGE_2:
 	CP	":"		; EOS ?
 	RET	Z
 	CALL	L1C82		; CLASS-6, mandatory numeric
-	CALL	L2530		; SYNTAX-Z
-	RET	Z		; return, if checking syntax
-	CALL	L2DA2
+	CALL	L1FC3		; UNSTACK-Z
+	CALL	L2DA2		; FP-TO-BC
 	LD	(MEMBOT+28),BC	; set interval end
 	RET
 
