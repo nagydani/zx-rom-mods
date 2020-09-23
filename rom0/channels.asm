@@ -510,12 +510,15 @@ ED_COPY:PUSH	HL		; save K_STATE address
 	LD	(IY+T_ADDR-ERR_NR),H	; not LLIST
 	RST	$30
 	DEFW	L111D			; just use ROM1
-	LD	BC,(S_POSNL)
+; DF_CCL correction
 	LD	HL,(ECHO_E)
 	PUSH	HL
-	CALL	CLSET
+	LD	HL,(DF_CCL)
+	SBC	HL, DE			; reverse ADD HL,DE
+	CALL	CLSET_K
 	POP	HL
 	LD	(ECHO_E),HL
+
 	SET	7,(IY+BORDCR-ERR_NR)	; flashing cursor ON
 	POP	HL
 	RET
@@ -696,7 +699,7 @@ CLSET2:	LD	A,(S_STATE)
 	LD	A,(S_WIDTH)
 	BIT	0,(IY+$02)	; upper screen?
 	JR	Z,CLSET3
-	LD	A,(K_STATE)
+CLSET_K:LD	A,(K_STATE)
 	ADD	A,A
 	ADD	A,A
 	LD	A,(K_WIDTH)
