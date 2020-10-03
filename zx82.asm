@@ -14752,7 +14752,7 @@ L2AF4:  CALL    L2530           ; routine SYNTAX-Z.
 ;; LET
 L2AFF:  LD      HL,(DEST)      ; fetch system variable DEST to HL.
         BIT     1,(IY+$37)      ; test FLAGX - handling a new variable ?
-        JR      Z,L2B66         ; forward to L-EXISTS if not.
+        JR      Z,L_EXISTS	; forward to L-EXISTS if not.
 
 ; continue for a new variable. DEST points to start in BASIC line.
 ; from the CLASS routines.
@@ -14907,8 +14907,9 @@ MAKE_STRING:
 ; the jump was to here if the variable already existed.
 
 ;; L-EXISTS
-L2B66:  BIT     6,(IY+$01)      ; test FLAGS - numeric or string result ?
-        JR      Z,L2B72         ; skip forward to L-DELETE$   -*->
+L_EXISTS:
+	BIT     6,(IY+$01)      ; test FLAGS - numeric or string result ?
+        JR      Z,L_DELETES	; skip forward to L-DELETE$   -*->
                                 ; if string result.
 
 ; A numeric variable could be simple or an array element.
@@ -14924,7 +14925,8 @@ L2B66:  BIT     6,(IY+$01)      ; test FLAGS - numeric or string result ?
 
 ;; L-DELETE$
 ;;; BUGFIX: local string assignment
-L2B72:	CALL	STRING_HOOK	; ZF set at this point
+L_DELETES:
+	CALL	STRING_HOOK	; ZF set at this point
 ;;; L2B72:  LD      HL,(DEST)      ; fetch DEST to HL.
                                 ; (still set from first instruction)
         LD      BC,(STRLEN)      ; fetch STRLEN to BC.
