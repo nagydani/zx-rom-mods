@@ -188,9 +188,11 @@ LC_STRR:POP	DE		; discard pointer
 	RST	$10
 
 ; new string variable assignment
-NSTRNG:	AND	$E0
+NSTRNG:	JR	NC,FRSTR	; first assignment
+	AND	$E0
 	JR	Z,RSTRNG	; re-assignment of long-named string
-	LD	HL,-7
+	RST	$10		; back to ROM1 for short names
+FRSTR:	LD	HL,-7
 	ADD	HL,BC
 	JR	C,LSTRNG	; first assignment of long-named string
 	RST	$10		; back to ROM1 for short names
@@ -262,7 +264,7 @@ STRNG_CONT:
 	AND	A
 	SBC	HL,SP
 	ADD	HL,SP
-	JR	C,SW_STR	; global variable
+	JR	C,SW_STR	; jump if global variable
 	BIT	0,(IY+$37)	; FLAGX, complete string
 	JR	Z,SW_STR
 	PUSH	HL
