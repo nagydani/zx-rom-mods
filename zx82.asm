@@ -14764,11 +14764,13 @@ L2B0B:  INC     BC              ; increase byte count for each relevant
                                 ; character
 
 ;; L-NO-SP
-L2B0C:  INC     HL              ; increase pointer.
-        LD      A,(HL)          ; fetch character.
+L2B0C:
 ;;; BUGFIX: This is slow and buggy
-	CP	$21
-	JR	C,L2B0C
+	CALL	NEXT_PR
+;;;	INC     HL              ; increase pointer.
+;;;	LD      A,(HL)          ; fetch character.
+;;;	CP	$21
+;;;	JR	C,L2B0C
 ;;;	CP      $20             ; is it a space ?
 ;;;	JR      Z,L2B0C         ; back to L-NO-SP is so.
 ;;;	JR      NC,L2B1F        ; forward to L-TEST-CH if higher.
@@ -20193,6 +20195,14 @@ SARGL:	INC	HL
 LIST_EXT:
 	CALL	LIST_HOOK
 	JP	L1937			; OUT-CHAR
+
+NEXT_PR:INC	HL
+	LD	A,(HL)
+	CP	$10		; EOL
+	RET	C
+	CP	$21		; SPACE
+	JR	C,NEXT_PR
+	RET
 
 ; These bytes should be $FF in case anyone crazy vectors their IM2 from here
 	DEFS	$3901 - $, $FF
