@@ -10201,7 +10201,7 @@ L1F3A:	XOR	A
 	JP	Z,L15DE		; WAIT-KEY1, indefinite PAUSE
 	LD	HL,(FRAMES+1)
 	LD	DE,(FRAMES)	; start time in H DE
-PAUSE_L:CALL	L15E6		; INPUT-AD
+PAUSE_L:CALL	NOECHO		; INPUT-AD
 	RET	C
 	JP	PAUSE_D
 ;; PAUSE-1
@@ -20203,6 +20203,9 @@ NEXT_PR:INC	HL
 	CP	$21		; SPACE
 	JR	C,NEXT_PR
 	RET
+
+NOECHO:	RES	3,(IY+TV_FLAG-ERR_NR)
+	JP	L15E6			; INPUT-AD
 
 ; These bytes should be $FF in case anyone crazy vectors their IM2 from here
 	DEFS	$3901 - $, $FF
