@@ -20385,12 +20385,15 @@ IOCTL1:	CALL	L1601		; open it
 
 ; Branching of IF statement, with result recorded
 C2FLAGX4:
-	JR	C,SETFX4
+	JP	C,SETFX4
 	RES	4,(IY+FLAGX-ERR_NR)
 SSTMTL1:JP	L1B29		; SSTMT-L-1
 
-SETFX4:	SET	4,(IY+FLAGX-ERR_NR)
-	JP	L1BB3		; LINE-END
+; Skip single-character variable (10 bytes)
+NEXT_O_1:
+	JP	NC,L19DB	; NEXT-O-5
+	LD	C,$13
+	JP	L19DB		; NEXT-O-5
 
 ; These must be FF for IM2 vectoring
 	DEFS	$3A01 - $, $FF
@@ -20766,11 +20769,8 @@ DELIDX:	CALL	CHKIDX
 	DEC	(HL)
 	RET
 
-; Skip single-character variable (10 bytes)
-NEXT_O_1:
-	JP	NC,L19DB	; NEXT-O-5
-	LD	C,$13
-	JP	L19DB		; NEXT-O-5
+SETFX4:	SET	4,(IY+FLAGX-ERR_NR)
+	JP	L1BB3		; LINE-END
 
 ; Check last character of a long variable name (16 bytes)
 V_CONT:	INC	DE
