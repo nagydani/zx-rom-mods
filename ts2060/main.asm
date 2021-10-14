@@ -1,0 +1,249 @@
+	INCLUDE	"../labels.asm"
+
+	ORG	$0000
+; Cold reset
+RST00:	DI
+	LD	BC, $692B
+RST00L:	DEC	BC
+	LD	A,B
+	OR	C
+	JR	NZ,RST00L	; No instruction fetch from 0008, for IF1 compatibility
+	JP	RESET
+	DEFS	$10 - $
+
+; Return to ROM1
+RST10:	INC	SP
+	INC	SP
+	JP	SWAP1
+	DEFS	$18 - $
+
+; Collect a character
+RST18:	LD	HL,(CH_ADD)
+	LD	A,(HL)
+TEST_CHAR:
+	CALL	SKIP_OVER
+	RET	NC
+
+; Collect next character
+RST20:	CALL	CH_ADD_1
+	JR	TEST_CHAR
+	DEFS	$28 - $
+
+; Calculator restart
+RST28:	JP	L335B		; CALCULATE
+	DEFS	$30 - $
+
+; Call routine from ROM1
+RST30:	EX	(SP),HL
+	PUSH	AF
+	LD	A,(HL)
+	JP	CALL_ROM1
+	DEFS	$38 - $
+
+; IM1 routine
+RST38:	PUSH	AF
+	LD	A,SWAP/$100
+	PUSH	AF
+	INC	SP
+	LD	A,1
+	PUSH	AF
+	INC	SP
+	XOR	A
+	PUSH	AF
+	INC	SP
+	LD	A,RST38
+	PUSH	AF
+	INC	SP
+	RST	RST10
+
+CALL_ROM1:
+	LD	(TARGET),A
+	INC	HL
+	LD	A,(HL)
+	LD	(TARGET+1),A	; target address in TARGET
+	POP	AF
+	INC	HL
+	EX	(SP),HL		; return address on stack
+	PUSH	HL
+	LD	HL,SWAP
+	EX	(SP),HL		; return address, SWAP on stack
+	PUSH	HL
+	LD	HL,(TARGET)
+	EX	(SP),HL		; return address, SWAP, target address on stack
+ROM1SW:	JP	SWAP1		; this one is performance-critical
+
+	DEFS	$66 - $
+NMI:	PUSH	AF
+	PUSH	HL
+	LD	HL,(NMIADD)
+	PUSH	HL
+	LD	A,H
+	CP	$3F
+	RET	NC
+	OR	L
+	JR	NZ,ROM1SW
+NONMI:	POP	HL
+	POP	HL
+	POP	AF
+	RETN
+
+F_SCAN:	LD	HL,10
+	ADD	HL,SP
+	LD	A,(HL)
+	INC	HL
+	EX	AF,AF'
+	LD	A,(HL)
+	LD	E,L
+	LD	D,H
+	DEC	HL
+	DEC	HL
+	LD	BC,10
+	LDDR
+	POP	HL
+	LD	H,A
+	EX	AF,AF'
+	LD	L,A
+JP_HL:	JP	(HL)
+
+SKIP_OVER:
+	CP	$21
+	RET	NC
+	CP	$0D
+	RET	Z
+	CP	1
+	RET	C
+	CP	6
+	CCF
+	RET	NC
+	CP	$18
+	CCF
+	RET	C
+	INC	HL
+	CP	$16
+	JR	C,SKIPS2
+	INC	HL
+SKIPS2:	SCF
+	LD	(CH_ADD),HL
+	RET
+
+CH_ADD_1:
+	LD	HL,(CH_ADD)
+TEMP_PTR1:
+	INC	HL
+TEMP_PTR2:
+	LD	(CH_ADD),HL
+	LD	A,(HL)
+	RET
+
+RESET:	LD	A,7
+	OUT	($FE),A
+	LD	A,$80
+	OUT	($FF),A		; EX-ROM, IRQ, BLACK ON WHITE, SCREEN0
+	LD	A,$3F
+	LD	I,A
+	LD	HL,INIT_5B00
+	LD	DE,$5B00
+	LD	BC,INIT_5B00_L
+	LDIR
+	LD	L,E
+	LD	H,D
+	INC	DE
+	LD	(HL),$00
+	LD	BC,$FFFF-INIT_5B00_E
+	LDIR
+	LD	(P_RAMT),HL
+	SET	4,(IY+FLAGS-ERR_NR)	; TS2060 mode
+	LD	DE,$3EAF		; last byte of U
+	LD	BC,$00A8
+	EX	DE,HL
+	LDDR
+	EX	DE,HL
+	INC	HL
+	LD	(UDG),HL
+	DEC	HL
+	LD	BC,$0140
+	LD	(RASP),BC
+	LD	(RAMTOP),HL
+	LD	HL,$3C00
+	LD	(CHARS),HL
+	LD	HL,(RAMTOP)
+	LD	(HL),$3E
+	DEC	HL
+	LD	SP,HL
+	DEC	HL
+	DEC	HL
+	LD	(ERR_SP),HL
+	IM	1
+	LD	IY,ERR_NR
+	EI
+	LD	HL,CHINFO
+	LD	(CHANS),HL
+	LD	DE,L15AF
+	LD	BC,$0015
+	EX	DE,HL
+	RST	RST30
+	DEFW	LDIRR
+	EX	DE,HL
+	DEC	HL
+	LD	(DATADD),HL
+	INC	HL
+	LD	(PROG),HL
+	LD	(VARS),HL
+	LD	(HL),$80
+	INC	HL
+	LD	(E_LINE),HL
+	LD	(HL),$0D
+	INC	HL
+	LD	(HL),$80
+	INC	HL
+	LD	(WORKSP),HL
+	LD	(STKBOT),HL
+	LD	(STKEND),HL
+	LD	A,$38
+	LD	(ATTR_P),A
+	LD	(ATTR_T),A
+	LD	(BORDCR),A
+	LD	HL,$0523
+	LD	(REPDEL),HL
+	DEC	(IY+KSTATE-ERR_NR)
+	DEC	(IY+KSTATE+4-ERR_NR)
+	LD	HL,L15C6
+	LD	DE,STRMS
+	LD	BC,$000E
+	RST	RST30
+	DEFW	LDIRR
+	LD	(IY+DF_SZ-ERR_NR),$02
+	RST	RST30
+	DEFW	L0D6B
+loop:	jr	loop	
+
+
+INIT_5B00:	EQU	$
+; This stuff does not run here, it gets copied to $5B00
+	ORG	$5B00
+SWAP:	PUSH	AF
+	XOR	A
+	OUT	($F4),A
+	POP	AF
+	EX	(SP),HL
+	RES	5,H
+	EX	(SP),HL
+	RET
+
+TARGET:	EQU	$
+
+INIT_5B00_E:	EQU	$
+
+INIT_5B00_L:	EQU	$ - $5B00
+
+	ORG	INIT_5B00 + INIT_5B00_L
+
+
+
+	DEFS	L0554 - $ - 5	; POP AF \ RET in ROM1
+SWAP1:	PUSH	AF
+	LD	A, 1
+	OUT	($F4), A
+; Control returned to ROM1
+
+	DEFS	$2000 - $
