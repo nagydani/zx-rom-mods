@@ -152,7 +152,6 @@ RESET:	LD	A,7
 	LD	BC,$FFFF-INIT_5B00_E
 	LDIR
 	LD	(P_RAMT),HL
-	SET	4,(IY+FLAGS-ERR_NR)	; TS2060 mode
 	LD	DE,$3EAF		; last byte of U
 	LD	BC,$00A8
 	EX	DE,HL
@@ -164,7 +163,7 @@ RESET:	LD	A,7
 	LD	BC,$0140
 	LD	(RASP),BC
 	LD	(RAMTOP),HL
-	LD	HL,$3C00
+NEWTS:	LD	HL,$3C00
 	LD	(CHARS),HL
 	LD	HL,(RAMTOP)
 	LD	(HL),$3E
@@ -177,6 +176,7 @@ RESET:	LD	A,7
 	LD	(NMIADD),HL
 	IM	1
 	LD	IY,ERR_NR
+	LD	(IY+FLAGS-ERR_NR),$10	; TS2060 mode
 	EI
 	LD	HL,CHINFO
 	LD	(CHANS),HL
@@ -216,9 +216,12 @@ RESET:	LD	A,7
 	DEFW	LDIRR
 	LD	(IY+DF_SZ-ERR_NR),$02
 	RST	RST30
-	DEFW	L0D6B
-loop:	jr	loop	
-
+	DEFW	L0D6B		; CLS
+	LD	DE,COPYRIGHT
+	CALL	STDERR_MSG
+	LD	DE,CPR_MSG
+	PUSH	DE
+	RST	RST10
 
 INIT_5B00:	EQU	$
 ; This stuff does not run here, it gets copied to $5B00
@@ -249,6 +252,9 @@ SWAP1:	PUSH	AF
 ; Control returned to ROM1
 
 	INCLUDE	"channels.asm"
+	INCLUDE	"reportz.asm"
+	INCLUDE	"reports.asm"
+	INCLUDE	"tokens.asm"
 
 	DEFS	LIST_HOOK - 27 - $2000 - $
 
@@ -278,7 +284,6 @@ MAIN_ADD_CONT:	EQU	SWAP1
 ERR_CONT:	EQU	SWAP1
 RUN_CONT:	EQU	SWAP1
 LOCAL_CONT:	EQU	SWAP1
-NEWTS:		EQU	SWAP1
 STEP_CONT:	EQU	SWAP1
 
 ; on error handling

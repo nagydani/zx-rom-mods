@@ -1,0 +1,236 @@
+COPYRIGHT:
+	DEFB	$7F
+	DEFM	" 2021 ePoint Systems Ltd"
+	DEFB	$8D
+; functions, etc.
+HEX_T:	EQU	$24	; $
+OCT_T:	EQU	$5C	; \
+RND_T:	EQU	$A5
+ATTR_TK:EQU	$AB
+AT_T:	EQU	$AC
+TAB_T:	EQU	$AD
+CODE_T:	EQU	$AF
+PEEK_T:	EQU	$BE
+USR_T:	EQU	$C0
+STR_T:	EQU	$C1
+CHR_T:	EQU	$C2
+BIN_T:	EQU	$C4
+AND_T:	EQU	$C6
+LINE_T:	EQU	$CA
+THEN_T:	EQU	$CB
+TO_T:	EQU	$CC
+STEP_T:	EQU	$CD
+INK_T:	EQU	$D9
+PAPER_T:EQU	$DA
+FLASH_T:EQU	$DB
+BRIGHT_T:EQU	$DC
+INVERSE_T:EQU	$DD
+OVER_T:	EQU	$DE
+
+TURBO_T:EQU	AT_T
+PALETTE_T:EQU	ATTR_TK
+DEFPROC_T:EQU	LABEL_T
+STOP_T:	EQU	$E2
+DATA_T:	EQU	$E4
+CONTINUE_T:EQU	$E8
+REM_T:	EQU	$EA
+FOR_T:	EQU	$EB
+GOTO_T:	EQU	$EC
+GOSUB_T:EQU	$ED
+NEXT_T:	EQU	$F3
+POKE_T:	EQU	$F4
+IF_T:	EQU	$FA
+
+ELSE_T:	EQU	THEN_T
+; s+'G'
+T_ELSE:	DEFM	"ELSE"
+
+TOKENS:	DEFB	$80+" "
+
+XOR_T:	EQU	$80
+; G '8'
+	DEFM	">"
+	DEFB	$80+"<"
+
+RL_T:	EQU	$81
+; G '1'
+	DEFM	"<"
+	DEFB	$80+"<"
+
+RR_T:	EQU	$82
+; G '2'
+	DEFM	">"
+	DEFB	$80+">"
+
+SQ_T:	EQU	$83
+; G '3'
+	DEFM	"SQ"
+	DEFB	$80+" "
+
+FPEEK_T:EQU	$84
+; G '4'
+	DEFM	"FPEEK"
+	DEFB	$80+" "
+
+DPEEK_T:EQU	$85
+; G '5'
+	DEFM	"DPEEK"
+	DEFB	$80+" "
+
+STICK_T:EQU	$86
+; G '6'
+	DEFM	"STICK"
+	DEFB	$80+" "
+
+TIMES_T:EQU	$87
+; G '7'
+	DEFM	"TIME$"
+	DEFB	$80+" "
+
+TIME_T:	EQU	$88
+; G s+'7'
+	DEFM	"TIM"
+	DEFB	$80+"E"
+
+ITEM_T:	EQU	$89
+; G s+'6'
+	DEFM	"ITE"
+	DEFB	$80+"M"
+
+REF_T:	EQU	$8A
+; G s+'5'
+	DEFM	"RE"
+	DEFB	$80+"F"
+
+MEM_T:	EQU	$8B
+; G s+'4'
+	DEFM	"MEM"
+	DEFB	$80+"$"
+
+FREE_T:	EQU	$8C
+; G s+'3'
+	DEFM	"FRE"
+	DEFB	$80+"E"
+
+INSTRUCTION_T:	EQU	$8D
+
+; instructions
+LABEL_T:EQU	$8D
+; G s+'2'
+	DEFB	$80+"@"
+
+ONERR_T:EQU	$8E
+; G s+'1'
+	DEFM	"ON "
+ERR_MSG:DEFM	"ERRO"
+	DEFB	$80+"R"
+
+WRITE_T:EQU	$8F
+; G s+'8'
+	DEFM	"WRITE "
+	DEFB	$80+"#"
+
+ASSERT_T:EQU	$90
+; G 'A'
+	DEFM	"DELET"
+	DEFB	$80+"E"
+
+LOCAL_T:EQU	$91
+; G 'B'
+	DEFM	"LOCA"
+	DEFB	$80+"L"
+
+CLIP_T:	EQU	$92
+; G 'C'
+	DEFM	"CLI"
+	DEFB	$80+"P"
+
+DISP_T:	EQU	$93
+; G 'D'
+	DEFM	"DISPLA"
+	DEFB	$80+"Y"
+
+FPOKE_T:EQU	$94
+; G 'E'
+	DEFM	"FPOK"
+	DEFB	$80+"E"
+
+RENUM_T:EQU	$95
+; G 'F'
+	DEFM	"RENU"
+	DEFB	$80+"M"
+
+SCALE_T:EQU	$96
+; G 'G'
+	DEFM	"SCAL"
+	DEFB	$80+"E"
+
+ENDWHILE_T:EQU	$97
+; G 'H'
+	DEFM	"END WHIL"
+	DEFB	$80+"E"
+
+UNTIL_T:EQU	$98
+; G 'I'
+	DEFM	"UNTI"
+	DEFB	$80+"L"
+
+TRACE_T:EQU	$99
+; G 'J'
+	DEFM	"TRAC"
+	DEFB	$80+"E"
+
+ENDIF_T:EQU	$9A
+; G 'K'
+	DEFM	"END I"
+	DEFB	$80+"F"
+
+YIELD_T:EQU	$9B
+; G 'L'
+	DEFM	"YIEL"
+	DEFB	$80+"D"
+
+REPEAT_T:EQU	$9C
+; G 'M'
+	DEFM	"REPEA"
+	DEFB	$80+"T"
+
+EXIT_T:	EQU	$9D
+; G 'N'
+	DEFM	"EXI"
+	DEFB	$80+"T"
+
+WHILE_T:EQU	$9E
+; G 'O'
+	DEFM	"WHIL"
+	DEFB	$80+"E"
+
+ENDPROC_T:EQU	$9F
+; G 'P'
+	DEFM	"END PRO"
+	DEFB	$80+"C"
+
+STACK_T:EQU	$A0
+; G 'Q'
+	DEFM	"STAC"
+	DEFB	$80+"K"
+
+PROC_T:	EQU	$A1
+; G 'R'
+	DEFM	"PRO"
+	DEFB	$80+"C"
+
+POP_T:	EQU	$A2
+; G 'S'
+	DEFM	"PO"
+	DEFB	$80+"P"
+
+SPECTRUM_T:EQU	$A3
+; G 'T'
+	DEFM	"SPECTRU"
+	DEFB	$80+"M"
+
+PLAY_T:EQU	$A0
+; G 'U'
+	DEFM	"PLA"
+	DEFB	$80+"Y"

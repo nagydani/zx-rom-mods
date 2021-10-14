@@ -6022,7 +6022,7 @@ NEW_CONT:
         CALL    L0D6B           ; call routine CLS to set up system
                                 ; variables associated with screen and clear
                                 ; the screen and set attributes.
-        XOR     A               ; clear accumulator so that we can address
+CPR_MSG:XOR     A               ; clear accumulator so that we can address
         LD      DE,L1539 - 1    ; the message table directly.
         CALL    L0C0A           ; routine PO-MSG puts
                                 ; '(c) 1982 Sinclair Research Ltd'
