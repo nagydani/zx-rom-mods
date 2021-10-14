@@ -1,0 +1,35 @@
+REPORTZ:SUB	$1C
+	LD	B,A
+	INC	B
+	ADD	"S"
+	RST	$30
+	DEFW	L0010
+	LD	A," "
+	RST	$30
+	DEFW	L0010
+	LD	DE,REPORTS
+TOKEN:	LD	A,(DE)
+	ADD	A,A
+	INC	DE
+	JR	NC,TOKEN
+	RET	Z		; end of token table
+	DJNZ	TOKEN
+TOKEN_S:LD	A,(DE)
+	CP	" "
+	JR	NZ,MSGNSP
+MSG_SP:	BIT	0,(IY+$01)
+	JR	NZ,MSGSKIP
+MESSAGE:LD	A,(DE)
+MSGNSP:	AND	$7F
+	RST	$30
+	DEFW	L0C3B		; PO-SAVE
+	LD	A,(DE)
+MSGSKIP:INC	DE
+	ADD	A,A
+	JR	NC,MESSAGE
+	RES	0,(IY+$01)	; allow leading space
+	CP	$40		; 2 * " "
+	RET	NZ
+	INC	A		; clear Z
+NOLEAD:	SET	0,(IY+$01)	; suppress leading space
+	RET
