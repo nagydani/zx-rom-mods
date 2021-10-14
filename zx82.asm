@@ -3195,7 +3195,7 @@ L09F4:  CALL    L0B03           ; routine PO-FETCH fetches print position
         CP      $18             ; is character in range 24d - 31d ?
         JR      NC,PO_QUEST        ; to PO-QUEST to also print '?' if so.
 
-        LD      HL,L0A11 - 6    ; address 0A0B - the base address of control
+PO_CTRL:LD      HL,L0A11 - 6    ; address 0A0B - the base address of control
                                 ; character table - where zero would be.
         LD      E,A             ; control character 06 - 23d
         LD      D,$00           ; is transferred to DE.
@@ -3429,7 +3429,7 @@ PO_CONT:JP	NC,CH_RESET
 	LD	DE,PRINT_OUT
 ;;;	LD      DE,L09F4        ; Address: PRINT-OUT
         CALL    POCHANGE       ; routine PO-CHANGE to restore normal channel.
-        LD      HL,(TVDATA)      ; TVDATA gives control code and possible
+XPRCONT:LD      HL,(TVDATA)      ; TVDATA gives control code and possible
                                 ; subsequent character
         LD      D,A             ; save current character
         LD      A,L             ; the stored control code
