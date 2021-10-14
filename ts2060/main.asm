@@ -248,6 +248,8 @@ SWAP1:	PUSH	AF
 	OUT	($F4), A
 ; Control returned to ROM1
 
+	INCLUDE	"channels.asm"
+
 	DEFS	LIST_HOOK - 27 - $2000 - $
 
 
@@ -278,7 +280,6 @@ RUN_CONT:	EQU	SWAP1
 LOCAL_CONT:	EQU	SWAP1
 NEWTS:		EQU	SWAP1
 STEP_CONT:	EQU	SWAP1
-TEMPS_CONT:	EQU	SWAP1
 
 ; on error handling
 ONERRJ:	JP	ONERR_DO

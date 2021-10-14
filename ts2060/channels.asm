@@ -1,0 +1,8 @@
+TEMPS_CONT:
+	IN	A,($FF)
+	LD	HL,BORDCR
+	XOR	(HL)
+	OR	$38
+	XOR	(HL)
+	OUT	($FF),A		; Set BORDER for TIMEX HiRes
+	RST	RST10
