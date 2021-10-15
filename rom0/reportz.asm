@@ -24,48 +24,6 @@ STDERR_MSG:
 	POP	DE
 	JR	MESSAGE
 
-; Output token
-; In: A=token code
-TOKEN_O:SUB	$7F
-	EX	DE,HL
-	BIT	3,(HL)
-TOKEN_L:CALL	Z,PR_SPACE
-	LD	DE,T_ELSE
-	JR	NZ,TOKEN_N	; jump forward in argument mode
-	CP	ELSE_T - $7F
-	JR	Z,TOKEN_E
-	SET	2,(IY+FLAGS-ERR_NR)
-TOKEN_N:LD	B,A
-	SUB	INSTRUCTION_T - $7F
-	JR	C,TOKEN		; jump forward for operators
-	SUB	RND_T - INSTRUCTION_T
-	JR	NC, TOKEN1	; token in ROM1
-	CALL	TOKEN
-	RRCA
-	RST	$30
-	DEFW	L2C8D		; ALPHA -- ALPHANUM would be more correct, but slow and irrelevant
-	RET	NC
-PR_SPACE:
-	BIT	0,(IY+$01)	; space suppressed?
-	JR	NZ,ZRET		; return with ZF, if so
-	PUSH	HL
-	PUSH	AF
-	LD	A," "
-	RST	$30
-	DEFW	L0C3B		; PO_SAVE
-	EX	DE,HL
-	POP	AF
-	POP	HL
-ZRET:	CP	A		; set ZF
-	RET
-
-TOKEN1:	RST	$30
-	DEFW	L0C10
-	RET
-
-TOKEN_E:RES	2,(IY+FLAGS-ERR_NR)	; K mode next
-	JR	TOKEN_S
-
 REPORTZ:SUB	$1C
 	LD	B,A
 	INC	B
