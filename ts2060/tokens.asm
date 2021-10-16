@@ -99,8 +99,8 @@ ITEM_T:	EQU	$89
 
 REF_T:	EQU	$8A
 ; G s+'5'
-	DEFM	"RE"
-	DEFB	$80+"F"
+	DEFM	"REF"
+	DEFB	$80+" "
 
 MEM_T:	EQU	$8B
 ; G s+'4'
