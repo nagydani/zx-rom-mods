@@ -1,8 +1,13 @@
+	DEFB	P_SPECTRUM - $	; SPECTRUM
 	DEFB	P_PLAY - $	; PLAY
 P_END:	EQU	$
 
 P_PLAY:	DEFB	$05
 	DEFW	PLAY
+
+P_SPECTRUM:
+	DEFB	$00
+	DEFW	SPECTRUM
 
 CHECK_END:
 	CALL	SYNTAX_Z
@@ -123,4 +128,5 @@ CL7_E:	CALL	UNSTACK_Z
 	RET
 
 ; instruction routines
+	INCLUDE	"spectrum.asm"
 	INCLUDE	"play.asm"
