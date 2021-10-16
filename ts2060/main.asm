@@ -30,7 +30,7 @@ RST20:	CALL	CH_ADD_1
 	DEFS	$28 - $
 
 ; Calculator restart
-RST28:	JP	L335B		; CALCULATE
+RST28:	JP	CALCULATE
 	DEFS	$30 - $
 
 ; Call routine from ROM1
@@ -442,6 +442,7 @@ DDIGIT:	CP	$A
 	INCLUDE	"reportz.asm"
 	INCLUDE	"reports.asm"
 	INCLUDE	"tokens.asm"
+	INCLUDE	"calculator.asm"
 
 	DEFS	LIST_HOOK - $2000 - $
 
@@ -506,9 +507,7 @@ MOD2A:	RST	$28	; calc
 	DEFB	$32	; mod
 	DEFB	$01	; exchange
 	DEFB	$38	; end
-	RST	$30
-	DEFW	L2DA2   ; FP-TO-BC (and A)
-	RET
+	JP	L2DA2   ; FP-TO-BC (and A)
 
 ; Move both pointers back by one entry
 STEPBACK:
