@@ -201,6 +201,25 @@ NEWTS:	LD	HL,$3C00
 	LD	(WORKSP),HL
 	LD	(STKBOT),HL
 	LD	(STKEND),HL
+; measure framerate
+	LD	BC,$FFFF
+	LD	HL,FRAMES
+	HALT
+	LD	A,(HL)
+FRAMERT:INC	BC
+	CP	(HL)
+	JR	Z,FRAMERT
+	RST	RST30
+	DEFW	STACKBC
+	RST	RST28
+	DEFB	$34,$40,$43,$22,$03	; literal 331800
+	DEFB	$01			; exchange
+	DEFB	$05			; division
+	DEFB	$38			; end_calc
+	RST	RST30
+	DEFW	L2DD5		; FP-TO-A
+	LD	(BEAT),A
+
 	LD	HL,P_OUT	; output service routine in this ROM
 	LD	(CHINFO),HL
 	LD	(CHINFO+5),HL
@@ -245,8 +264,9 @@ SWAP2:	PUSH	HL
 	JR	SWAP
 
 TEMPO:	DEFB	120		; in BPM for PLAY
-TARGET:	EQU	$
-PLAY_ST:EQU	TARGET+2	; PLAY state
+BEAT:	EQU	$		; framerate constant for PLAY
+PLAY_ST:EQU	BEAT+1		; PLAY state
+TARGET:	EQU	PLAY_ST+2	; address in ROM1
 
 INIT_5B00_E:	EQU	$
 
@@ -372,5 +392,21 @@ STEP_CONT:	EQU	SWAP1
 	JP	STEP_CONT
 	JP	TEMPS_CONT
 	JP	F_SCAN
+
+; this routine mirrors ROM1 to keep CALCULATE simple
+	DEFS	$1F05 - $
+TEST5SP:LD	HL,(STKEND)
+	ADD	HL,BC
+	JR	C,REPORT_4
+	EX	DE,HL
+	LD	HL,$0050
+	ADD	HL,DE
+	JR	C,REPORT_4
+	SBC	HL,SP
+	RET	C
+
+REPORT_4:LD	HL,L1F15
+	PUSH	HL
+	RST	$10
 
 	DEFS	$2000 - $

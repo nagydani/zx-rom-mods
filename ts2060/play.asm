@@ -482,9 +482,10 @@ PLAY_DURATION:
 PLAY_OTHER:
 	ADD	A,A
 	CALL	C,PLAY_MIDI
-	LD	DE,125		; change this to 150 for 60Hz machines
-	LD	L,(IX+DURATION)
-	LD	H,D
+	LD	HL,(BEAT)	; 125 for 50Hz, 150 for 60Hz framerate
+	LD	H,0
+	LD	E,(IX+DURATION)
+	LD	D,H
 	RST	$30
 	DEFW	L30A9		; HLxDE
 	LD	E,(IX+COUNTER)
