@@ -1,0 +1,10 @@
+SPECTRUM:	LD	HL,L15AF
+		LD	DE,(CHANS)
+		LD	BC,$15
+		RST	$30
+		DEFW	LDIRR
+		RES	4,(IY+FLAGS-ERR_NR)	; SPECTRUM mode
+		LD	A,$80
+		OUT	($FF),A			; SPECTRUM video mode
+		RST	$10
+
