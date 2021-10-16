@@ -9,8 +9,8 @@ REPORTS:EQU	$-1
 	DEFB	$80+"d"		; V
 	DEFM	"END WHILE without WHIL"
 	DEFB	$80+"E"		; W
-	DEFM	"END PROC without DE"
-	DEFB	$80+"F"		; X
+	DEFM	"END PROC without "
+	DEFB	$80+"@"		; X
 MAX_ERR:EQU	$22
 ERR7TXT:DEFM	"7 Missing PROC or GO SU"
 	DEFB	$80+"B"

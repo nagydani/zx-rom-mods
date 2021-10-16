@@ -289,6 +289,11 @@ SWAP1:	PUSH	AF
 	OUT	($F4), A
 ; Control returned to ROM1
 
+STACKSWAP:
+	LD	HL,SWAP1
+	EX	(SP),HL
+	JP	(HL)
+
 RUN_CONT:
 	INC	B
 	DJNZ	SWAP1		; separator mismatch
@@ -304,7 +309,8 @@ RUN_CONT:
 	ADD	HL,BC
 	CP	PLAY_T + $53
 	JR	NC,GET_PARAM
-ERROR_C:RST	$30
+ERROR_C1:
+	RST	$30
 	DEFW	REPORT_C
 
 SCAN_LOOP:
@@ -331,7 +337,7 @@ GET_PARAM:
 SEPARATOR:
 	RST	$18
 	CP	C
-	JR	NZ,ERROR_C
+	JR	NZ,ERROR_C1
 	RST	$20
 	RET
 
@@ -352,6 +358,66 @@ LV_CONT:PUSH	HL
 	EX	(SP),HL
 	RST	$10
 
+SCAN_CONT:
+	CP	$40
+	JR	Z,DSWAP2	; mismatched function type
+	CP	C
+	JR	NZ,PREFIX_CONT
+; TODO
+;	CP	","
+;	JR	Z,MULTI_CONT
+INFIX_CONT:
+	CP	$0C		; multiplication?
+	JR	NZ,DSWAP2
+	CALL	SYNTAX_Z
+	JR	Z,MULS_S
+	POP	BC
+	LD	BC,D_STRING
+	JP	S_FUNC
+
+MULS_S:	LD	BC,$104C	; tight multiplication
+	LD	HL,L2790
+	EX	(SP),HL
+	RST	$10
+
+ERR_CONT:
+	CP	$1C
+	JR	C,DSWAP2
+	CALL	REPORT
+ERR_C:	LD	HL,X1349
+	EX	(SP),HL
+DSWAP2:	RST	RST10
+
+PREFIX_CONT:
+	RST	$18
+	CP	ONERR_T
+	JR	NC,DSWAP2
+	LD	C,A
+	SUB	SQ_T
+	LD	HL,SCANFUNC2
+	JR	C,IDX_DO
+	LD	HL,FUNCTAB
+	ADD	A,A
+	LD	C,A
+	LD	B,0
+	ADD	HL,BC
+	LD	A,(HL)
+	INC	HL
+	LD	H,(HL)
+	LD	L,A
+	POP	BC		; discard return address
+	JP	(HL)
+
+IDX_DO:	CALL	INDEXER
+SWIDS:	JR	NC,DSWAP2
+	POP	BC
+	LD	C,(HL)
+	LD	B,0
+	ADD	HL,BC
+	JP	(HL)
+
+	INCLUDE	"strmul.asm"
+	INCLUDE	"functions.asm"
 	INCLUDE	"instructions.asm"
 	INCLUDE	"channels.asm"
 	INCLUDE	"reportz.asm"
@@ -364,7 +430,6 @@ LV_CONT:PUSH	HL
 ONERR_DO:	EQU	SWAP1
 INDEX_CONT:	EQU	SWAP1
 LIST_CONT:	EQU	SWAP1
-SCAN_CONT:	EQU	SWAP1
 SUB_CONT:	EQU	SWAP1
 STRNG_CONT:	EQU	SWAP1
 DIGIT_CONT:	EQU	SWAP1
@@ -374,7 +439,6 @@ SKIP_FOR_CONT:	EQU	SWAP1
 NEXT_CONT:	EQU	SWAP1
 RETURN_CONT:	EQU	SWAP1
 MAIN_ADD_CONT:	EQU	SWAP1
-ERR_CONT:	EQU	SWAP1
 LOCAL_CONT:	EQU	SWAP1
 STEP_CONT:	EQU	SWAP1
 
@@ -399,6 +463,53 @@ STEP_CONT:	EQU	SWAP1
 	JP	STEP_CONT
 	JP	TEMPS_CONT
 	JP	F_SCAN
+
+; Mirror a memory area
+; Input: HL=start, BC=length
+MIRROR:	LD	D,(HL)
+	DEC	BC
+	LD	A,B
+	OR	C
+	RET	Z
+	ADD	HL,BC
+	LD	E,(HL)
+	LD	(HL),D
+	SBC	HL,BC
+	LD	(HL),E
+	INC	HL
+	DEC	BC
+	LD	A,B
+	OR	C
+	JR	NZ,MIRROR
+	RET
+
+; Replace a,b on top of stack by INT(a/b) and return a MOD b in registers BC and A.
+MOD2A:	RST	$28	; calc
+	DEFB	$32	; mod
+	DEFB	$01	; exchange
+	DEFB	$38	; end
+	RST	$30
+	DEFW	L2DA2   ; FP-TO-BC (and A)
+	RET
+
+; Move both pointers back by one entry
+STEPBACK:
+	LD	BC,-5
+	LD	D,H
+	LD	E,L
+	ADD	HL,BC
+	RET
+
+FETCH:	LD	HL,(STKEND)
+	DEC	HL
+	LD	B,(HL)
+	DEC	HL
+	LD	C,(HL)
+	DEC	HL
+	LD	D,(HL)
+	DEC	HL
+	LD	E,(HL)
+	RET
 
 ; this routine mirrors ROM1 to keep CALCULATE simple
 	DEFS	$1F05 - $
