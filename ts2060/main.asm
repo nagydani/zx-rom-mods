@@ -38,23 +38,16 @@ RST30:	EX	(SP),HL
 	PUSH	AF
 	LD	A,(HL)
 	JP	CALL_ROM1
-	DEFS	$38 - $
+	DEFS	$38 - 2 - $
 
+PAGEIRQ:OUT	($F4), A
 ; IM1 routine
 RST38:	PUSH	AF
-	LD	A,SWAP/$100
-	PUSH	AF
-	INC	SP
-	LD	A,1
-	PUSH	AF
-	INC	SP
-	XOR	A
-	PUSH	AF
-	INC	SP
-	LD	A,RST38
-	PUSH	AF
-	INC	SP
-	RST	RST10
+	PUSH	HL
+	LD	HL,SWAPIRQ
+	EX	(SP),HL
+	LD	A, 1
+	JR	PAGEIRQ
 
 CALL_ROM1:
 	LD	(TARGET),A
@@ -265,6 +258,11 @@ SWAP:	PUSH	AF
 	EX	(SP),HL
 	RET
 
+SWAPIRQ:XOR	A
+	OUT	($F4),A
+	POP	AF
+	RET
+
 P_OUT:	LD	HL,PR_OUT
 P_OUT1:	EQU	P_OUT+1
 SWAP2:	PUSH	HL
@@ -358,14 +356,28 @@ LV_CONT:PUSH	HL
 	EX	(SP),HL
 	RST	$10
 
+; Single-argument original function extended to multiple arguments
+MULTI_CONT:
+	POP	BC	; discard return address
+	BIT	6,(IY+FLAGS-ERR_NR)	; type of first argument
+	JR	Z,ERRCIDX	; error, if string
+	POP	BC
+	LD	A,B
+	CP	$10
+	JR	NZ,ERRCIDX
+	PUSH	BC
+	LD	HL,MFNTAB
+INDEXJP:CALL	INDEXER
+	JP	C,INDEXER_JP
+ERRCIDX:JP	ERROR_C
+
 SCAN_CONT:
 	CP	$40
 	JR	Z,DSWAP2	; mismatched function type
 	CP	C
 	JR	NZ,PREFIX_CONT
-; TODO
-;	CP	","
-;	JR	Z,MULTI_CONT
+	CP	","
+	JR	Z,MULTI_CONT
 INFIX_CONT:
 	CP	$0C		; multiplication?
 	JR	NZ,DSWAP2
