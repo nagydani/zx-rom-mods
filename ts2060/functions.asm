@@ -634,7 +634,17 @@ D_TIMES:POP	HL		; discard return address
 	LD	DE,0
 	PUSH	DE		; BREG = 0
 	PUSH	HL
-	LD	BC,2+1+2+1+2+1+2
+	LD	A,(BEAT)
+	CP	125		; 50Hz interrupt?
+	JR	Z,TIMESC
+	RST	$30
+	DEFW	L2D28		; STACK-A
+	RST	$28
+	DEFB	$05			; division
+	DEFB	$34,$40,$B0,$00,150	; stk-data
+	DEFB	$04			; multiply
+	DEFB	$38			; end-calc
+TIMESC:	LD	BC,2+1+2+1+2+1+2
 	RST	$30
 	DEFW	L0030		; BC-SPACES
 	EX	DE,HL
