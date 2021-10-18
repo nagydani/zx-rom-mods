@@ -4097,6 +4097,7 @@ L0C88:  DEC     (IY+$52)        ; decrease SCR_CT
 PO_SCR3:CALL    L0DFE           ; routine CL-SC-ALL to scroll whole display
         LD      B,(IY+$31)      ; fetch DF_SZ to B
         INC     B               ; increase to address last line of display
+PO_SCR_ATTR:
         LD      C,$21           ; set C to $21 (was $21 from above routine)
         PUSH    BC              ; save the line and column in BC.
 
