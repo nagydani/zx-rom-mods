@@ -4226,7 +4226,6 @@ L0D2D:  CALL    L0E00           ; routine CL-SCROLL scrolls B lines
 ; ----------------------
 ; This subroutine is called 11 times to copy the permanent colour items
 ; to the temporary ones.
-
 ;; TEMPS
 L0D4D:  XOR     A               ; clear the accumulator
         LD      HL,(ATTR_P)      ; fetch L=ATTR_P and H=MASK_P
@@ -4430,7 +4429,7 @@ RESET_P:EX	AF,AF'
 	DEC	A
 	JP	Z,L0EAC
 	SCF
-	JP	RESET_PS_1
+	JR	RESET_PS_1
 
 	DEFS	$0DD9 - $
 ;;;	LD      BC,$1821        ; reset column and line to 0,0
@@ -4600,31 +4599,24 @@ L0E4D:  AND     $07             ; mask 0-7 to consider thirds at a time
         CALL    L0E88           ; routine CL-ATTR gets attribute address
                                 ; in DE and B * 32 in BC.
 
-;;; BUGFIX: shorter and performs TEMPS
-	CALL	L0D4D		; TEMPS
-	LD	A,(ATTR_T)
+	LD      H,D             ; transfer the address
+	LD      L,E             ; to HL.
 
-        LD      H,D             ; transfer the address
-        LD      L,E             ; to HL.
+	INC     DE              ; make DE point to next location.
 
-        INC     DE              ; make DE point to next location.
-
-;;;	LD      A,(ATTR_P)       ; fetch ATTR_P - permanent attributes
-;;;	BIT     0,(IY+$02)      ; test TV_FLAG  - lower screen in use ?
-;;;	JR      Z,L0E80         ; skip to CL-LINE-3 if not.
-;;;	LD      A,(BORDCR)       ; else lower screen uses BORDCR as attribute.
+	LD      A,(ATTR_P)       ; fetch ATTR_P - permanent attributes
+	BIT     0,(IY+$02)      ; test TV_FLAG  - lower screen in use ?
+	JR      Z,L0E80         ; skip to CL-LINE-3 if not.
+	LD      A,(BORDCR)       ; else lower screen uses BORDCR as attribute.
 ;;;
 ;; CL-LINE-3
-;;;L0E80:
-	LD      (HL),A          ; put attribute in first byte.
+L0E80:	LD      (HL),A          ; put attribute in first byte.
         DEC     BC              ; decrement the counter.
         LDIR                    ; copy bytes to set all attributes.
         POP     BC              ; restore the line $01-$24.
         LD      C,$21           ; make column $21. (No use is made of this)
         RET                     ; return to the calling routine.
-;;; ---
-TEMPS2:	CALL	TEMPS_HOOK
-	JP	L0D4D		; TEMPS
+
 	DEFS	$0E88 - $
 ; ------------------
 ; Attribute handling
@@ -20621,12 +20613,17 @@ LOOK_READ:
 	RST	$08
 	DEFB	$19		; Q Parameter error
 
+; Set possible other attributes to their permanent values
+TEMPS2:	CALL	TEMPS_HOOK
+	JP	L0D4D		; TEMPS
+
+
 ; Check pressed key
 ; In: A - key code (ENTER: CHR$ 13, SYM: CHR$ 14, CAPS: CHR$ 227)
 ; Out: CF - set if not pressed
-KEYDOWN:CALL	L2C8D		; ALPHA
-	JR	NC,KEYDWN1
-	AND	$5F		; to Capitals
+KEYDOWN:;CALL	L2C8D		; ALPHA
+	;JR	NC,KEYDWN1
+	;AND	$5F		; to Capitals
 KEYDWN1:LD	HL,L0205	; MAIN-KEYS
 	LD	BC,$0028	; 40 keys
 	CPIR
