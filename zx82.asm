@@ -11577,9 +11577,9 @@ DCRCLE:	RST     28H             ;; FP-CALC              x, y, r.
 ; ---
 ;   Continue by drawing a circle consisting of 8 symmetrical arcs
 
-L233B:		CALL	L2314
+L233B:		CALL	L2314	; STK-TO-A
 		PUSH	AF
-		CALL	L2307
+		CALL	L2307	; STK-TO-BC
 		POP	AF
 CIRCLE_INT:	LD	H,A
 		LD	L,0
@@ -11595,7 +11595,7 @@ CIRCLE_L2:	PUSH	HL
 		ADD	L
 		LD	C,A
 		PUSH	DE
-		CALL	L22E5
+CIRCLE_PLOT:	CALL	L22E5	; PLOT-SUB
 		POP	DE
 		POP	BC
 		POP	HL
@@ -11625,7 +11625,7 @@ CIRCLE_NC:	LD	E,A
 		JR	Z,CIRCLE_L3
 		LD	DE,01F8H
 		JR	C,CIRCLE_L1
-		JP	L0D4D
+		JP	L0D4D	; TEMPS
 
 ;   Continue when the circle's radius measures greater than one by forming
 ;   the angle 2 * PI radians which is 360 degrees.
