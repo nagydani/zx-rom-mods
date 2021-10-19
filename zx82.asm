@@ -12213,7 +12213,9 @@ L2439:  PUSH    BC              ; Preserve the arc counter on the machine stack.
         DEFB    $03             ;;subtract      ax, ay, Dx, ay-iy ( = Dy).
         DEFB    $38             ;;end-calc      ax, ay, Dx, Dy.
 
-	CALL	L24B7		; Routine DRAW-LINE draws (Dx,Dy) relative to
+;;; BUGFIX: abstract DRAW-LINE	
+	CALL	DRAW_LINE
+;;;	CALL	L24B7		; Routine DRAW-LINE draws (Dx,Dy) relative to
                                 ; the last pixel plotted leaving absolute x
                                 ; and y on the calculator stack.
                                 ;               ax, ay.
