@@ -209,9 +209,13 @@ PR_CPB:	PUSH	HL
 	EX	(SP),HL
 	RST	$10
 
-PR_ABLE:BIT	2,(IY+FLAGS2-ERR_NR)
-	JR	NZ,PR_ANY
-	CP	$80
+PR_ABLE:BIT	2,(IY+FLAGS2-ERR_NR)	; in quotes?
+	JR	NZ,PR_ANY		; jump if so
+	BIT	6,(IY+TV_FLAG-ERR_NR)	; LIST active?
+	JR	NZ,PR_TOKS		; jump if so
+	BIT	0,(IY+TV_FLAG-ERR_NR)	; lower screen?
+	JR	Z,PR_ANY		; jump if not
+PR_TOKS:CP	$80
 	JR	C,PR_ANY
 	CP	RND_T
 	JP	C,UDG_TOKEN		; TODO: JR
