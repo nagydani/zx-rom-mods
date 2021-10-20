@@ -514,7 +514,7 @@ PRSCR:	BIT	1,(IY+FLAGS-ERR_NR)
 	PUSH	DE
 	LD	A,B
 	BIT	0,(IY+TV_FLAG-ERR_NR)
-	JR	NZ,PRSCR4
+	JP	NZ,PRSCR4
 	CP	(IY+DF_SZ-ERR_NR)
 	JR	C,ERROR_5
 	RET	NZ
@@ -558,9 +558,6 @@ SCRONE:	LD	(IY+SCR_CT-ERR_NR),1
 SCRMANY:LD	A,$FE
 	RST	$30
 	DEFW	L1601
-	LD	(ATTR_T),HL
-	LD	B,2
-	CALL	CLLINE
 	POP	AF
 	LD	(P_FLAG),A
 	POP	HL
@@ -571,7 +568,37 @@ PRSCR3:	CALL	SCR_ALL
 	CALL	COL_C
 	RET	NZ		; no attribute magic in mono mode
 SCR32:	RST	$30
-	DEFW	PO_SCR_ATTR	; attribute magic TODO: multicolor
+	DEFW	PO_SCR_ATTR	; attribute magic
+	IN	A,($FF)
+	AND	7
+	RET	Z
+	PUSH	BC		; multicolor attribute magic
+	RST	$30
+	DEFW	L0E9B		; CL-ADDR
+	SET	5,H
+	LD	DE,$70E0	; last row hi-res attribute
+	LD	A,(DE)
+	LD	C,(HL)
+	EX	DE,HL
+SCR3A:	LD	B,$20
+SCR3A0:	LD	(DE),A
+	LD	(HL),C
+	INC	E
+	INC	L
+	DJNZ	SCR3A0
+	INC	H
+	INC	D
+	LD	B,$20
+SCR3A1:	DEC	E
+	DEC	L
+	LD	(DE),A
+	LD	(HL),C
+	DJNZ	SCR3A1
+	INC	H
+	INC	D
+	BIT	3,H
+	JR	Z,SCR3A
+	POP	BC
 	RET
 
 ERROR_D:RST	$30
