@@ -137,6 +137,9 @@ POSCR:	LD	DE,CLSET
 	RES	4,(IY+$02)	; end of AUTOLIST
 	RST	$10
 
+ERROR_5:RST	$30
+	DEFW	L0C86
+
 POSCR2:	DEC	(IY+$52)
 	JR	NZ,POSCR3
 	LD	A,$18
@@ -165,8 +168,6 @@ SCRONE:	LD	A,1
 SCRMANY:LD	A,$FE		; System channel S
 	RST	$30
 	DEFW	L1601		; CHAN-OPEN
-	LD	B,2
-	CALL	CLLINE
 	POP	AF
 	LD	(P_FLAG),A
 	POP	HL
@@ -177,18 +178,48 @@ POSCR3:	CALL	SCR_ALL
 	INC	B
 	LD	A,(S_STATE)
 	AND	$40
-	EX	AF,AF'
-; TODO: Attribute magic PO-SCR-3A
+	LD	A,(S_MODE)
+	CP	$10
+	RET	NC		; no attribute magic in mono mode
+	RST	$30
+	DEFW	PO_SCR_ATTR	; attribute magic
+	LD	A,(S_MODE)
+	AND	$F8
+	RET	Z		; no further magic in standard mode
+	PUSH	BC		; multicolor attribute magic
+	RST	$30
+	DEFW	L0E9B		; CL-ADDR
+	SET	5,H
+	LD	DE,$70E0
+	LD	A,(DE)
+	LD	C,(HL)
+	EX	DE,HL
+SCR3A:	LD	B,$20
+SCR3A0:	LD	(DE),A
+	LD	(HL),C
+	INC	E
+	INC	L
+	DJNZ	SCR3A0
+	INC	H
+	INC	D
+	LD	B,$20
+SCR3A1:	DEC	E
+	DEC	L
+	LD	(DE),A
+	LD	(HL),C
+	DJNZ	SCR3A1
+	INC	H
+	INC	D
+	BIT	3,H
+	JR	Z,SCR3A
+	POP	BC
 	RET
-
-ERROR_5:RST	$30
-	DEFW	L0C86
 
 ERROR_D:RST	$30
 	DEFW	L0D00		; BREAK - CONT repeats
 
 POSCR4:	CP	$02
-	JR	C,ERROR_5
+	JP	C,ERROR_5
 	ADD	A,(IY+$31)
 	SUB	$19
 	RET	NC
