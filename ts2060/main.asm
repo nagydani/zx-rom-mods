@@ -416,24 +416,8 @@ DSWAP2:	RST	RST10
 
 PREFIX_CONT:
 	RST	$18
-	CP	ONERR_T
-	JR	NC,DSWAP2
 	LD	C,A
-	SUB	SQ_T
 	LD	HL,SCANFUNC2
-	JR	C,IDX_DO
-	LD	HL,FUNCTAB
-	ADD	A,A
-	LD	C,A
-	LD	B,0
-	ADD	HL,BC
-	LD	A,(HL)
-	INC	HL
-	LD	H,(HL)
-	LD	L,A
-	POP	BC		; discard return address
-	JP	(HL)
-
 IDX_DO:	CALL	INDEXER
 SWIDS:	JR	NC,DSWAP2
 	POP	BC
@@ -441,6 +425,13 @@ SWIDS:	JR	NC,DSWAP2
 	LD	B,0
 	ADD	HL,BC
 	JP	(HL)
+
+ERROR:	LD	HL,(CH_ADD)
+	LD	(X_PTR),HL
+	LD	HL,L0055
+	EX	(SP),HL
+	LD	L,(HL)
+	RST	$10
 
 DIGIT_CONT:
 	CALL	DDIGIT
@@ -465,9 +456,9 @@ LIST_CONT:
 	SET	6,(IY+TV_FLAG-ERR_NR)	; LIST active
 	BIT	2,(IY+FLAGS-ERR_NR)	; printing in K mode?
 	JR	NZ,LIST_L		; jump, if not
-	RES	2,(IY+TV_FLAG-ERR_NR)	; signal instruction
+	SET	2,(IY+TV_FLAG-ERR_NR)	; signal instruction
 	JR	LIST_K
-LIST_L:	SET	2,(IY+TV_FLAG-ERR_NR)	; signal arguments
+LIST_L:	RES	2,(IY+TV_FLAG-ERR_NR)	; signal arguments
 LIST_K:	RST	$30
 	DEFW	L1937			; OUT-CHAR
 	RES	6,(IY+TV_FLAG-ERR_NR)	; LIST inactive
