@@ -268,10 +268,17 @@ P_OUT1:	EQU	P_OUT+1
 SWAP2:	PUSH	HL
 	JR	SWAP
 
+ERRHOOK:LD	HL,ONERROR
+	JR	SWAP2
+
 TEMPO:	DEFB	120		; in BPM for PLAY
 BEAT:	EQU	$		; framerate constant for PLAY
 PLAY_ST:EQU	BEAT+1		; PLAY state
 TARGET:	EQU	PLAY_ST+2	; address in ROM1
+ERRLN:	EQU	TARGET+2
+ERRC:	EQU	ERRLN+2
+ERRS:	EQU	ERRC+2
+ERRT:	EQU	ERRC+1
 
 INIT_5B00_E:	EQU	$
 
@@ -456,8 +463,13 @@ DDIGIT:	CP	$A
 LIST_CONT:
 	POP	BC	; discard return address
 	SET	6,(IY+TV_FLAG-ERR_NR)	; LIST active
-	RST	$30
-	DEFW	L1937			; PRINT-OUT
+	BIT	2,(IY+FLAGS-ERR_NR)	; printing in K mode?
+	JR	NZ,LIST_L		; jump, if not
+	RES	2,(IY+TV_FLAG-ERR_NR)	; signal instruction
+	JR	LIST_K
+LIST_L:	SET	2,(IY+TV_FLAG-ERR_NR)	; signal arguments
+LIST_K:	RST	$30
+	DEFW	L1937			; OUT-CHAR
 	RES	6,(IY+TV_FLAG-ERR_NR)	; LIST inactive
 	RST	$10
 

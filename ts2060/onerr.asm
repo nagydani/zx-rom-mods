@@ -1,0 +1,43 @@
+ON_ERR:	RST	$30
+	DEFW	L1E99	; FIND-INT2, clears CF
+;	LD	HL,9999
+;	SBC	HL,BC
+;	JP	C,ERROR_B
+	LD	(ERRLN),BC
+	POP	BC	; return address
+	POP	HL	; error address
+	LD	HL, ERRHOOK
+	PUSH	HL
+	PUSH	BC
+	RST	$10
+
+ONERROR:LD	HL,L1303		; MAIN-4, error handler
+	PUSH	HL
+	LD	A,(ERR_NR)
+	INC	A			; 0 OK
+	JR	Z,NO_ERR
+	CP	9			; 9 STOP statement
+	JR	NZ,ERR_GOTO
+NO_ERR:	RST	$10
+ERR_GOTO:
+	LD	(ERRT),A
+	LD	(IY+ERR_NR-ERR_NR),$FF
+	LD	HL,PPC
+	LD	DE,ERRC
+	LD	BC,3
+	LDIR
+	DEC	HL
+	LD	(HL),0
+	LD	DE,(ERRLN)
+	DEC	HL
+	LD	(HL),D
+	DEC	HL
+	LD	(HL),E
+	EX	DE,HL
+	RST	$30
+	DEFW	LINE_ADDR		; find target line
+	XOR	A
+	PUSH	HL
+	LD	HL,X1BA9
+	EX	(SP),HL
+	RST	$10
