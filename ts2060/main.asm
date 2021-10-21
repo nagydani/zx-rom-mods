@@ -295,6 +295,7 @@ STACKSWAP:
 RUN_CONT:
 	INC	B
 	DJNZ	SWAP1		; separator mismatch
+	JR	NC,OLD_CONT
 	ADD	A,$C9-PLAY_T
 	LD	C,A
 	JR	C,SWAP1		; old token instruction
@@ -310,6 +311,12 @@ RUN_CONT:
 ERROR_C1:
 	RST	$30
 	DEFW	REPORT_C
+
+OLD_CONT:
+	LD	A,(T_ADDR)
+	CP	$B2
+	JP	Z,E_POKE
+	JR	ERROR_C1
 
 SCAN_LOOP:
 	LD	HL,(T_ADDR)
