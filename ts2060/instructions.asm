@@ -88,7 +88,7 @@ CMDCLASS2:
 	DEFB	CLASS2_04 - $	; used by FOR & NEXT -- TODO: may be worth replacing
 	DEFB	CLASS2_05 - $	; list of items
 	DEFB	CLASS2_06 - $	; evaluate single numeric expression
-	DEFB	CLASS2_07 - $	; open #2 or other stream before execution
+	DEFB	CLASS2_07 - $	; optionally open stream before execution
 	DEFB	CLASS2_08 - $	; two numeric expressions, separated by comma
 
 CLASS2_03:
@@ -163,9 +163,7 @@ CLASS2_07:
 	INC	HL
 	LD	(T_ADDR),HL
 CL7_E:	CALL	UNSTACK_Z
-	LD	A,2
-	RST	$30
-	DEFW	L1601	; CHAN-OPEN
+	LD	(IY+CURCHL+1-ERR_NR),$00
 	RET
 
 DELIM:	DEFB	$0D

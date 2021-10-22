@@ -101,133 +101,68 @@ TK_TABLE:
 	DEFB	PLAY_M - $
 	DEFB	0
 
-RESET_M:DEFM	"RESE"
-	DEFB	$80+"T"
-
+; functions
+; E s + 'H'
 FPEEK_M:DEFM	"FPEEK"
 	DEFB	$80+" "
 
+; E s + 'O'
 DPEEK_M:DEFM	"DPEEK"
 	DEFB	$80+" "
 
+; E s + 'S'
 STICK_M:DEFM	"STICK"
 	DEFB	$80+" "
 
+; E s + 'Z'
 TIMES_M:DEFM	"TIME$"
 	DEFB	$80+" "
 
+; E s + 'T'
 TIME_M:	DEFM	"TIM"
 	DEFB	$80+"E"
 
+; E s + 'R'
 REF_M:	DEFM	"REF"
 	DEFB	$80+" "
 
+; E s + 'U'
 MEM_M:	DEFM	"MEM"
 	DEFB	$80+"$"
 
+; E s + 'A'
 FREE_M:	DEFM	"FRE"
 	DEFB	$80+"E"
 
-INSTRUCTION_T:	EQU	$8D
 
 ; instructions
+; s + '2'
 LABEL_M:DEFB	$80+"@"
 
+; E s + 'F'
 ONERR_M:DEFM	"ON ER"
 	DEFB	$80+"R"
 
-WRITE_T:EQU	$8F
-; G s+'8'
-	DEFM	"WRITE "
-	DEFB	$80+"#"
+; E s + 'P'
+RESET_M:DEFM	"RESE"
+	DEFB	$80+"T"
 
+; s + '0'
 DELETE_M:
 	DEFM	"DELET"
 	DEFB	$80+"E"
 
-LOCAL_T:EQU	$91
-; G 'B'
-	DEFM	"LOCA"
-	DEFB	$80+"L"
-
-CLIP_T:	EQU	$92
-; G 'C'
-	DEFM	"CLI"
-	DEFB	$80+"P"
-
+; E s + 'K'
 SCREEN_M:DEFM	"DISPLA"
 	DEFB	$80+"Y"
 
+; s + 'X'
 FPOKE_M:DEFM	"FPOK"
 	DEFB	$80+"E"
 
-RENUM_T:EQU	$95
-; G 'F'
-	DEFM	"RENU"
-	DEFB	$80+"M"
-
+; E s + 'G'
 SOUND_M:DEFM	"SOUN"
 	DEFB	$80+"D"
-
-ENDWHILE_T:EQU	$97
-; G 'H'
-	DEFM	"END WHIL"
-	DEFB	$80+"E"
-
-UNTIL_T:EQU	$98
-; G 'I'
-	DEFM	"UNTI"
-	DEFB	$80+"L"
-
-TRACE_T:EQU	$99
-; G 'J'
-	DEFM	"TRAC"
-	DEFB	$80+"E"
-
-ENDIF_T:EQU	$9A
-; G 'K'
-	DEFM	"END I"
-	DEFB	$80+"F"
-
-YIELD_T:EQU	$9B
-; G 'L'
-	DEFM	"YIEL"
-	DEFB	$80+"D"
-
-REPEAT_T:EQU	$9C
-; G 'M'
-	DEFM	"REPEA"
-	DEFB	$80+"T"
-
-EXIT_T:	EQU	$9D
-; G 'N'
-	DEFM	"EXI"
-	DEFB	$80+"T"
-
-WHILE_T:EQU	$9E
-; G 'O'
-	DEFM	"WHIL"
-	DEFB	$80+"E"
-
-ENDPROC_T:EQU	$9F
-; G 'P'
-	DEFM	"END PRO"
-	DEFB	$80+"C"
-
-STACK_T:EQU	$A0
-; G 'Q'
-	DEFM	"STAC"
-	DEFB	$80+"K"
-
-PROC_T:	EQU	$A1
-; G 'R'
-	DEFM	"PRO"
-	DEFB	$80+"C"
-
-POP_T:	EQU	$A2
-; G 'S'
-	DEFM	"PO"
-	DEFB	$80+"P"
 
 SPECTRUM_T:EQU	$A3
 ; G 'T'
