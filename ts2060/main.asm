@@ -303,18 +303,14 @@ RUN_CONT:
 	INC	B
 	DJNZ	SWAP1		; separator mismatch
 	JR	NC,OLD_CONT
-	ADD	A,$C9-PLAY_T
 	LD	C,A
-	JR	C,SWAP1		; old token instruction
-	DEC	B
-	POP	HL		; discard REPORT_C
-	LD	HL,P_END
-	ADD	HL,BC
-	INC	B
+	POP	HL		; discard return address
+	LD	HL,INST_TAB
+	CALL	INDEXER
+	JR	NC,ERROR_C1
 	LD	C,(HL)
 	ADD	HL,BC
-	CP	LABEL_T + $52
-	JR	NC,GET_PARAM
+	JR	GET_PARAM
 ERROR_C1:
 	RST	$30
 	DEFW	REPORT_C
@@ -464,6 +460,49 @@ LIST_K:	RST	$30
 	RES	6,(IY+TV_FLAG-ERR_NR)	; LIST inactive
 	RST	$10
 
+MAIN_ADD_CONT:
+	PUSH	BC
+	CALL	RSTLBLS
+	POP	BC
+	RST	$10
+
+GOTO_CONT:
+	POP	DE		; discard ERROR B
+	CALL	STACKSWAP
+JP_LBL:	LD	HL,(PROG)
+	AND	A
+	SBC	HL,BC		; subtract large target from PROG
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)		; DE = length
+	ADD	HL,DE
+	LD	(CH_ADD),HL
+	SBC	HL,DE
+	INC	HL
+	LD	DE,SUBPPC
+	LDI			; statement number
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)		; relative pointer to before first statement
+	ADD	HL,DE
+	DEC	HL
+	LD	D,(HL)
+	DEC	HL
+	LD	E,(HL)		; DE = length of line
+	EX	DE,HL
+	ADD	HL,DE
+	INC	HL
+	INC	HL
+	LD	(NXTLIN),HL
+	EX	DE,HL
+	DEC	HL
+	LD	E,(HL)
+	DEC	HL
+	LD	D,(HL)
+	LD	(PPC),DE
+	RET
+
+
 	INCLUDE	"strmul.asm"
 	INCLUDE	"functions.asm"
 	INCLUDE	"instructions.asm"
@@ -480,12 +519,10 @@ ONERR_DO:	EQU	SWAP1
 INDEX_CONT:	EQU	SWAP1
 SUB_CONT:	EQU	SWAP1
 STRNG_CONT:	EQU	SWAP1
-GOTO_CONT:	EQU	SWAP1
 FOR_CONT:	EQU	SWAP1
 SKIP_FOR_CONT:	EQU	SWAP1
 NEXT_CONT:	EQU	SWAP1
 RETURN_CONT:	EQU	SWAP1
-MAIN_ADD_CONT:	EQU	SWAP1
 LOCAL_CONT:	EQU	SWAP1
 STEP_CONT:	EQU	SWAP1
 
