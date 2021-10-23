@@ -1,0 +1,214 @@
+OPERTB:	DEFB	"%"
+	DEFB	S_MOD - $
+	DEFB	"?"
+	DEFB	S_ELVIS - $
+	DEFB	"$"
+	DEFB	S_LSTR - $
+	DEFB	0
+
+S_MOD:	LD	A,$08		; priority like /
+	CALL	TIGHTER
+	JP	Z,ERROR_C	; only numeric lefthand
+	LD	BC,$08C2	; delete with priority 8
+	PUSH	BC
+	LD	C,$F2		; mod with same priority
+SWNEXT:	LD	HL,L2790	; S-NEXT
+SWPUSH:	PUSH	HL
+SWAPOP:	RST	$10
+
+S_LSTR:	CALL	SYNTAX_Z
+	JP	NZ,ERROR_2	; Variable not found in runtime
+	LD	HL,FLAGS
+	BIT	6,(HL)
+	JR	Z,SWAPOP	; must be numeric
+	RES	6,(HL)		; indicate string
+	LD	A,D
+	OR	A
+	JR	Z,SWAPOP	; numeric expression
+	LD	HL,(STKBOT)
+	SBC	HL,DE
+	JR	C,SWAPOP	; numeric literal
+F_CPL:	RST	$20		; skip "$"
+F_CPL2:	LD	HL,L2723	; S-OPERTR
+	JR	SWPUSH
+
+S_ELVIS:RST	$20
+	LD	A,(FLAGS)	; selector type in bit 6
+	ADD	A,A
+	JR	NC,S_ELVS
+	ADD	A,A
+	JR	NC,D_ELVS
+	RST	$30
+	DEFW	L1E99		; FIND-INT2
+	RST	$20
+D_ELVSK:LD	A,B
+	OR	C
+	JR	Z,D_ELVZ
+	PUSH	BC
+	CALL	SKIPEX
+	POP	BC
+	JR	C,D_ELVZ
+	LD	(CH_ADD),HL
+	DEC	BC
+	JR	D_ELVSK
+
+D_ELVS:	LD	HL,(STKEND)
+	DEC	HL
+	LD	A,(HL)
+	DEC	HL
+	OR	(HL)
+	JR	Z,D_ELVZ0
+	RST	$20
+	CALL	SKIPEX
+	JR	C,D_ELVR
+	DEC	HL
+	LD	(CH_ADD),HL
+
+D_ELVZ0:LD	HL,(STKEND)
+	LD	DE,-5
+	ADD	HL,DE
+	LD	(STKEND),HL
+	RST	$20
+D_ELVZ:	RST	$30
+	DEFW	L24FB		; SCANNING
+	CP	")"
+	JR	Z,F_CPL
+
+D_ELVT:	CALL	SKIPEX
+	JR	NC,D_ELVT
+D_ELVR:	OR	A
+	JR	NZ,ERROR_C_ELV
+	LD	(CH_ADD),HL
+	RST	$18
+	JR	F_CPL2
+
+TIGHT_S:EX	AF,AF'
+	LD	HL,FLAGS
+	LD	A,E
+	XOR	(HL)		; FLAGS, bit 6
+	AND	$40
+	JR	NZ,ERROR_C_ELV
+	LD	A,E
+	RRCA
+	XOR	(HL)
+	AND	$40
+	XOR	(HL)
+	LD	(HL),A		; set bit 6 according to bit 7 of E
+	EX	AF,AF'
+TIGHTER:POP	HL		; return address
+	POP	DE		; operator
+	PUSH	DE
+	PUSH	HL
+	CP	D
+	BIT	6,(IY+$01)	; FLAGS, check string/numeric
+	RET	NC
+	POP	HL
+	POP	DE
+	PUSH	HL		; eliminate DE
+	CALL	SYNTAX_Z
+	JR	Z,TIGHT_S
+	PUSH	BC
+	PUSH	AF
+	LD	A,E
+	AND	$3F
+	LD	B,A
+	RST	$28
+	DEFB	$3B		; fp_calc_2
+	DEFB	$38		; end
+	POP	AF
+	POP	BC
+	JR	TIGHTER
+
+S_ELVS:	PUSH	AF
+	RST	$18
+	CP	"("
+	JR	NZ,ERROR_C_ELV
+	RST	$20
+	RST	$30
+	DEFW	L24FB + 1	; SCANNING + 1
+	CP	")"
+	JR	NZ,S_ELVL
+S_ELVE:	LD	A,(FLAGS)
+	ADD	A,A
+	POP	BC
+	XOR	B
+	ADD	A,A
+F_CPLNC:JP	NC,F_CPL
+ERROR_C_ELV:
+	JP	ERROR_C
+S_ELVL:	CP	","
+	JR	NZ,ERROR_C_ELV
+	POP	AF
+	ADD	A,A
+	LD	A,(FLAGS)
+	JR	C,S_ELVN
+	PUSH	AF
+	RST	$20
+	RST	$30
+	DEFW	L24FB + 1	; SCANNING + 1
+	CP	")"
+	JR	NZ,ERROR_C_ELV
+	POP	BC
+	LD	A,(FLAGS)
+	XOR	B
+	ADD	A
+	ADD	A
+	JR	C,ERROR_C_ELV
+	JR	F_CPLNC
+S_ELVN:	ADD	A,A
+	PUSH	AF
+S_ELVNL:RST	$20
+	RST	$30
+	DEFW	L24FB + 1	; SCANNING + 1
+	CP	")"
+	JR	Z,S_ELVE
+	CP	","
+	JR	NZ,ERROR_C_ELV
+	LD	A,(FLAGS)
+	ADD	A,A
+	POP	BC
+	PUSH	AF
+	XOR	B
+	ADD	A,A
+	JR	C,ERROR_C_ELV
+	JR	S_ELVNL
+
+; skip expression pointed by HL. CF cleared, it ends with comma
+SKIPEX:	LD	DE,5
+	LD	BC,0
+SKIPEXL:LD	A,(HL)
+	INC	HL
+	CP	$0E
+	JR	Z,SKIPNN
+	CP	"("
+	JR	Z,SKIPBR
+	CP	"\""
+	JR	Z,SKIPQT
+	CP	")"
+	JR	Z,SKIPCB
+	CP	":"
+	JR	Z,SKIPEE
+	CP	$0D
+	JR	Z,SKIPEE
+	CP	THEN_T
+	JR	Z,SKIPEE
+	CP	","
+	JR	NZ,SKIPEXL
+	LD	A,B
+	OR	C
+	JR	NZ,SKIPEXL
+	RET
+SKIPNN:	ADD	HL,DE
+	JR	SKIPEXL
+SKIPBR:	INC	BC
+	JR	SKIPEXL
+SKIPQT:	CP	(HL)
+	INC	HL
+	JR	NZ,SKIPQT
+	JR	SKIPEXL
+SKIPCB:	LD	A,B
+	OR	C
+SKIPEE:	SCF
+	RET	Z
+	DEC	BC
+	JR	SKIPEXL

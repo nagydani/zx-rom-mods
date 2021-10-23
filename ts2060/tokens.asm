@@ -35,6 +35,7 @@ MERGE_T:EQU	$D5
 TIME_T:	EQU	$D5
 VERIFY_T:EQU	$D6
 REF_T:	EQU	$D6
+BEEP_T:	EQU	$D7
 CIRCLE_T:EQU	$D8
 FPEEK_T:EQU	$D8
 INK_T:	EQU	$D9
@@ -133,7 +134,6 @@ MEM_M:	DEFM	"MEM"
 ; E s + 'A'
 FREE_M:	DEFM	"FRE"
 	DEFB	$80+"E"
-
 
 ; instructions
 ; s + '2'

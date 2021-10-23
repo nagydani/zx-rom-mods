@@ -291,6 +291,9 @@ INIT_5B00_L:	EQU	$ - $5B00
 	ORG	INIT_5B00 + INIT_5B00_L
 
 	INCLUDE	"copy.asm"
+	INCLUDE	"tokens.asm"
+	INCLUDE	"reportz.asm"
+	INCLUDE	"reports.asm"
 
 	DEFS	L0554 - $ - 5	; POP AF \ RET in ROM1
 SWAP1:	PUSH	AF
@@ -365,11 +368,6 @@ INDEXER:LD	A,(HL)
 	SCF
 	RET
 
-LV_CONT:PUSH	HL
-	LD	HL,L28B2	; LOOK-VARS, no long string names
-	EX	(SP),HL
-	RST	$10
-
 ; Single-argument original function extended to multiple arguments
 MULTI_CONT:
 	POP	BC	; discard return address
@@ -418,6 +416,13 @@ PREFIX_CONT:
 	RST	$18
 	LD	C,A
 	LD	HL,SCANFUNC2
+	JR	IDX_DO
+
+INDEX_CONT:
+	LD	A,L
+	LD	HL,OPERTB
+	SUB	$AF
+	JR	NZ,DSWAP2
 IDX_DO:	CALL	INDEXER
 SWIDS:	JR	NC,DSWAP2
 	POP	BC
@@ -507,22 +512,17 @@ JP_LBL:	LD	HL,(PROG)
 	RET
 
 
-	INCLUDE	"strmul.asm"
 	INCLUDE	"functions.asm"
 	INCLUDE	"instructions.asm"
+	INCLUDE	"operators.asm"
 	INCLUDE	"channels.asm"
-	INCLUDE	"reportz.asm"
-	INCLUDE	"reports.asm"
-	INCLUDE	"tokens.asm"
-	INCLUDE	"calculator.asm"
+	INCLUDE	"variables.asm"
 
 	DEFS	LIST_HOOK - $2000 - $
 
 
 ONERR_DO:	EQU	SWAP1
-INDEX_CONT:	EQU	SWAP1
 SUB_CONT:	EQU	SWAP1
-STRNG_CONT:	EQU	SWAP1
 FOR_CONT:	EQU	SWAP1
 SKIP_FOR_CONT:	EQU	SWAP1
 NEXT_CONT:	EQU	SWAP1
@@ -596,5 +596,8 @@ FETCH:	LD	HL,(STKEND)
 	DEC	HL
 	LD	E,(HL)
 	RET
+
+	INCLUDE	"calculator.asm"
+	INCLUDE	"strmul.asm"
 
 	DEFS	$2000 - $
