@@ -150,7 +150,8 @@ RESET:	LD	A,$80
 	LD	BC,$FFFF-INIT_5B00_E
 	LDIR
 	LD	(P_RAMT),HL
-	LD	DE,$3EAF		; last byte of U
+	DEC	H		; reserve 256 bytes for the printer buffer
+	LD	DE,$3EAF	; last byte of U
 	LD	BC,$00A8
 	EX	DE,HL
 	LDDR
@@ -178,6 +179,9 @@ NEWTS:	LD	A,7
 	LD	IY,ERR_NR
 	LD	(IY+FLAGS-ERR_NR),$10	; TS2060 mode
 	EI
+	LD	HL,$FF00
+	LD	(PR_CC),HL	; printer buffer at the top of RAM
+	LD	(IY+P_POSN-ERR_NR),$21
 	LD	HL,CHINFO
 	LD	(CHANS),HL
 	LD	DE,L15AF
