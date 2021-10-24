@@ -654,7 +654,12 @@ AY_VOLUME:
 	ADD	8
 	LD	E,A
 	LD	A,D
-OUTAY:	LD	C,$F5
+; Output both to 128k ports and 2068 ports
+OUTAY:	LD	BC,$FFFD
+	OUT	(C),E
+	LD	B,$BF
+	OUT	(C),A
+	LD	C,$F5
 	OUT	(C),E
 	OUT	($F6),A
 PLAY_MIDI:
