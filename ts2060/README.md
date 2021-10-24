@@ -12,7 +12,7 @@
   - `SOUND`
   - `ON ERR`
   - `RESET`
-  - `DELETE`, albeit with a different token value (*ss* + `0`)
+  - `DELETE`, albeit with a different token value (0x5F)
 * TS2068 functions
   - `FREE`
   - `STICK` also supporting Kempston (joystick 0) and Cursor (joystick 3) joysticks as well as keyboard-based controls (second string argument in *right-left-down-up-fire* order).
@@ -39,3 +39,23 @@
 * Labels beginning with `@` that can be used as jump destinations for `GO TO`, `GO SUB` and `RUN`.
 * String variables can have arbitrarily long names, just like numeric variables
 * Numeric literals in hexadecimal (beginning with `$`) and octal (beginning with `\`) bases
+
+## Keywords
+|keyword|keys|
+|---|---|
+|`DELETE`|*ss* + `0`|
+|`DISPLAY`|*E ss* + `K`|
+|`DPEEK`|*E ss* + `O`|
+|`DPOKE`|*E ss* + `L`|
+|`FPEEK`|*E ss* + `H`|
+|`FPOKE`|*ss* + `X`|
+|`FREE`|*E ss* + `A`|
+|`MEM$`|*E ss* + `U`|
+|`ON ERR`|*E ss* + `F`|
+|`PLAY`|*G* `U`|
+|`REF`|*E ss* + `R`|
+|`RESET`|*E ss* + `P`|
+|`SOUND`|*E ss* + `G`|
+|`SPECTRUM`|*G* `T`|
+|`TIME`|*E ss* + `T`|
+|`TIME$`|*E ss* + `Z`|
