@@ -1,3 +1,16 @@
+DPOKE:	RST	$30
+	DEFW	L1E99	; FIND-INT2
+	PUSH	BC	; value
+	RST	$30
+	DEFW	L1E99	; FIND-INT2
+	LD	L,C
+	LD	H,B	; HL = address
+	POP	BC
+	LD	(HL),C
+	INC	HL
+	LD	(HL),B
+	RST	$10
+
 FPOKE:	RST	$28
 	DEFB	$01	; exchange
 	DEFB	$38	; end
