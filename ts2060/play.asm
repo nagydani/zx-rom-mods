@@ -655,10 +655,13 @@ AY_VOLUME:
 	LD	E,A
 	LD	A,D
 ; Output both to 128k ports and 2068 ports
-OUTAY:	LD	BC,$FFFD
-	OUT	(C),E
-	LD	B,$BF
-	OUT	(C),A
+OUTAY:
+; ZX Spectrum 128k ports
+;	LD	BC,$FFFD
+;	OUT	(C),E
+;	LD	B,$BF
+;	OUT	(C),A
+; Timex 2068 ports (interferes with port $FE on the ZX Uno)
 	LD	C,$F5
 	OUT	(C),E
 	OUT	($F6),A
