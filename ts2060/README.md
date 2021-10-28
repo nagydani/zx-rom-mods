@@ -37,6 +37,7 @@
   - *dividend* `%` *divisor* for modulus
   - *switch* `?` (*expression 0*, *expression 1* ...)
 * Labels beginning with `@` that can be used as jump destinations for `GO TO`, `GO SUB` and `RUN`.
+* Expression literals between `{` and `}`: syntax-checked expressions stored as strings for evaluation by `VAL` or `VAL$`.
 * String variables can have arbitrarily long names, just like numeric variables
 * Numeric literals in hexadecimal (beginning with `$`) and octal (beginning with `\`) bases
 
