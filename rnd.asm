@@ -18,8 +18,7 @@ RNDL:	ADC	HL,HL
 	ADC	A,A
 	RL	C
 	JR	NC,NOADD
-	CCF
-	ADC	HL,DE
+	ADD	HL,DE
 	ADC	A,0
 NOADD:	DJNZ	RNDL
 	LD	C,75
@@ -32,7 +31,6 @@ NOADD:	DJNZ	RNDL
 	SUB	A, 0x10
 	LD	(HL),A
 	JP	S_PIEND
-	NOP
 
 ; External routine, need to find extra 18 bytes for it elsewhere
 S_SEED:	JR	Z,NOMOD
