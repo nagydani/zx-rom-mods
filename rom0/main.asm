@@ -1919,7 +1919,7 @@ SUB_CONT:
 	LD	HL,SUB_ER
 	AND	A
 	SBC	HL,DE
-	JP	Z,SW_MA		; Return, if called from DIM
+	JR	Z,SW_SUB	; Return, if called from DIM
 	POP	DE		; discard one return address
 	POP	DE		; discard other return address
 	POP	DE		; error reg in D
