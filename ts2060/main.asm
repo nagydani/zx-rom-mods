@@ -511,6 +511,35 @@ JP_LBL:	LD	HL,(PROG)
 	LD	(PPC),DE
 	RET
 
+SUB_CONT:
+	LD	HL,$000A
+	ADD	HL,SP
+	LD	E,(HL)
+	INC	HL
+	LD	D,(HL)
+	LD	HL,SUB_ER
+	AND	A
+	SBC	HL,DE
+	JR	Z,SW_SUB	; Return, if called from DIM
+	POP	DE		; discard one return address
+	POP	DE		; discard other return address
+	POP	DE		; error reg in D
+	POP	HL		; limit in HL
+	PUSH	HL		; put it back
+	DEC	BC
+	AND	A
+	SBC	HL,BC
+	LD	B,H
+	LD	C,L		; BC = HL - (BC - 1)
+	POP	HL		; restore limit
+	LD	A,D		; error value in A
+	POP	DE		; restore DE
+	JR	Z,SUB_OOR
+	JR	NC,SW_SUB	; return, if we are in range
+SUB_OOR:SCF
+	DEC	A
+SW_SUB:	RST	$10
+
 
 	INCLUDE	"functions.asm"
 	INCLUDE	"instructions.asm"
@@ -522,7 +551,6 @@ JP_LBL:	LD	HL,(PROG)
 
 
 ONERR_DO:	EQU	SWAP1
-SUB_CONT:	EQU	SWAP1
 FOR_CONT:	EQU	SWAP1
 SKIP_FOR_CONT:	EQU	SWAP1
 NEXT_CONT:	EQU	SWAP1
