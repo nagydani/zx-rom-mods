@@ -107,6 +107,7 @@ TIGHTER:POP	HL		; return address
 	PUSH	HL		; eliminate DE
 	CALL	SYNTAX_Z
 	JR	Z,TIGHT_S
+	PUSH	DE
 	PUSH	BC
 	PUSH	AF
 	LD	A,E
@@ -117,7 +118,8 @@ TIGHTER:POP	HL		; return address
 	DEFB	$38		; end
 	POP	AF
 	POP	BC
-	JR	TIGHTER
+	POP	DE
+	JR	TIGHT_S
 
 S_ELVS:	PUSH	AF
 	RST	$18
