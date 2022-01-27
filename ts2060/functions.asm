@@ -16,7 +16,8 @@ F_BRACE:LD	(HL),$0D	; temporarily place an end-of-line marker
 	PUSH	HL		; save ERR_SP
 	LD	HL,ERR_BRACE
 	PUSH	HL		; set error handler
-	CALL	STACKSWAP	; in this ROM
+	LD	HL,SWAP
+	PUSH	HL		; in this ROM
 	LD	(ERR_SP),SP
 	LD	(CH_ADD),DE
 	PUSH	DE		; save beginning-of-expression
